@@ -44,7 +44,8 @@ def help():
     MESSAGE = f"""
     1) First Thing First:
        -Get an API key from: {Color.UNDERLINE}https://aistudio.google.com/app/api-keys{Color.RESET + Color.BRIGHT_YELLOW}
-        and paste it in this script at line (19).
+        and paste it in this script at line (19). Remember, it's free, easy
+        to get, and generous for the free tier.
        -You can change other settings (e.g: The used Gemini model at line
         (20)) if you wish.
     
