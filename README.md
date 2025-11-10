@@ -3,8 +3,6 @@ A simple Gemini CLI program, written in Python. <br>
 Used for simple conversations. <br>
 🇵🇸
 
----
-
 ## Quick Start
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
@@ -31,14 +29,12 @@ the program.
 will appear as a plain text.
 3. Some other bugs I didn't discover yet :)
 
----
 
 ## Note
 I'm too lazy to keep working on this script. <br>
 If you want more features, or want binaries for Windows, you can tell me (In the **Issues** section for example). <br>
 Let's just hope google won't change its Gemini server protocols.
 
----
 
 ## To Do
 1. Handle big markdown tables in Gemini responses so that they appear readable.
