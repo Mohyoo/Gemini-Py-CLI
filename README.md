@@ -11,7 +11,7 @@ Used for simple conversations. <br>
 
 #### 2) First Launch:
 1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys)
-and paste it in this script at line (19).
+and paste it in this script at line (19). <br> ***(It's free and easy to get)***
 2. You can change other settings (e.g: The used Gemini model at line
 (20)) if you wish.
 3. Run the script again: `python Gemini.py`
@@ -43,3 +43,4 @@ Let's just hope google won't change its Gemini server protocols.
 4. Save chat history locally, and pass it to Gemini at startup.
 5. Enhance response speed (If already possible).
 6. Handle more stupid errors.
+
