@@ -6,7 +6,7 @@ Used for simple conversations. <br>
 ## Quick Start
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
-2. Install required libraries, open CMD & type: `pip install google-genai prompt_toolkit`
+2. Install required libraries, open CMD & type: `pip install google-genai prompt_toolkit rich`
 3. Unleash the power of the script, open CMD & type: `python Gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
 
 #### 2) First Launch:
