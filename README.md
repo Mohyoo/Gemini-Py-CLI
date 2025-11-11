@@ -31,16 +31,18 @@ will appear as a plain text.
 
 
 ## Note
-I'm too lazy to keep working on this script. <br>
+This script in under development, and I'm too lazy to keep working on it. <br>
 If you want more features, or want binaries for Windows, you can tell me (In the **Issues** section for example). <br>
 Let's just hope google won't change its Gemini server protocols.
 
 
 ## To Do
 1. Handle big markdown tables in Gemini responses so that they appear readable.
-2. Handle special characters (like the asterisk *) in Gemini Responses, without affecting code blocks or math expressions.
+2. add the ability to upload files.
 3. Refactor the code and make it human readable (A total mess is here).
 4. Save chat history locally, and pass it to Gemini at startup.
 5. Enhance response speed (If already possible).
 6. Handle more stupid errors.
 
+## Disclaimer
+This is not a Google official program!

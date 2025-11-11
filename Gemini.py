@@ -14,6 +14,8 @@ from prompt_toolkit.history import InMemoryHistory
 from google import genai
 from google.genai.errors import APIError
 from time import sleep
+from rich.console import Console
+from rich.markdown import Markdown
 
 # Settings
 GEMINI_API_KEY = "YOUR_API_KEY_HERE"
@@ -51,6 +53,7 @@ def help():
     
     2) Usage:
        -Type 'quit' or 'exit' to quit.
+       -Type 'clear' to clear the screen.
        -Press 'Ctrl-C' to cancel a prompt, stop a response, or quit
         the program.
        -Press 'Enter' to add a new line to your prompt.
@@ -64,9 +67,9 @@ def help():
        -Some other bugs I didn't discover yet :)
     """
     
-    print('\n' + '-' * 79)
+    print('\n' + '-' * 80)
     print(Color.BRIGHT_YELLOW + MESSAGE.lstrip('\n').rstrip() + Color.RESET)
-    print('-' * 79 + '\n')
+    print('-' * 80 + '\n')
 
 def farewell():
     """print a random but beautiful farewell message"""
@@ -79,6 +82,7 @@ def farewell():
         "Peace out. Thanks for chatting!",
         "Processing complete. Disconnecting now.",
         "Fin. Come back soon!",
+        "Chat complete. Have a productive day!",
         "Task completed. System shutdown initiated.",
         "Voilà un bon travail, mais il est temps de partir.\nBonne route à vous!",
         
@@ -90,7 +94,14 @@ def farewell():
         "¡Hasta la vista!\n(See you around :)",
         "Au revoir!",
         "Ciao! I'm outta here faster than an Italian pizzadisappearing at a party.",
-        f"Okay okay, calm down, he only ended the chat...\nBUT AAAAARGHHH...!!!\n{Color.ERROR}System rage error occured; {Color.RESET}Cya!",
+        f"Okay okay, calm down, he only ended the chat...\nBUT AAAAARGHHH...!!!\n{Color.ERROR}System Rage Error Occured; {Color.RESET}Cya!",
+        "Ladies & Gentlemen, we are closing.",
+        "Pleasure: The End.",
+        "Just a quick cleanup...\nOK, all done!",
+        "Okay ladies, time to go home.",
+        "Artryoos. Metryoos. Zeetoos!",
+        "Remember, it's all about: Hakuna Matata!\n(No Worries :)",
+        "Ma chère mademoiselle, it is with deepest pride and greatest pleasure\nthat we proudly present... The End.",
         
         # Enthusiastic
         "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
@@ -101,8 +112,11 @@ def farewell():
         "Until our paths cross again.",
         "Stay curious, stay connected.",
         "Farewell, may the consequences be ever in your favor.",
-        "Chat complete. Have a productive day!",
-        "Ce sont les mots que j'aime dans un chat! Au revoir!",
+        "Ce sont été les mots que j'aime dans un chat! Au revoir!",
+        "I will stay here... if you ever turn back.",
+        "Sometimes it's too difficult, yet.. it's not impossible ;)",
+        "Keep it up gentleman, the world needs your work.",
+        "The waves are calling.. Captain.",
         
         # Serious
         "Remember to commit your changes!",
@@ -111,20 +125,20 @@ def farewell():
     ]
     
     message = choice(FAREWELLS)
-    print('\n' + '-' * 79)
+    print('\n' + '-' * 80)
     print(Color.GEMINI + message + Color.RESET)
-    print('-' * 79)
+    print('-' * 80)
     sys.exit(0)
 
 def setup_chat():
     """Initializes the Gemini client and chat session."""
     if GEMINI_API_KEY == "YOUR_API_KEY_HERE":
-        print('\n\n' + '-' * 79)
-        print(f"{Color.ERROR}ERROR: Please replace 'GEMINI_API_KEY' in the script with your actual key.")
-        print(f"You'll find the 'GEMINI_API_KEY' at line(19).")
+        print('\n\n' + '-' * 80)
+        print(f"{Color.ERROR}ERROR: Please replace 'YOUR_API_KEY_HERE' in the script with your actual key.")
+        print(f"You'll find the key placeholder at line(19).")
         print(f"{Color.GEMINI}To get a new API key, visit: https://aistudio.google.com/app/api-keys\n")
         print(f"Showing the quick help menu...{Color.RESET}")
-        print('-' * 79)
+        print('-' * 80)
         help()
         clean_output()
         sys.exit(1)
@@ -154,112 +168,23 @@ def setup_chat():
         )
         
         os.system('cls')
-        print("-" * 79)
-        print(f"{Color.GEMINI}Welcome to {gemini_logo_string}{Color.GEMINI} API!")
+        print("-" * 80)
+        print(f"{Color.GEMINI}Welcome to {gemini_logo_string}{Color.GEMINI} Py-CLI! (An API-based chat)")
         print(f"Chat Initialized (Type 'help' for a quick start.){Color.RESET}")
-        print("-" * 79)
+        print("-" * 80)
         return client, chat
 
     except APIError as error:
-        print('\n' + '-' * 79)
+        print('\n' + '-' * 80)
         print(f"{Color.ERROR}API Error occurred:\n{error}.\n")
         print(f"Please check your API key validations or limits.")
         print(f"{Color.GEMINI}To get a new API key, visit: https://aistudio.google.com/app/api-keys")
         print(f"(Remember that it requires a google account)\n")
         print(f"Showing the quick help menu...{Color.RESET}")
-        print('-' * 79)
+        print('-' * 80)
         help()
         clean_output()
         sys.exit(1)
-
-def smart_format_response(text, width=79):
-    """
-    Cleans, wraps, and aligns the Gemini text smartly, preserving
-    list alignment and treating code blocks/headers as separate blocks.
-    """
-    # 2. WRAPPING & ALIGNMENT STEP:
-    lines = text.split('\n')
-    formatted_output = []
-    in_code_block = False
-    
-    # Pattern to detect list items: (optional spaces) + (marker: -, *, +, or 1. 2.) + (space)
-    list_marker_pattern = re.compile(r'^(\s*[-*+]|\s*\d+\.)\s+')
-    
-    for line in lines:
-        if not line.strip():
-            # Preserve empty lines as separators
-            formatted_output.append('\n')
-            continue
-            
-        # NEW SEPARATOR & CODE BLOCK HANDLER
-        # 1. Check for triple backticks (```) to toggle code block state
-        if line.strip().startswith('```') or line.strip().endswith('```'):
-            # If the line starts a block, toggle the state.
-            in_code_block = not in_code_block
-        
-        if line.strip() == '---':
-            if in_code_block:
-                # If inside a code block, preserve the '---' line as is
-                formatted_output.append(line + '\n')
-            else:
-                # If NOT inside a code block, convert it to the continuous line.
-                styled_line = f"{Color.LOW_COLOR}{'─' * width}{Color.RESET}\n"
-                formatted_output.append(styled_line)
-            continue # Skip the rest of the loop for this line
-
-        # 2. We must also bypass table/list logic if we're in a triple-backtick block.
-        if in_code_block:
-            # If we are inside a code block, append the line as is to preserve formatting
-            formatted_output.append(line + '\n')
-            continue
-        
-        # NEW TABLE HANDLER: Prevent wrapping for table content lines
-        line_stripped = line.strip()
-        
-        # Rule 1: Lines containing at least two pipe characters (clear indicator of column data).
-        is_data_line = line_stripped.count('|') >= 2
-        
-        # Rule 2: Lines that are almost entirely structural characters (borders/dividers).
-        structural_chars = set(['|', '+', '-', '_', ':', ' ', '\t'])
-        # Check if 90% or more of the non-whitespace characters are structural (for flexibility)
-        is_structural_border = len(line_stripped) > 5 and \
-                               sum(c in structural_chars for c in line_stripped if not c.isspace()) >= 0.9 * len(line_stripped.replace(' ', ''))
-        
-        if is_data_line or is_structural_border:
-            # Append the special marker to signal INSTANT printing in run_chat, 
-            # mitigating the chaotic console wrap.
-            formatted_output.append(line + '\n')
-            continue # Skip normal wrapping and list check
-        
-        match = list_marker_pattern.match(line)
-        if match:
-            # It's a list item.
-            marker_full = match.group(0) # e.g., '1. ' or '* '
-            
-            # The length of the marker + subsequent spaces
-            marker_len = len(marker_full) 
-            
-            # Text content starts after the marker
-            content_text = line[marker_len:]
-            
-            # Use textwrap.fill to wrap the content and apply subsequent indentation
-            wrapped_content = textwrap.fill(
-                content_text,
-                width=width,
-                initial_indent=marker_full,
-                subsequent_indent=' ' * marker_len # Indent subsequent lines under the marker
-            )
-            formatted_output.append(wrapped_content + '\n')
-            
-        else:
-            # It's a standard paragraph or header (wrapped normally)
-            wrapped_paragraph = textwrap.fill(
-                line.strip(),
-                width=width
-            )
-            formatted_output.append(wrapped_paragraph + '\n')
-
-    return ''.join(formatted_output).strip()
 
 def clean_output(max_lines_to_erase=1):
     """
@@ -308,10 +233,14 @@ def run_chat(chat):
         # But lacks new line support.
         # user_input = input(f"{Color.USER} You > {Color.RESET} ")
         user_input = get_user_input()
-        
         if not user_input:
             continue
         
+        # A quick cleanup
+        lines_to_erase = len(user_input) - len(user_input.rstrip('\n'))
+        clean_output(lines_to_erase)
+        
+        # Check if it's a command
         command = user_input.strip().lower()
         if command == 'quit' or command == 'exit':
             farewell()
@@ -319,24 +248,22 @@ def run_chat(chat):
         elif command == 'help':
             help()
             continue
-        
-        # A quick cleanup
-        lines_to_erase = len(user_input) - len(user_input.rstrip('\n'))
-        clean_output(lines_to_erase)
-        
+            
+        elif command == 'clear':
+            os.system('cls')
+            continue
+            
         try:
             response = chat.send_message(user_input)
         
         except APIError as error:
-            print('\n' + '-' * 79)
+            print('\n' + '-' * 80)
             print(f"{Color.ERROR}API Error occurred:\n{error}.\n")
-            print(f"Please check your API key limits.")
-            print(f"{Color.GEMINI}To get a new API key, visit: https://aistudio.google.com/app/api-keys{Color.RESET}")
-            print('-' * 79)
-            sys.exit(1)
+            print(f"Please check your API key limits, or wait for sometime.{Color.RESET}")
+            print('-' * 80 + '\n')
             
         except genai.errors.ServerError:
-            print('\n' + '-' * 79)
+            print('\n' + '-' * 80)
             print(f"{Color.ERROR}A temporary server problem occured.")
             print(f'It might be a service overloading, maintenance or backend errors...')
             print(f'Retrying in 5 seconds...')
@@ -358,19 +285,26 @@ def run_chat(chat):
                     sleep(10)
                     continue
                     
-            print(f'{Color.RESET}' + '-' * 79 + '\n')
+            print(f'{Color.RESET}' + '-' * 80 + '\n')
             if not response:
                 continue
         
+        except (httpx.HTTPError, httpx.ConnectError, httpx.RemoteProtocolError,
+                httpcore.ConnectError, IOError):
+            print('\n' + '-' * 80)
+            print(f"{Color.ERROR}Failed to connect, check your network or firewall!{Color.RESET}")
+            print('-' * 80 + '\n')
+            continue
+                    
         except KeyboardInterrupt:
-            print('\n' + '-' * 79)
+            print('\n' + '-' * 80)
             print(f"{Color.GEMINI}Prompt cancelled, skipping...")
             print(f'Rest assured, Gemini has no idea about what you just sent.{Color.RESET}')
-            print('' + '-' * 79 + '\n')
+            print('' + '-' * 80 + '\n')
             continue
         
         except Exception as error:
-            print('\n' + '-' * 79)
+            print('\n' + '-' * 80)
             print(f"{Color.ERROR}An error occured: {error}!{Color.RESET}")
             see_error = input("See the error? (y/n) ").strip().lower()
             
@@ -379,32 +313,29 @@ def run_chat(chat):
                 traceback.print_exc()
                 print(Color.RESET)
                 clean_output()
-                print('-' * 79 + '\n')
+                print('-' * 80 + '\n')
                 continue
             else:
                 print(f"{Color.GEMINI}Ignoring the error...{Color.RESET}")
-                print('' + '-' * 79 + '\n')
+                print('' + '-' * 80 + '\n')
                 continue
         
         try:
             print(f"{Color.GEMINI_BG + Color.GEMINI}\n Gemini: {Color.RESET}")
-            # 1. Get the full text, clean it, and split into lines/paragraphs
-            reponse_lines = smart_format_response(response.text).split('\n')
-
-            for line in reponse_lines:
-                print(line)
-                sleep(0.07)
-            
-            print('')
+            console = Console(width=80)
+            formatted_response = Markdown(response.text)
+            console.print(formatted_response)
+            print() 
+            sys.stdout.flush()
         
         except KeyboardInterrupt:
-            print('\n' + '-' * 79)
+            print('\n' + '-' * 80)
             print(f"{Color.GEMINI}Response blocked, skipping the rest of it...{Color.RESET}")
-            print('-' * 79 + '\n')
+            print('-' * 80 + '\n')
             continue  # Go back to the start of the while loop
 
         except Exception as error:
-            print('\n' + '-' * 79)
+            print('\n' + '-' * 80)
             print(f"{Color.ERROR}An error occured: {error}!{Color.RESET}")
             see_error = input("See the error? (y/n) ").strip().lower()
             
@@ -413,27 +344,18 @@ def run_chat(chat):
                 traceback.print_exc()
                 print(Color.RESET)
                 clean_output()
-                print('-' * 79 + '\n')
+                print('-' * 80 + '\n')
                 continue
             else:
                 print(f"{Color.GEMINI}Ignoring the error...{Color.RESET}")
-                print('' + '-' * 79 + '\n')
+                print('' + '-' * 80 + '\n')
                 continue
 
 if __name__ == "__main__":
     try:
         client, chat_session = setup_chat()
         if chat_session:
-            while True:
-                try: 
-                    run_chat(chat_session)
-
-                except (httpx.HTTPError, httpx.ConnectError, httpx.RemoteProtocolError,
-                        httpcore.ConnectError, IOError):
-                    print('\n' + '-' * 79)
-                    print(f"{Color.ERROR}Failed to connect, check your network or firewall!{Color.RESET}")
-                    print('-' * 79 + '\n')
-                    continue
+            run_chat(chat_session)
 
     except KeyboardInterrupt:
         farewell()
@@ -443,8 +365,9 @@ if __name__ == "__main__":
 
     except Exception as error:
         try:
-            print('\n' + '-' * 79)
-            print(f"{Color.ERROR}A fatal error occured: '{error}'! and the program has to quit.{Color.RESET}")
+            print('\n' + '-' * 80)
+            print(f"{Color.GEMINI + Color.BOLD}Congratulations! You found it. It's a BUG!\n")
+            print(f"{Color.ERROR}A fatal error occured: '{error}'! and the program has to QUIT.{Color.RESET}")
             see_error = input("See the error? (y/n) ").strip().lower()
             
             if see_error == 'y':
@@ -452,11 +375,11 @@ if __name__ == "__main__":
                 traceback.print_exc()
                 print(Color.RESET)
                 clean_output()
-                print('-' * 79)
+                print('-' * 80)
             else:
-                print('-' * 79)
+                print('-' * 80)
                 sys.exit(1)
                 
         except KeyboardInterrupt:
-            print('\n' + '-' * 79)
+            print('\n' + '-' * 80)
             sys.exit(1)
