@@ -6,14 +6,14 @@ Used for simple conversations. <br>
 ## Quick Start
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
-2. Install required libraries, open CMD & type: `pip install google-genai prompt_toolkit rich`
+2. Install required libraries, open CMD & type: `pip install httpx google-genai prompt_toolkit rich`
 3. Unleash the power of the script, open CMD & type: `python Gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
 
 #### 2) First Launch:
 1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys)
-and paste it in this script at line (19). <br> ***(It's free and easy to get)***
+and paste it in this script at line (41). <br> ***(It's free and easy to get)***
 2. You can change other settings (e.g: The used Gemini model at line
-(20)) if you wish.
+(42)) if you wish.
 3. Run the script again: `python Gemini.py`
 
 #### 3) Usage:
@@ -22,6 +22,7 @@ and paste it in this script at line (19). <br> ***(It's free and easy to get)***
 the program.
 3. Press 'Enter' to add a new line to your prompt.
 4. Press 'ESC' then 'Enter' to send.
+5. Type 'help' for more details (It's not too long, just 1 min reading).
 
 #### 4) Limitations:
 1. Tables with many columns will appear chaotic.
@@ -32,17 +33,16 @@ will appear as a plain text.
 
 ## Note
 This script in under development, and I'm too lazy to keep working on it. <br>
-If you want more features, or want binaries for Windows, you can tell me (In the **Issues** section for example). <br>
+If you want more features, or want binaries for Windows, etc. You can tell me (In the [Issues](https://github.com/Mohyoo/Gemini-Py-CLI/issues) section for example). <br>
 Let's just hope google won't change its Gemini server protocols.
 
 
 ## To Do
-1. Handle big markdown tables in Gemini responses so that they appear readable.
-2. add the ability to upload files.
+1. Handle big markdown tables so that they appear readable.
+2. Add the ability to upload files.
 3. Refactor the code and make it human readable (A total mess is here).
-4. Save chat history locally, and pass it to Gemini at startup.
 5. Enhance response speed (If already possible).
 6. Handle more stupid errors.
 
 ## Disclaimer
-This is not a Google official program!
+This is not a **Google** official program!
