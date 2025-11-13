@@ -9,6 +9,7 @@ try:
     import os
     import sys
     import re
+    import math
     import httpx
     import httpcore
     import textwrap
@@ -20,7 +21,7 @@ try:
     from prompt_toolkit.styles import Style
     from prompt_toolkit.formatted_text import FormattedText
     from prompt_toolkit.key_binding import KeyBindings
-    from prompt_toolkit.history import InMemoryHistory
+    from prompt_toolkit.history import InMemoryHistory, FileHistory
     from google import genai
     from google.genai.errors import APIError
     from google.genai.types import Content, Part
@@ -37,11 +38,13 @@ except Exception as error:
 except (KeyboardInterrupt, EOFError):
     quit(0)
 
-# Settings
+# Settings Constants
 GEMINI_API_KEY = "YOUR_API_KEY_HERE"
 GEMINI_MODEL = "gemini-2.5-flash"     # Advanced models are more expensive and have less API limits.
 STARTUP_API_CHECK = False             # Disable for a slightly faster loading.
-HISTORY_FILE = "chat_history.json"    # To load chat history (If available)
+CHAT_HISTORY_FILE = "chat_history.json"     # To load chat history (If available)
+PROMPT_HISTORY_FILE = 'prompt_history.txt'  # To load prompt history (If available)
+PROMPT_HISTORY_SIZE = 1 * 1024 * 1024       # Max prompt hisotory size (1024 * 1024 = 1 MB)
 USE_COLORS = True                     # Better to disable it for old consoles.
 IMPLICIT_INSTRUCTIONS_ON = False      # Hidden instructions to help organize the responses for CLI.
 IMPLICIT_INSTRUCTIONS = """
@@ -53,14 +56,40 @@ IMPLICIT_INSTRUCTIONS = """
     3.  **Tables:** If a table's columns cause the line length to **exceed 80 characters**, you must split the table into two or more separate tables, or format it as a list to ensure terminal compatibility.
     4.  **Formatting:** Use standard Markdown (bold, italics, lists, headers). Avoid excessive graphical elements.
 """
+HTTP_TIMEOUT = (3, 6)                # 1st to establish the initial connection, 2nd is for the entre request.
 
 # Coming Soon Settings:
 SUPPRESS_CATCHED_ERRORS = False      # Not yet implemented
 SUPPRESS_UNEXPECTED_ERRORS = False   # Not yet implemented
 ENTER_TO_SEND = False                # Not yet implemented
 CONSOLE_WIDTH = 80                   # Not yet implemented
+NO_ERROR_DETAILS = False             # Never ask the user to see more details about an error
 
-# AINSI Colors
+# Global Variables (Do not change!)
+confirm_separator = True             # Before confirming to quit, either print a separator or not.
+history = FileHistory(PROMPT_HISTORY_FILE)
+
+# Keyboard Shortcuts for user inputclass Keys():
+key_bindings = KeyBindings()
+class Keys():
+    submit = 'enter'
+    new_line = 'c-space'
+
+@key_bindings.add(Keys.submit, eager=True)
+def _(event):
+    """
+    Submits the input immediately.
+    'eager=True' ensures this binding takes precedence.
+    """
+    event.cli.current_buffer.validate_and_handle()
+
+@key_bindings.add(Keys.new_line)
+def _(event):
+    """Inserts a newline character."""
+    event.cli.current_buffer.insert_text('\n')
+  
+
+# Colors
 if USE_COLORS:
     CYN     = "\033[96m"    # Cyan
     RED     = "\033[91m"    # Red
@@ -71,11 +100,82 @@ if USE_COLORS:
     UL      = "\033[4m"     # Underline
     BD      = "\033[1m"     # Bold
     RS      = "\033[0m"     # Reset
+    PROMPT_BG  = 'cyan'
 else:
     CYN = RED = GR = YLW = BL = GEM_BG = UL = BD = RS = ''
+    PROMPT_BG  = 'white'
 
-# ANSI Escape Pattern (Used inside 'visual_len()')
-ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
+# Custom Messages
+FAREWELLS_MESSAGES = [
+    # Messages displayed upon existing.
+    # Standard
+    "Chat session ended. Goodbye!",
+    "Gemini signing off. Until next time!",
+    "The light fades. See you in the next prompt!",
+    "Session terminated successfully. Farewell.",
+    "Peace out. Thanks for chatting!",
+    "Processing complete. Disconnecting now.",
+    "Fin. Come back soon!",
+    "Chat complete. Have a productive day!",
+    "Task completed. System shutdown initiated.",
+    "Voilà un bon travail, mais il est temps de partir.\nBonne route à vous!",
+    
+    # Funny
+    "The chat is lost, but the war has just begun!",
+    "Abracadabra! Poof...\nWait, who turned off the lights?",
+    "Adios, Amigo! The terminal awaits your return.",
+    "¡Nos vemos, cocodrilo!\n(See you, crocodile :P)",
+    "¡Hasta la vista!\n(See you around :D)",
+    "Au revoir!",
+    "Ciao! I'm outta here faster than an Italian pizza disappearing at a party.",
+    f"Okay okay, calm down, he only ended the chat...\nBUT AAAAARGHHH...!!!\n{RED}System Rage Error occurred;{RS}{GR} Cya!",
+    "Ladies & Gentlemen, we are closing.",
+    "Just a quick fake cleanup...\nOK, all done!",
+    "Okay ladies, time to go home.",
+    "Artryoos. Metryoos. Zeetoos!",
+    "Remember, it's all about: Hakuna Matata!\n(No Worries :)",
+    "Ma chère mademoiselle, it is with deepest pride and greatest pleasure that we\nproudly present... The End.",
+    "¡Ándale! ¡Ándale! ¡Arriba! ¡Arriba! Yeehaw!",
+    "Tactical retreat. We'll be back.",
+    "Shadow Fleeing Jutsu!",
+    "Together for a better world (Where I'm the boss).",
+    "Finally, some peace of mind...",
+    "Good, I was in no mood for chat already.",
+    
+    # Enthusiastic
+    "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
+    "May your logic be sound and your keys be clean.",
+    "Go forth and query, friend.",
+    "I'll be here. You know where to find me.",
+    "Enjoy the silence. Goodbye.",
+    "Until our paths cross again.",
+    "Stay curious, stay connected.",
+    "Farewell, may the consequences be ever in your favor.",
+    "Ce sont les mots que j'aime dans un chat! Au revoir!",
+    "I will stay here... if you ever turn back.",
+    "Sometimes it's too difficult, yet.. it's not impossible ;)",
+    "Keep it up gentleman, the world needs your work.",
+    "The waves are calling.. Captain.",
+    
+    # Serious
+    "Remember to commit your changes!",
+    "Don't forget to save your work!",
+    "Bye Bye! Check your API key status if you run into trouble.",
+    f"Thank you for using Gemini Py-CLI! Suggestions are welcome!\nGitHub Home: {UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}",
+    f"If you faced any issues, please let me know, I'll try to reply quickly.\nGitHub Issues: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}",
+]  
+CONTINUE_MESSAGES = [
+    # Messages displayed upon confirming exit, but the user chooses NO.
+    'You chooses to fight on!',
+    'Resuming chat...',
+    'Acting blind...',
+    'Cancelling, chat will continues.',
+    "Don't just mess with the keyboard nex time.",
+    'Oof...',
+    'Yeah, this is ma boi!',
+    'Your tenacity is endearing!',
+    'We have tireless avenger here.',
+]
 
 
 
@@ -113,27 +213,30 @@ def catch_api_error_in_chat(error):
     box(msg_1, msg_2, msg_3, title='API ERROR', border_color=RED, secondary_color=RED)
 
 def catch_server_error_in_chat():
+    global confirm_separator
+    confirm_separator = False
     separator('\n', color=RED)
-    cprint(f"{RED}A temporary server problem occured.")
+    cprint(f"{RED}A temporary server problem occurred.")
     cprint(f'It might be a service overloading, maintenance or backend errors...')
     print_status(lambda: sleep(5), 'Retrying in 5 seconds...', 'yellow')
     
     response = None
     for attempt in range(5):
         try:
-            print_status(lambda: chat.send_message(user_input), 'Waiting for response...')
+            response = get_response()
             cprint(GR + 'Response received!' + RS)
             break
             
         except genai.errors.ServerError:
             if attempt >= 4:
-                cprint(YLW + 'Tried 5 times with no response, please wait for sometime...' + RS)
+                cprint(YLW + 'Tried 5 times with no response! Please wait for sometime...' + RS)
                 response = None
                 break
                 
             print_status(lambda: sleep(10), 'Issue persisting, trying again in 10 seconds...', 'yellow')
             continue
             
+    confirm_separator = True
     separator(color=RED)
     return response
 
@@ -142,12 +245,18 @@ def catch_network_error():
     box(msg, title='NETWORK ERROR', border_color=RED)
 
 def catch_exception_in_chat(error):
+    global confirm_separator
     separator('\n', color=RED)
-    cprint(f"{RED}An error occured:\n{error}!{RS}")
-    see_error = input("See the details? (y/n) ").strip().lower()
+    log_error(f"An error occurred:\n'{error}'")
+    try:
+        see_error = input(f"See the details? (y/n) ").strip().lower()
+    except Interruption:
+        confirm_separator = False
+        cprint()
+        raise
     
     if see_error == 'y':
-        cprint(RED + traceback.format_exc() + RS)
+        cprint(RED + traceback.format_exc().strip() + RS)
     else:
         cprint(f"{GR}Acting blind...{RS}")
         
@@ -160,13 +269,13 @@ def catch_fatal_exception(error):
     cprint(f"Please let me know, I'll try to respond as soon as possible.")
     cprint(f"GitHub Issues: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}\n")
     
-    cprint(f"{RED}A fatal error occured:\n'{error}'!\nAnd the program has to QUIT.{RS}")
+    log_error(f"A fatal error occurred:\n'{error}'\nAnd the program has to QUIT.")
     see_error = input("See the details? (y/n) ").strip().lower()
     
     if see_error == 'y':
-        cprint(RED + traceback.format_exc() + RS)
+        cprint(RED + traceback.format_exc().strip() + RS)
         clean_output()
-        separator()
+        separator(color=RED)
     else:
         cprint(f"{YLW}\nInhales.. Deep breathing.. Now out.{RS}")
         separator(color=RED)
@@ -216,6 +325,20 @@ def print_status(action, text='Waiting...', color='green'):
     with console.status(f"[bold {color}]{text}[/bold {color}]"):
         action()
 
+def log_error(text, style='red', offset=3):
+    """
+    Display a special message for erros, including time and line.
+    
+    1) '_stack_offset' argument tells 'Rich' to look further up the call stack
+       to find the true originator of the log message. Default to (3): from this
+       log_error() -> catch_error_name() -> except statement (what we want).
+       
+    2) Using quotes inside quotes (e.g: "''") will give the internal quotes
+       a special color.
+    """
+    cprint(RS, end='')
+    console.log(text, style=style, _stack_offset=offset, end='\n\n')
+
 def clean_output(lines_to_erase=1):
     """
     Simulates scanning and cleaning up previous empty lines by using 
@@ -232,10 +355,12 @@ def separator(before='', after='', char='─', color='', width=80, end='\n'):
     """Display a line of hyphens."""
     # Used console.print() instead of print() and our defined cprint(), because
     # others have an issue of printing double new line after.
-    console.print(color + before + char * width + after + RS, end=end, no_wrap=True)
+    console.print(color + before + char * width + after + RS,
+                  end=end, no_wrap=True, soft_wrap=True, overflow='ignore')
 
 def visual_len(text_with_ansi):
     """Returns the visible length of a string, ignoring ANSI codes."""
+    ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
     return len(ANSI_ESCAPE.sub('', text_with_ansi))
 
 def box(*texts, title='Message', border_color='', text_color='', secondary_color='', width=80):
@@ -327,7 +452,7 @@ def help():
     MESSAGE = f"""
     1) First Thing First:
        -Get an API key from: {UL}https://aistudio.google.com/app/api-keys{RS}
-        and paste it in this script at line (41). Remember, it's free, easy
+        and paste it in this script at line (42). Remember, it's free, easy
         to get, and generous for the free tier (Just requires an account).
        -You can change other settings (e.g: The used Gemini model at line
         (43)) if you wish.
@@ -336,8 +461,8 @@ def help():
        -Type 'quit' or 'exit' to quit.
        -Type 'clear' to clear the screen.
        -Press 'Ctrl-C' to cancel a prompt, stop a response, or quit.
-       -Press 'Enter' to add a new line to your prompt.
-       -Press 'ESC' then 'Enter' to send.
+       -Press 'Ctrl-Space' to add a new line to your prompt.
+       -Press 'Enter' to send.
     
     3) Limitations:
        -Tables with many columns will appear chaotic.
@@ -353,67 +478,17 @@ def farewell(confirmed=False):
     Print a random but beautiful farewell message.
     Also give the user the chance to go back.
     """
-    FAREWELLS = [
-        # Standard
-        "Chat session ended. Goodbye!",
-        "Gemini signing off. Until next time!",
-        "The light fades. See you in the next prompt!",
-        "Session terminated successfully. Farewell.",
-        "Peace out. Thanks for chatting!",
-        "Processing complete. Disconnecting now.",
-        "Fin. Come back soon!",
-        "Chat complete. Have a productive day!",
-        "Task completed. System shutdown initiated.",
-        "Voilà un bon travail, mais il est temps de partir.\nBonne route à vous!",
-        
-        # Funny
-        "The chat is lost, but the war has just begun!",
-        "Abracadabra! Poof...\nWait, who turned off the lights?",
-        "Adios, amigo. The terminal awaits your return.",
-        "¡Nos vemos, cocodrilo!\n(See you, crocodile :P)",
-        "¡Hasta la vista!\n(See you around :D)",
-        "Au revoir!",
-        "Ciao! I'm outta here faster than an Italian pizza disappearing at a party.",
-        f"Okay okay, calm down, he only ended the chat...\nBUT AAAAARGHHH...!!!\n{RED}System Rage Error occurred;{RS}{GR} Cya!",
-        "Ladies & Gentlemen, we are closing.",
-        "Just a quick fake cleanup...\nOK, all done!",
-        "Okay ladies, time to go home.",
-        "Artryoos. Metryoos. Zeetoos!",
-        "Remember, it's all about: Hakuna Matata!\n(No Worries :)",
-        "Ma chère mademoiselle, it is with deepest pride and greatest pleasure that we\nproudly present... The End.",
-        "¡Ándale! ¡Ándale! ¡Arriba! ¡Arriba! Yeehaw!",
-        "Tactical retreat. We'll be back.",
-        "Shadow Fleeing Jutsu!",
-        "Together for a better world (Where I'm the boss).",
-        
-        # Enthusiastic
-        "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
-        "May your logic be sound and your keys be clean.",
-        "Go forth and query, friend.",
-        "I'll be here. You know where to find me.",
-        "Enjoy the silence. Goodbye.",
-        "Until our paths cross again.",
-        "Stay curious, stay connected.",
-        "Farewell, may the consequences be ever in your favor.",
-        "Ce sont les mots que j'aime dans un chat! Au revoir!",
-        "I will stay here... if you ever turn back.",
-        "Sometimes it's too difficult, yet.. it's not impossible ;)",
-        "Keep it up gentleman, the world needs your work.",
-        "The waves are calling.. Captain.",
-        
-        # Serious
-        "Remember to commit your changes!",
-        "Don't forget to save your work!",
-        "Bye Bye! Check your API key status if you run into trouble.",
-        f"Thank you for using Gemini Py-CLI! Suggestions are welcome!\nGitHub Home: {UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}",
-        f"If you faced any issues, please let me know, I'll try to reply quickly.\nGitHub Issues: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}",
-    ]
-    
+    global FAREWELLS_MESSAGES, CONTINUE_MESSAGES, confirm_separator
+
     # Confirm
+    cprint(RS, end='')
     if not confirmed:
-        separator('\n')
+        cprint()
+        if confirm_separator: separator()
+        confirm_separator = True
         wrong_answer = 0
         text = f"{YLW}Are you sure you want to quit? (y/n): {RS}"
+        
         while True:
             try:
                 confirm = input(text).lower().strip()
@@ -429,27 +504,20 @@ def farewell(confirmed=False):
                     text = f"\r{YLW}Are you sure you want to quit? (y/n):\nEither 'Yes' or 'No' (y/n): {RS}"
         
         if confirm != 'y':
-            messages = [
-                'You chooses to fight on!',
-                'Resuming chat...',
-                'Acting blind...',
-                'Cancelling, chat will continues.',
-                "Don't just mess with the keyboard nex time.",
-            ]
-            
-            cprint(GR + choice(messages) + RS)
+            cprint(GR + choice(CONTINUE_MESSAGES) + RS)
             separator()
             return
         else:
             cprint()
     
-    # Save Chat
+    # Save chat
     saved = save_chat_history(up_separator=confirmed, down_separator=False)
     if saved: cprint()
     
-    # Do it
-    message = choice(FAREWELLS)
+    # Clean prompt history & Exit
     if not saved and confirmed: separator()
+    prune_history_by_size()
+    message = choice(FAREWELLS_MESSAGES)
     cprint(GR + message + RS)
     separator()
     sys.exit(0)
@@ -467,6 +535,47 @@ def serialize_history():
     
     return serializable_history
 
+def prune_history_by_size():
+    """
+    Checks the history file size. If > max_size_mb, it prunes the file
+    by taking the last half and finding the next full history block (timestamp).
+    """
+    if not os.path.exists(PROMPT_HISTORY_FILE):
+        return
+    
+    # Check file size
+    file_size = os.path.getsize(PROMPT_HISTORY_FILE)
+    if file_size <= PROMPT_HISTORY_SIZE:
+        return
+    
+    # Split file
+    cprint(GR + 'Shrinking the prompt history file...' + RS)
+    while file_size > 1:
+        file_size = file_size // 2
+    
+    start_seek_position = file_size
+        
+    with open(PROMPT_HISTORY_FILE, 'rb') as f:
+        f.seek(start_seek_position)
+        content_last_half = f.read().decode(sys.getdefaultencoding(), 'ignore')
+    
+    # Discard the broken content, keep it intact
+    HISTORY_PATTERN = re.compile(r'^#\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+$', re.MULTILINE)
+    match = HISTORY_PATTERN.search(content_last_half)
+    if match:
+        start_index = match.start()
+        new_content = content_last_half[start_index:]
+        with open(PROMPT_HISTORY_FILE, 'w') as f:
+            new_content = new_content.replace('\r\n', '\n').replace('\r', '\n')
+            f.write(new_content)
+
+    else:
+        with open(PROMPT_HISTORY_FILE, 'w') as f:
+            content_last_half = content_last_half.replace('\r\n', '\n').replace('\r', '\n')
+            f.write(content_last_half)
+    
+    cprint(GR + 'Done!\n' + RS)
+
 def save_chat_history(up_separator=True, down_separator=True):
     """Save the chat history before quitting."""
     # Check conditions & Test if there is an active chat, else exit.
@@ -479,7 +588,7 @@ def save_chat_history(up_separator=True, down_separator=True):
     try:
         serializable_history = serialize_history()
         new_history_json_str = json.dumps(serializable_history)
-        with open(HISTORY_FILE, 'r') as f: old_history_dicts = json.load(f)
+        with open(CHAT_HISTORY_FILE, 'r') as f: old_history_dicts = json.load(f)
         
         old_history_json_str = json.dumps(old_history_dicts)
         changed = new_history_json_str != old_history_json_str
@@ -498,7 +607,7 @@ def save_chat_history(up_separator=True, down_separator=True):
             except Exception as error: cprint(f"{RED}Failed to save chat history: {error}!{RS}")
         
         if serializable_history:
-            with open(HISTORY_FILE, 'w') as f:
+            with open(CHAT_HISTORY_FILE, 'w') as f:
                 json.dump(serializable_history, f, indent=4)
                 cprint(f"{GR}Chat history saved!{RS}")
                 
@@ -507,22 +616,28 @@ def save_chat_history(up_separator=True, down_separator=True):
 
 def load_chat_history():
     """Load chat history, if it meets the conditions."""
-    global initial_history
+    global initial_history, confirm_separator
     initial_history = []
     
     # Check if the history file exist, and it's not empty.
-    file_exist = os.path.exists(HISTORY_FILE)
-    empty = os.path.getsize(HISTORY_FILE) == 0
-    useful = open(HISTORY_FILE).read().strip() != '[]'
+    file_exist = os.path.exists(CHAT_HISTORY_FILE)
+    empty = os.path.getsize(CHAT_HISTORY_FILE) == 0
+    useful = open(CHAT_HISTORY_FILE).read().strip() != '[]'
     
     if file_exist and not empty and useful:
         answer = CYN + "Chat history available, load it? (y/n): " + RS
         invalid_answer = False
         while True:
-            load_history = input(answer).lower().strip()
+            try:
+                load_history = input(answer).lower().strip()
+            except:
+                cprint()
+                confirm_separator = False
+                raise
+                
             if load_history == 'y':
                 try:
-                    with open(HISTORY_FILE, 'r') as f:
+                    with open(CHAT_HISTORY_FILE, 'r') as f:
                         saved_history_dicts = json.load(f)
                     
                     # Reconstruct Content & Part objects from the saved dictionaries
@@ -543,9 +658,9 @@ def load_chat_history():
                     
                     loaded_messages = len(initial_history)
                     if loaded_messages:
-                        cprint(f"{GR}Loaded ({len(initial_history)}) history steps from '{HISTORY_FILE}'.{RS}")
+                        cprint(f"{GR}Loaded ({len(initial_history)}) history steps from '{CHAT_HISTORY_FILE}'.{RS}")
                     elif not loaded_messages and not errors:
-                        cprint(f"{YLW}File '{HISTORY_FILE}' seems to be empty.{RS}")
+                        cprint(f"{YLW}File '{CHAT_HISTORY_FILE}' seems to be empty.{RS}")
                     elif not loaded_messages and errors:
                         cprint(f"{YLW}Failed to load any history messages (0 loaded).{RS}")
                         
@@ -565,13 +680,13 @@ def load_chat_history():
                 
             else:
                 if invalid_answer: clean_output()
-                answer = YLW + "Either 'Yes' or 'No' (y/n) > " + RS
+                answer = CYN + "Either 'Yes' or 'No' (y/n): " + RS
                 invalid_answer = True
     
     elif not file_exist:
-        cprint(f"{YLW}File '{HISTORY_FILE}' not found, starting a new chat...{RS}")
+        cprint(f"{YLW}File '{CHAT_HISTORY_FILE}' not found, starting a new chat...{RS}")
     else:
-        cprint(f"{YLW}File '{HISTORY_FILE}' seems to be empty.{RS}")
+        cprint(f"{YLW}File '{CHAT_HISTORY_FILE}' seems to be empty.{RS}")
     
     separator(end='')
 
@@ -586,13 +701,26 @@ def setup_chat():
         separator()
         help()
         sys.exit(1)
-        
+    
+    # Loading Screen
+    clean_output(3)
+    print('+' + '-' * 78 + '+')
+    print("| Loading chat..." + ' ' * 62 + '|')
+    print('+' + '-' * 78 + '+')
+    
     try:
         # raise APIError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
         # raise httpx.RemoteProtocolError(message='Test')
         
         # Client Initialization & API Validation
-        client = genai.Client(api_key=GEMINI_API_KEY)
+        timeout_config = httpx.Timeout(HTTP_TIMEOUT)
+        http_client = httpx.Client(timeout=timeout_config)
+
+        client = genai.Client(
+            api_key=GEMINI_API_KEY,
+            http_options=http_client,
+        )
+        
         if STARTUP_API_CHECK: client.models.list()
         
         # Welcome Screen & History Loading
@@ -607,19 +735,16 @@ def setup_chat():
                 continue
         
         # Start chat session with/out the implicit instructions
+        config = None
         if IMPLICIT_INSTRUCTIONS_ON:
             config = genai.types.GenerateContentConfig(system_instruction=(IMPLICIT_INSTRUCTIONS))
-            chat = client.chats.create(
-                model=GEMINI_MODEL,
-                history=initial_history,
-                config=config,
-            )
         
-        else:
-            chat = client.chats.create(
-                model=GEMINI_MODEL,
-                history=initial_history,
-            )
+        chat = client.chats.create(
+            model=GEMINI_MODEL,
+            history=initial_history,
+            config=config,
+        )
+        
         
         cprint()
         return client, chat
@@ -635,20 +760,16 @@ def setup_chat():
 
 def get_user_input():
     """Handles prompt_toolkit input and gracefully catches Ctrl-C/Ctrl-D."""
-    # Use or drop colors
-    if USE_COLORS: bg = 'cyan'
-    else: bg = 'white'
-    
     # Stream input
-    history=InMemoryHistory()
     user_input = prompt(
         FormattedText([
-            (f'bg:{bg} black', '\n You > '), # Styled part
-            ('', ' '),                     # Unstyled part (will take default bg)
+            (f'bg:{PROMPT_BG} black', '\n You > '), # Styled part
+            ('', ' '),                              # Unstyled part (will take default bg)
         ]),
         multiline=True,
         wrap_lines=True,
         history=history,
+        key_bindings=key_bindings,
     )
     
     if user_input.strip():
@@ -658,6 +779,15 @@ def get_user_input():
         clean_output(lines_to_erase + 2)
         return None
 
+def get_response():
+    """Send the user input to AI and wait to receive the response."""
+    with console.status("[bold green]Waiting for response...[/bold green]"):
+        try:
+            response = chat.send_message(user_input)
+        except Interruption:   # Interruption is somewhat catched inside chat.send_message(), I doubt this'll work.
+            raise
+    return response
+ 
 def run_chat():
     """Handles the user input and Gemini responses."""
     global user_input
@@ -696,32 +826,33 @@ def run_chat():
             # raise Exception('Test' * 25)
             
             cprint()
-            with console.status("[bold green]Waiting for response...[/bold green]"):
-                response = chat.send_message(user_input)
-            clean_output()
+            response = None
+            
+            try:
+                response = get_response()
+                clean_output()
+            except:
+                clean_output()
+                raise
             
         except genai.errors.ServerError:
-            clean_output()
-            if not catch_server_error_in_chat():
+            response = catch_server_error_in_chat()
+            if not response:
                 continue
                 
         except APIError as error:
-            clean_output()
             catch_api_error_in_chat(error)
             continue
 
         except NetworkExceptions:
-            clean_output()
             catch_network_error()
             continue
                     
         except Interruption:
-            clean_output()
             catch_keyboard_interrupt()
             continue
         
         except Exception as error:
-            clean_output()
             catch_exception_in_chat(error)
             continue
         
@@ -753,7 +884,7 @@ if __name__ == "__main__":
         console = Console(width=80)
         client, chat = setup_chat()
         if chat:
-            # raise ValueError("This is an intentional error to get a verbose traceback. " * 4)
+            # raise ValueError('Test' * 25)
             # raise KeyboardInterrupt
             # raise SystemExit
             while True:

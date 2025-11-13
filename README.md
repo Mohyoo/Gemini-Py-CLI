@@ -11,17 +11,16 @@ Used for simple conversations. <br>
 
 #### 2) First Launch:
 1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys)
-and paste it in this script at line (41). <br> ***(It's free and easy to get)***
-2. You can change other settings (e.g: The used Gemini model at line
-(42)) if you wish.
+and paste it at the beginning of this script (about line 45). <br> ***(It's free and easy to get)***
+2. You can change other settings beside the API key if you wish (e.g: The used Gemini model).
 3. Run the script again: `python Gemini.py`
 
 #### 3) Usage:
 1. Type 'quit' or 'exit' to quit.
 2. Press 'Ctrl-C' to cancel a prompt, stop a response, or quit
 the program.
-3. Press 'Enter' to add a new line to your prompt.
-4. Press 'ESC' then 'Enter' to send.
+3. Press 'Ctrl-Space' to add a new line to your prompt.
+4. Press 'Enter' to send.
 5. Type 'help' for more details (It's not too long, just 1 min reading).
 
 #### 4) Limitations:
