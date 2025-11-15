@@ -1,7 +1,28 @@
 ## Gemini Py-CLI
 A simple Gemini CLI program, written in Python. <br>
 Used for simple conversations. <br>
+Tested using ConEmu console, in Windows 8.1 64-bit. <br>
+<span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span>
+
 🇵🇸
+
+## Features 
+* History saved in many forms, even if the program crashes:
+	+ chat history file.
+	+ prompt history file.
+
+* Customizable, you can edit many settings, like colors, delays, completion...
+  (Not all areas are modifiable yet, but in progress).
+
+* Stubborn error handling, yet not still perfect.
+
+* Word suggestion & completion:
+	+ Suggest from a wordlist, a menu popup to choose a word from.
+	+ Suggest from history, you get inline completion upon typing words from previous prompts.
+	
+* Cross platform, binaries are not yet created, perhaps on request I'll do that (I'm too lazy).
+
+* Common keyboard shortcuts + Vim/Emacs shortcuts (default off, beta) + Mouse support (beta).
 
 ## Quick Start
 #### 1) Python Setup:
@@ -11,7 +32,7 @@ Used for simple conversations. <br>
 
 #### 2) First Launch:
 1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys)
-and paste it at the beginning of this script (about line 45). <br> ***(It's free and easy to get)***
+and paste it in **settings.py** (First few lines). <br> ***(It's free and easy to get)***
 2. You can change other settings beside the API key if you wish (e.g: The used Gemini model).
 3. Run the script again: `python Gemini.py`
 
@@ -33,7 +54,9 @@ will appear as a plain text.
 ## Note
 This script in under development, and I'm too lazy to keep working on it. <br>
 If you want more features, or want binaries for Windows, etc. You can tell me (In the [Issues](https://github.com/Mohyoo/Gemini-Py-CLI/issues) section for example). <br>
-Let's just hope google won't change its Gemini server protocols.
+Let's just hope google won't change its Gemini server protocols. <br>
+
+By the way, there is a serie of commented `raise` statements in the script, ignore them, they are just for testing.
 
 
 ## To Do
