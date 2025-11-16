@@ -779,7 +779,7 @@ def help():
        - ENTER to send.
        - CTRL-SPACE, SHIFT-TAB or CTRL-J to add a new line to your prompt
          (SHIFT-ENTER won't work, and it will submit your text!)
-       - CTRL-C to clear/cancel a prompt, stop a response, or quit.
+       - CTRL-C to clear / cancel a prompt, stop a response, or quit.
        - UP/DOWN arrows to navigate between input lines / history prompts,
          or to accept word suggestions.
     
@@ -788,7 +788,7 @@ def help():
        -Type 'clear' to clear the screen.
        -Type 'help' for this guide menu.
        
-    5) More Shortcuts:
+    4) More Shortcuts:
        - CTRL-Z/CTRL-Y to undo/redo.
        - CTRL-L to clear screen.
        - CTRL-R (Reverse Search) to search backward & find the most recent
@@ -796,7 +796,7 @@ def help():
        - CTRL-S (Forward Search) used after CTRL-R to find older matches,
          keep pressing to move.
     
-    4) Limitations:
+    5) Limitations:
        -Tables with many columns will appear chaotic.
        -Special characters (Like LaTeX syntax) will appear as a plain text.
        -Some other bugs I didn't discover yet :)
@@ -1348,6 +1348,7 @@ def run_chat():
             
             elif command == 'help':
                 help()
+                clear_lines()
                 continue
                 
             elif command == 'clear':
