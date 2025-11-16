@@ -2,9 +2,13 @@
 A simple Gemini CLI program, written in Python. <br>
 Used for simple conversations. <br>
 Tested using ConEmu console, in Windows 8.1 64-bit. <br>
-<span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span>
-
+<span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
 🇵🇸
+
+---
+<span style="color:cyan">For people who don't know Python, it's just a prgram you install it, and execute it from Command Prompt or Terminal. After installing it, you only run 2 commands, one to install dependencies (which took me 3 min with my 80kb internet), then the main command which is instant.</span>
+
+----
 
 ## Features 
 * History saved in many forms, even if the program crashes:
@@ -14,7 +18,7 @@ Tested using ConEmu console, in Windows 8.1 64-bit. <br>
 * Customizable, you can edit many settings, like colors, delays, completion...
   (Not all areas are modifiable yet, but in progress).
 
-* Stubborn error handling, yet not still perfect.
+* Stubborn error handling, yet still not perfect.
 
 * Word suggestion & completion:
 	+ Suggest from a wordlist, a menu popup to choose a word from.
@@ -50,7 +54,7 @@ the program.
 will appear as a plain text.
 3. Some other bugs I didn't discover yet :)
 
-
+---
 ## Note
 This script in under development, and I'm too lazy to keep working on it. <br>
 If you want more features, or want binaries for Windows, etc. You can tell me (In the [Issues](https://github.com/Mohyoo/Gemini-Py-CLI/issues) section for example). <br>
@@ -58,6 +62,7 @@ Let's just hope google won't change its Gemini server protocols. <br>
 
 By the way, there is a serie of commented `raise` statements in the script, ignore them, they are just for testing.
 
+---
 
 ## To Do
 1. Handle big markdown tables so that they appear readable.
@@ -65,6 +70,7 @@ By the way, there is a serie of commented `raise` statements in the script, igno
 3. Refactor the code and make it human readable (A total mess is here).
 5. Enhance response speed (If already possible).
 6. Handle more stupid errors.
+7. And more... I'm suffering.
 
 ## Disclaimer
-This is not a **Google** official program!
+This is not an official **Google** program!
