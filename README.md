@@ -11,9 +11,11 @@ Tested using ConEmu console, in Windows 8.1 64-bit. <br>
 ----
 
 ## Features 
-* History saved in many forms, even if the program crashes:
-	+ chat history file.
-	+ prompt history file.
+* History can saved locally in many forms, even if the program crashes:
+	+ Automatically, save chat history to a json file.
+	+ Automatically, save prompt history to a text file.
+	+ At request, save chat history to a human readable text file.
+    + At request, save the last Gemini response to a simple text file.
 
 * Customizable, you can edit many settings, like colors, delays, completion...
   (Not all areas are modifiable yet, but in progress).
@@ -32,13 +34,13 @@ Tested using ConEmu console, in Windows 8.1 64-bit. <br>
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
 2. Install required libraries, open CMD & type: `pip install httpx google-genai prompt_toolkit rich`
-3. Unleash the power of the script, open CMD & type: `python Gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
+3. Unleash the power of the script, open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
 
 #### 2) First Launch:
 1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys)
 and paste it in **settings.py** (First few lines). <br> ***(It's free and easy to get)***
 2. You can change other settings beside the API key if you wish (e.g: The used Gemini model).
-3. Run the script again: `python Gemini.py`
+3. Run the script again: `python gemini.py`
 
 #### 3) Usage:
 1. Type 'quit' or 'exit' to quit.

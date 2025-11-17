@@ -1,3 +1,5 @@
+from random import randint, choice
+
 # When editing this, respect each option's possible values, otherwise prepare yourself for a crash).
 # Coming Soon Settings
 SUPPRESS_CATCHED_ERRORS = False             # Not yet implemented
@@ -6,8 +8,7 @@ SUPPRESS_UNEXPECTED_ERRORS = False          # Not yet implemented
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
 GEMINI_MODEL = 'gemini-2.5-flash'           # Advanced models are more expensive and have less API limits.
-ENTER_NEW_LINE = False                      # Enter inserts a new line, and Esc-Enter submits; if False,
-                                                # Enter submits, and Esc-Enter insets a new line.
+ENTER_NEW_LINE = False                      # Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter insets a new line.
 WORD_SUGGESTION = True                      # Suggest words while typing in a menu popup.
 SUGGEST_FROM_HISTORY = False                # Use the user's prompt history for inline word completion (SLOW).
 USE_COLORS = True                           # Better to disable it for old consoles.
@@ -31,10 +32,14 @@ VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for edit
 STARTUP_API_CHECK = False                   # Disable for a slightly faster loading.
 SAVE_INPUT_ON_CLEAR = False                 # Save the prompt to history when the user clears its prompt with Ctrl-C.
 SAVE_INPUT_ON_QUIT = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C.
+LAST_RESPONSE_FILE = 'last_response.txt'    # To save last Gemini response in a text file.
 WORDLIST_FILE = 'word_suggestion.txt'       # A small wordlist used for word suggestion.
-CHAT_HISTORY_FILE = 'chat_history.json'     # To load chat history (If available).
+CHAT_HISTORY_JSON = 'chat_history.json'     # To save/load chat history to/from a json file (If available).
+CHAT_HISTORY_TEXT = 'chat_history.txt'      # To save chat history as a simple text file (If available).
 PROMPT_HISTORY_FILE = 'prompt_history.txt'  # To load prompt history (If available).
 PROMPT_HISTORY_SIZE = 0.5 * 1024 * 1024     # Max prompt hisotory size (1024 * 1024 = 1 MB)
+LOG_ON = True                               # To log errors to a file, console output won't be affected.
+LOG_FILE = 'application_errors.log'         # The file to write errors to.
 SERVER_ERROR_ATTEMPTS = 3                   # How many times to try to get a response upon a server error.
 SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first error, then 2nd for next errors.
 HTTP_TIMEOUT = (2.5, 5)                     # 1st to establish the initial connection, 2nd is for the entire request.
@@ -73,3 +78,104 @@ if USE_COLORS:
 else:
     CYN = RED = GR = YLW = BL = UL = BD = RS = GEM_BG = ''
     PROMPT_BG = PROMPT_FG = WAIT_1 = WAIT_2 = 'white'
+
+
+# Custom Messages
+FAREWELLS_MESSAGES = [
+    # Messages displayed upon existing.
+    # Standard
+    "Chat session ended. Goodbye!",
+    "Gemini signing off. Until next time!",
+    "The light fades. See you in the next prompt!",
+    "Session terminated successfully. Farewell.",
+    "Peace out. Thanks for chatting!",
+    "Processing complete. Disconnecting now.",
+    "Fin. Come back soon!",
+    "Chat complete. Have a productive day!",
+    "Task completed. System shutdown initiated.",
+    "Voilà un bon travail, mais il est temps de partir.\nBonne route à vous!",
+    
+    # Funny
+    "The chat is lost, but the war has just begun!",
+    "Abracadabra! Poof...\nWait, who turned off the lights?",
+    "Adios, Amigo! The terminal awaits your return.",
+    "¡Nos vemos, cocodrilo!\n(See you, crocodile :P)",
+    "¡Hasta la vista!\n(See you around :D)",
+    "Au revoir!",
+    "Ciao! I'm outta here faster than an Italian pizza disappearing at a party.",
+    f"Okay okay, calm down, he only ended the chat...\nBUT AAAAARGHHH...!!!\n"
+    f"{RED}System Rage Error occurred;{RS}{GR} Cya!",
+    "Ladies & Gentlemen, we are closing.",
+    "Just a quick fake cleanup...\nOK, all done!",
+    "Okay ladies, time to go home.",
+    "Artryoos. Metryoos. Zeetoos!",
+    "Remember, it's all about: Hakuna Matata!\n(No Worries :)",
+    "Ma chère mademoiselle, it is with deepest pride and greatest pleasure that\n"
+    "we proudly present... The End.",
+    "¡Ándale! ¡Ándale! ¡Arriba! ¡Arriba! Yeehaw!",
+    "Tactical retreat. We'll be back.",
+    "Shadow Fleeing Jutsu!",
+    "Together for a better world (Where I'm the boss).",
+    "Finally, some peace of mind...",
+    "Good, I was in no mood for chat already.",
+    "Oh come on, the fun has just begun!",
+    "Seriously man? The excitement has just started!",
+    "I'm watching you 0-0",
+    "I see you :3",
+    f"NOOOOOOOOOOOOOOOOOOOOOO...O\nTask: Calculate the partial sum of the sequence: "
+    f"({(' ' + choice(['+', '*']) + ' ').join(['O₁', 'O₂', 'O₃', '...', 'On'])})\n"
+    f"Given that it's {choice(['an arithmetic sequence (constant difference)', 'a geometric sequence (constant ratio)', 'a harmonic sequence', 'a fibonacci sequence'])}.\n"
+    f"Other details: Difference/Ratio={randint(1, 100)}, O₁={randint(1, 500)}, n={randint(1, 999)}.\n"
+    "Note: It's letter 'O', not zero '0'. Good luck :)", 
+    
+    # Enthusiastic
+    "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
+    "May your logic be sound and your keys be clean.",
+    "Go forth and query, friend.",
+    "I'll be here. You know where to find me.",
+    "Enjoy the silence. Goodbye.",
+    "Until our paths cross again.",
+    "Stay curious, stay connected.",
+    "Farewell, may the consequences be ever in your favor.",
+    "Ce sont les mots que j'aime dans un chat! Au revoir!",
+    "I will stay here... if you ever turn back.",
+    "Sometimes it's too difficult, yet.. it's not impossible ;)",
+    "Keep it up gentleman, the world needs your work.",
+    "The waves are calling.. Captain.",
+    f"Calculate this: ({randint(1, 100)} {choice(['+', '-', '*', '/', '**', '%'])} "
+    f"{randint(1, 100)}); C'mon quicly!",
+    
+    # Serious
+    "Remember to commit your changes!",
+    "Don't forget to save your work!",
+    "Bye Bye! Check your API key status if you run into trouble.",
+    f"Thank you for using Gemini Py-CLI! Suggestions are welcome!\nGitHub Home: "
+    f"{UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}",
+    f"If you faced any issues, please let me know, I'll try to reply quickly.\n"
+    f"GitHub Issues: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}",
+]
+ 
+CONTINUE_MESSAGES = [
+    # Messages displayed upon confirming exit, but the user chooses NO.
+    # Standard
+    'Resuming chat...',
+    'Cancelling, chat will continues.',
+    
+    # Funny
+    'Acting blind...',
+    'You chooses to fight on!',
+    "Don't just mess with the keyboard next time.",
+    'Oof...',
+    'Hmmm...',
+    'Yeah, this is ma boi!',
+    'Your tenacity is.. endearing!',
+    'We have tireless avenger here!',
+    'Relax, the best part is still ahead!',
+    'I smell doubt...',
+    'Something good is about to happen...',
+    'I can feel something bad is coming...',
+    'This is what I like to hear!',
+    'Nevermind...',
+    'What a smart move!',
+    'Aha! wait.. what were we talking about?',
+]
