@@ -30,7 +30,7 @@ try:
     import httpx
     import textwrap
     import traceback
-    import threading
+    from threading import Thread
     from datetime import datetime
     from random import randint, choice
     from time import sleep, perf_counter, time as now_time
@@ -205,11 +205,11 @@ class Keys():
         
         return min_len
 
-class GeminiWorker(threading.Thread):
-    """A worker thread to run the asynchronous (unblockable) API call."""
+class GeminiWorker(Thread):
+    """A worker thread to run & control the asynchronous (unblockable) API call."""
     def __init__(self, chat_session, user_input, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.daemon = True      # Treat it as a service, so receiving a KeyboardInterrupt will kill it; although the Exception itself should kill it.
+        self.daemon = True      # Set to daemon so the process is terminated automatically on main program exit.
         self.chat = chat_session
         self.user_input = user_input
         self.response = None
@@ -241,6 +241,8 @@ if WORD_SUGGESTION:
             for i, completion in enumerate(all_completions):
                 if i >= SUGGESTIONS_LIMIT: break
                 yield completion
+
+
 
 
 
@@ -301,6 +303,12 @@ def catch_server_error_startup(error_occurred, attempts):
         try:
             if not error_occurred: print_status(lambda: quick_sleep(DELAY_1), f'Retrying in {DELAY_1} seconds...', 'yellow')
             else: print_status(lambda: quick_sleep(DELAY_2), f'Issue persisting, retrying in {DELAY_2} seconds...', 'yellow')
+        
+        except NetworkExceptions:
+            separator(color=RED)
+            catch_network_error()
+            sys_exit()
+            
         except Interruption:
             cprint(f'{GR}Quitting...{RS}')
             separator(color=RED)
@@ -451,9 +459,9 @@ def cprint(text='', end='\n', wrap=True, flush=True):
     A custom print function that writes directly to stdout and guarantees 
     an immediate display by forcing a flush.
     """
-    # Wrap ('CONSOLE_WIDTH - 1' so that '\n' stays in the same line)
+    # Wrap even if LENGTH = CONSOLE_WIDTH so that '\n' stays in the same line
     text = str(text)
-    if wrap and (len(text) > CONSOLE_WIDTH - 1):
+    if wrap and (len(text) >= CONSOLE_WIDTH):
         lines = text.split('\n')
         wrapped_lines = []
         
@@ -652,15 +660,15 @@ def help():
     3) Special Commands (While in Prompt):
        -'quit' or 'exit' to leave.
        -'clear' to clear the screen.
-       -'help' for this guide menu.
-       -'about' for program information.
-       -'license' for copyright.
-       -'see-last' to see last AI response.
        -'copy' to copy last AI response to clipboard.
+       -'see-last' to see last AI response.
        -'save-last' to save last AI response to a text file.
         (You will lose the formatting style and colors!)
        -'save-chat' to save the whole chat to a readable text file.
        -'restart' for a quick session restart.
+       -'help' for this guide menu.
+       -'about' for program information.
+       -'license' for copyright.
        
     4) More Shortcuts:
        -CTRL-Z/CTRL-Y to undo/redo.
@@ -722,7 +730,7 @@ def farewell(confirmed=False):
     
     # Clean prompt history & Exit
     if not saved and confirmed: separator()
-    prune_history_by_size()
+    prune_history_file()
     message = choice(FAREWELLS_MESSAGES)
     cprint(GR + message + RS)
     separator()
@@ -864,9 +872,71 @@ if RESPONSE_EFFECT:
             if approximate(current_time, end_time): break
             pass
 
+if WORD_SUGGESTION:
+    def load_word_completer():
+        """
+        Reads a list of words from a file, one word per line.
+        Use the words for realtime suggestions.
+        """
+        global word_completer
+        
+        try:
+            with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
+                words = [line.strip() for line in f if line.strip()][4:]
+            if words:
+                word_completer = LimitedWordCompleter(words, ignore_case=True)
+        
+        except FileNotFoundError:
+            pass
+
+if LOG_ON:
+    def shrink_log_file():
+        """Shrinks the log file to a target size by keeping the most recent lines."""
+        # Quick Check
+        MAX_SIZE = LOG_SIZE * 1024 * 1024
+        if not os.path.exists(LOG_FILE): return
+        file_size = os.path.getsize(LOG_FILE) * 10
+        if file_size <= (MAX_SIZE): return
+        
+        # Open the log file
+        try:
+            with open(LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+                all_lines = f.readlines()
+        
+        except:
+            if LOG_ON: log_caught_exception()
+            return
+            
+        # Collect lines from the end in reverse order
+        collected_lines = []
+        current_size = 0
+        
+        # Iterate over lines in reverse order (from newest to oldest)
+        for line in reversed(all_lines):
+            line_size = len(line.encode('utf-8'))
+            
+            # Check if adding the current line would exceed the target size
+            if (current_size + line_size) > MAX_SIZE:
+                break
+                
+            collected_lines.append(line)
+            current_size += line_size
+        
+        # Shrink the lines to a valid log point & Reverse them to restore chronological order.
+        while collected_lines[-1].strip() != LOG_SEPARATOR:
+            collected_lines.pop()
+            
+        collected_lines.pop()    
+        collected_lines.reverse()
+        
+        # Write the shrunk content to the new file
+        with open(LOG_FILE, 'w', encoding='utf-8') as f:
+            f.writelines(collected_lines)
 
 
- 
+
+
+
 
 
 
@@ -890,7 +960,7 @@ def serialize_history():
     
     return serializable_history
 
-def prune_history_by_size():
+def prune_history_file():
     """
     Checks the history file size. If > PROMPT_HISTORY_SIZE, it prunes the file
     by taking the last half and finding the next full history block (timestamp).
@@ -900,7 +970,7 @@ def prune_history_by_size():
     
     # Check file size
     file_size = os.path.getsize(PROMPT_HISTORY_FILE)
-    if file_size <= PROMPT_HISTORY_SIZE:
+    if file_size <= (PROMPT_HISTORY_SIZE * 1024 * 1024):
         return
     
     # Split file
@@ -1501,23 +1571,6 @@ def run_chat():
             farewell()
             continue
 
-if WORD_SUGGESTION:
-    def load_word_completer():
-        """
-        Reads a list of words from a file, one word per line.
-        Use the words for realtime suggestions.
-        """
-        global word_completer
-        
-        try:
-            with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
-                words = [line.strip() for line in f if line.strip()][4:]
-            if words:
-                word_completer = LimitedWordCompleter(words, ignore_case=True)
-        
-        except FileNotFoundError:
-            pass
-
 
 
 
@@ -1587,7 +1640,7 @@ if __name__ == "__main__":
             # Load & Start chat client & session.
             client, chat, http_client = setup_chat()
             if chat:
-                raise ValueError('Test' * 25)
+                # raise ValueError('Test' * 25)
                 # raise KeyboardInterrupt
                 run_chat()
         
@@ -1617,6 +1670,6 @@ if __name__ == "__main__":
             # Release HTTP client.
             try: http_client.close()
             except: pass
-            # Secret save.
+            # Save chat history & Clean log file.
             if not chat_saved: save_chat_history_json(hidden=True)
-
+            shrink_log_file()

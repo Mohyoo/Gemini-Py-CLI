@@ -11,7 +11,7 @@ LOG_FORMAT = (
     "\nModule: %(module)s \nFunction: %(funcName)s \nLine: %(lineno)d \nMessage: %(message)s"
 )
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-
+LOG_SEPARATOR = '-' * 100
 
 def setup_logger():
     """Configures the logging system."""
@@ -71,7 +71,7 @@ def log_caught_exception(message=None):
     log_message += f"Exception Type: {exc_type.__name__}\n"
     log_message += f"Exception Value: {exc_value}\n"
     log_message += f"\nFull Traceback:\n{full_traceback}"
-    log_message += '-' * 100
+    log_message += LOG_SEPARATOR
 
     # Log the detailed message at ERROR level.
     logging.error(log_message)
@@ -98,7 +98,7 @@ def log_unhandled_exception(exc_type, exc_value, exc_traceback):
     log_message += f"Exception Type: {exc_type.__name__}\n"
     log_message += f"Exception Value: {exc_value}\n"
     log_message += f"\nFull Traceback:\n{full_traceback}"
-    log_message += '-' * 100
+    log_message += LOG_SEPARATOR
     
     # Log the detailed message using the root logger & Ensure the log file buffer is flushed before exit.
     logging.error(log_message)

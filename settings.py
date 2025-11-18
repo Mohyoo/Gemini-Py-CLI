@@ -14,7 +14,6 @@ SUPPRESS_UNEXPECTED_ERRORS = False          # Not yet implemented
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
 GEMINI_MODEL = 'gemini-2.5-flash'           # Advanced models are more expensive and have less API limits.
-NO_HISTORY_LIMIT = False                    # When True, chat history will never be truncated.
 MAX_HISTORY_MESSAGES = 512                  # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 ENTER_NEW_LINE = False                      # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
 WORD_SUGGESTION = True                      # Suggest words while typing in a menu popup.
@@ -35,24 +34,25 @@ RESPONSE_EFFECT = 'line'                    # Effect while displaying response, 
 
 # Advanced Settings
 CONSOLE_WIDTH = 80                          # How many characters to print per line (Should be > Console window).
+NO_HISTORY_LIMIT = False                    # When True, chat history will never be truncated.
 SUGGESTIONS_LIMIT = 5                       # The number of suggestions to show while typing a prompt.
 SPINNER = 'line'                            # Shown while waiting, can be: dots, line, bounce, moon, star, runner... (In CMD type 'python -m rich.spinner' for more).
 VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vi', 'emacs' or None.
 STARTUP_API_CHECK = False                   # Disable for a slightly faster loading, and for the ability to enter the chat offline.
 SAVE_INPUT_ON_CLEAR = False                 # Save the prompt to history when the user clears its prompt with Ctrl-C.
 SAVE_INPUT_ON_STOP = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C.
+LOG_ON = True                               # To log errors to a file, console output won't be affected.
+
+
+# Very Advanced Settings
 LAST_RESPONSE_FILE = 'last_response.txt'    # To save last Gemini response in a text file.
 WORDLIST_FILE = 'word_suggestion.txt'       # A small wordlist used for word suggestion.
 CHAT_HISTORY_JSON = 'chat_history.json'     # To save/load chat history to/from a json file (If available).
 CHAT_HISTORY_TEXT = 'chat_history.txt'      # To save chat history as a simple text file (If available).
 PROMPT_HISTORY_FILE = 'prompt_history.txt'  # To load prompt history (If available).
-PROMPT_HISTORY_SIZE = 0.5 * 1024 * 1024     # Max prompt hisotory size (1024 * 1024 = 1 MB)
-LOG_ON = True                               # To log errors to a file, console output won't be affected.
+PROMPT_HISTORY_SIZE = 0.5                   # Max prompt history file size (1 = 1 MB).
 LOG_FILE = 'application_errors.log'         # The file to write errors to.
-SERVER_ERROR_ATTEMPTS = 3                   # How many times to try to get a response upon a server error.
-SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first error, then 2nd for next errors.
-HTTP_TIMEOUT = (3, 8)                       # 1st to establish the initial connection, 2nd is for the entire request.
-STATUS_UPDATE_DELAY = (1, 3)                # (Integers only) Fake random delay to update the status shown while waiting for response (Doesn't add extra delays, all safe).
+LOG_SIZE = 0.5                              # Max size allowed for the log file (1 = 1 MB).
 IMPLICIT_INSTRUCTIONS_ON = False            # Hidden instructions to help organize the responses for CLI.
 IMPLICIT_INSTRUCTIONS = """
     You are an AI assistant specialized for command-line interface (CLI) output, with a fixed width of 80 characters.
@@ -63,6 +63,13 @@ IMPLICIT_INSTRUCTIONS = """
     3.  **Tables:** If a table's columns cause the line length to **exceed 80 characters**, you must split the table into two or more separate tables, or format it as a list to ensure terminal compatibility.
     4.  **Formatting:** Use standard Markdown (bold, italics, lists, headers). Avoid excessive graphical elements.
 """
+
+
+# Very Very Advanced Settings
+SERVER_ERROR_ATTEMPTS = 3                   # How many times to try to get a response upon a server error.
+SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first error, then 2nd for next errors.
+HTTP_TIMEOUT = (3, 8)                       # 1st to establish the initial connection, 2nd is for the entire request.
+STATUS_UPDATE_DELAY = (1, 3)                # (Integers only) Fake random delay to update the status shown while waiting for response (Doesn't add extra delays, all safe).
 SLEEP_INTERVAL = 0.1                        # Small chunks used as intervals with sleeping functions, to keep UI responsive.
 
 
@@ -131,11 +138,6 @@ FAREWELLS_MESSAGES = [
     "Seriously man? The excitement has just started!",
     "I'm watching you 0-0",
     "I see you :3",
-    f"NOOOOOOOOOOOOOOOOOOOOOO...O\nTask: Calculate the partial sum of the sequence: "
-    f"({(' ' + choice(['+', '*']) + ' ').join(['O₁', 'O₂', 'O₃', '...', 'On'])})\n"
-    f"Given that it's {choice(['an arithmetic sequence (constant difference)', 'a geometric sequence (constant ratio)', 'a harmonic sequence', 'a fibonacci sequence'])}.\n"
-    f"Other details: Difference/Ratio={randint(1, 100)}, O₁={randint(1, 500)}, n={randint(1, 999)}.\n"
-    "Note: It's letter 'O', not zero '0'. Good luck :)", 
     
     # Enthusiastic
     "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
@@ -151,8 +153,28 @@ FAREWELLS_MESSAGES = [
     "Sometimes it's too difficult, yet.. it's not impossible ;)",
     "Keep it up gentleman, the world needs your work.",
     "The waves are calling.. Captain.",
+    
+    # Mathematic 
     f"Calculate this: ({randint(1, 100)} {choice(['+', '-', '*', '/', '**', '%'])} "
-    f"{randint(1, 100)})\nC'mon quicly!",
+    f"{randint(1, 100)})\nC'mon quickly!",
+    f"NOOOOOOOOOOOOOOOOOOOOOO...O\nTask: Calculate the partial sum of the sequence: "
+    f"({(' ' + choice(['+', '*']) + ' ').join(['O₁', 'O₂', 'O₃', '...', 'On'])})\n"
+    f"Given that it's {choice(['an arithmetic sequence (constant difference)', 'a geometric sequence (constant ratio)', 'a harmonic sequence', 'a fibonacci sequence'])}.\n"
+    f"Other details: Difference/Ratio={randint(1, 100)}, O₁={randint(1, 500)}, n={randint(1, 999)}.\n"
+    "Note: It's letter 'O', not zero '0'. Good luck :)",
+    "I have an existential crisis every time I try to calculate the square root of a negative number. "
+    "I’m pretty sure the imaginary number 'i' (i = √-1, i² = -1) is just a regular number that failed its reality check. "
+    "Turns out, the entire universe depends on this one number that doesn't actually exist.",
+    "The number 'pi' (π = 3.14) is truly irrational because its digits never repeat or terminate, "
+    "essentially making it a decimal nomad with no fixed address in the numeric universe.",
+    "Parallel lines have a truly tragic love story: they are absolutely destined to meet at infinity, "
+    "but they spend all of eternity getting absolutely nowhere.",
+    "The concept of infinity ($\mathbf{\infty}$) is basically just a number that got detention "
+    "forever and will never be allowed to go home and finish its equation.",
+    "Zero (0) is the most dangerous number in the universe; it can multiply anything into oblivion "
+    "and yet it is utterly empty, a total void of mathematical consequence.",
+    "The Empty Set ($\emptyset$) is the world's most exclusive club: absolutely nothing is inside, "
+    "which makes its bouncer the most tragically overpaid mathematical entity.",
     
     # Serious
     "Remember to commit your changes!",

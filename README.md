@@ -38,7 +38,8 @@ Tested using Windows Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
 2. Install required libraries, open CMD & type: `pip install httpx google-genai prompt_toolkit rich pyperclip`
-3. Unleash the power of the script, open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
+3. Clone this repository, or download the ZIP file.
+4. Unleash the power of the script, open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
 
 #### 2) First Launch:
 1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys)
