@@ -1,7 +1,7 @@
 ## Gemini Py-CLI
 A simple Gemini CLI program, written in Python. <br>
 Used for simple conversations. <br>
-Tested using ConEmu console, in Windows 8.1 64-bit. <br>
+Tested using Windows Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br>
 <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
 🇵🇸
 
@@ -10,8 +10,12 @@ Tested using ConEmu console, in Windows 8.1 64-bit. <br>
 
 ----
 
-## Features 
-* History can saved locally in many forms, even if the program crashes:
+## Features
+* Made primarly for low-spec or slow internet users, including myself (Not yet perfect, but in progress).
+
+* I respect privacy (because I'm a user like you too), thus I don't hold or manipulate any personal data, even with error log (which can be turned OFF), the program removes file paths and keeps only what is absolutely needed.
+
+* History can be saved locally in many forms, even if the program crashes:
 	+ Automatically, save chat history to a json file.
 	+ Automatically, save prompt history to a text file.
 	+ At request, save chat history to a human readable text file.
@@ -20,20 +24,20 @@ Tested using ConEmu console, in Windows 8.1 64-bit. <br>
 * Customizable, you can edit many settings, like colors, delays, completion...
   (Not all areas are modifiable yet, but in progress).
 
-* Stubborn error handling, yet still not perfect.
-
 * Word suggestion & completion:
 	+ Suggest from a wordlist, a menu popup to choose a word from.
 	+ Suggest from history, you get inline completion upon typing words from previous prompts.
-	
+
 * Cross platform, binaries are not yet created, perhaps on request I'll do that (I'm too lazy).
 
 * Common keyboard shortcuts + Vim/Emacs shortcuts (default off, beta) + Mouse support (beta).
 
+* Stubborn error handling, yet still not perfect.
+
 ## Quick Start
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
-2. Install required libraries, open CMD & type: `pip install httpx google-genai prompt_toolkit rich`
+2. Install required libraries, open CMD & type: `pip install httpx google-genai prompt_toolkit rich pyperclip`
 3. Unleash the power of the script, open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
 
 #### 2) First Launch:
@@ -47,7 +51,6 @@ and paste it in **settings.py** (First few lines). <br> ***(It's free and easy t
 2. Press 'Ctrl-C' to cancel a prompt, stop a response, or quit
 the program.
 3. Press 'Ctrl-Space' to add a new line to your prompt.
-4. Press 'Enter' to send.
 5. Type 'help' for more details (It's not too long, just 1 min reading).
 
 #### 4) Limitations:

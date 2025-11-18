@@ -1,14 +1,22 @@
 from random import randint, choice
 
 # When editing this, respect each option's possible values, otherwise prepare yourself for a crash).
+# Better to keep a copy of this file as a future reference.
+# If you are confused with these settings, you can ask in my GitHub page, or even request a future change.
+# I'll try hard to keep everything easily accessible.
+
+
 # Coming Soon Settings
 SUPPRESS_CATCHED_ERRORS = False             # Not yet implemented
 SUPPRESS_UNEXPECTED_ERRORS = False          # Not yet implemented
 
+
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
 GEMINI_MODEL = 'gemini-2.5-flash'           # Advanced models are more expensive and have less API limits.
-ENTER_NEW_LINE = False                      # Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter insets a new line.
+NO_HISTORY_LIMIT = False                    # When True, chat history will never be truncated.
+MAX_HISTORY_MESSAGES = 512                  # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
+ENTER_NEW_LINE = False                      # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
 WORD_SUGGESTION = True                      # Suggest words while typing in a menu popup.
 SUGGEST_FROM_HISTORY = False                # Use the user's prompt history for inline word completion (SLOW).
 USE_COLORS = True                           # Better to disable it for old consoles.
@@ -24,14 +32,15 @@ RESPONSE_EFFECT = 'line'                    # Effect while displaying response, 
                                                 # 'char fast' for a fast character-by-character animation; you should check if this causes a high CPU usage in your computer
                                                 # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
 
+
 # Advanced Settings
-CONSOLE_WIDTH = 80                          # How many characters to print per line (Should be >= Console window).
+CONSOLE_WIDTH = 80                          # How many characters to print per line (Should be > Console window).
 SUGGESTIONS_LIMIT = 5                       # The number of suggestions to show while typing a prompt.
-SPINNER = 'dots'                            # Shown while waiting, can be: dots, line, bounce, moon, star, runner... (In CMD type 'python -m rich.spinner' for more).
+SPINNER = 'line'                            # Shown while waiting, can be: dots, line, bounce, moon, star, runner... (In CMD type 'python -m rich.spinner' for more).
 VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vi', 'emacs' or None.
-STARTUP_API_CHECK = False                   # Disable for a slightly faster loading.
+STARTUP_API_CHECK = False                   # Disable for a slightly faster loading, and for the ability to enter the chat offline.
 SAVE_INPUT_ON_CLEAR = False                 # Save the prompt to history when the user clears its prompt with Ctrl-C.
-SAVE_INPUT_ON_QUIT = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C.
+SAVE_INPUT_ON_STOP = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C.
 LAST_RESPONSE_FILE = 'last_response.txt'    # To save last Gemini response in a text file.
 WORDLIST_FILE = 'word_suggestion.txt'       # A small wordlist used for word suggestion.
 CHAT_HISTORY_JSON = 'chat_history.json'     # To save/load chat history to/from a json file (If available).
@@ -42,7 +51,7 @@ LOG_ON = True                               # To log errors to a file, console o
 LOG_FILE = 'application_errors.log'         # The file to write errors to.
 SERVER_ERROR_ATTEMPTS = 3                   # How many times to try to get a response upon a server error.
 SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first error, then 2nd for next errors.
-HTTP_TIMEOUT = (2.5, 5)                     # 1st to establish the initial connection, 2nd is for the entire request.
+HTTP_TIMEOUT = (3, 8)                       # 1st to establish the initial connection, 2nd is for the entire request.
 STATUS_UPDATE_DELAY = (1, 3)                # (Integers only) Fake random delay to update the status shown while waiting for response (Doesn't add extra delays, all safe).
 IMPLICIT_INSTRUCTIONS_ON = False            # Hidden instructions to help organize the responses for CLI.
 IMPLICIT_INSTRUCTIONS = """
@@ -55,6 +64,7 @@ IMPLICIT_INSTRUCTIONS = """
     4.  **Formatting:** Use standard Markdown (bold, italics, lists, headers). Avoid excessive graphical elements.
 """
 SLEEP_INTERVAL = 0.1                        # Small chunks used as intervals with sleeping functions, to keep UI responsive.
+
 
 # Colors
 if USE_COLORS:
@@ -76,7 +86,7 @@ if USE_COLORS:
     WAIT_1 = 'green'        # Used when waiting for Gemini response.
     WAIT_2 = 'cyan'         # Used with Gemini response's 2nd attempt.
 else:
-    CYN = RED = GR = YLW = BL = UL = BD = RS = GEM_BG = ''
+    CYN = RED = GR = YLW = BL = GRY = UL = BD = RS = GEM_BG = ''
     PROMPT_BG = PROMPT_FG = WAIT_1 = WAIT_2 = 'white'
 
 
@@ -110,8 +120,7 @@ FAREWELLS_MESSAGES = [
     "Okay ladies, time to go home.",
     "Artryoos. Metryoos. Zeetoos!",
     "Remember, it's all about: Hakuna Matata!\n(No Worries :)",
-    "Ma chère mademoiselle, it is with deepest pride and greatest pleasure that\n"
-    "we proudly present... The End.",
+    "Ma chère mademoiselle, it is with deepest pride and greatest pleasure that we proudly present... The End.",
     "¡Ándale! ¡Ándale! ¡Arriba! ¡Arriba! Yeehaw!",
     "Tactical retreat. We'll be back.",
     "Shadow Fleeing Jutsu!",
@@ -143,7 +152,7 @@ FAREWELLS_MESSAGES = [
     "Keep it up gentleman, the world needs your work.",
     "The waves are calling.. Captain.",
     f"Calculate this: ({randint(1, 100)} {choice(['+', '-', '*', '/', '**', '%'])} "
-    f"{randint(1, 100)}); C'mon quicly!",
+    f"{randint(1, 100)})\nC'mon quicly!",
     
     # Serious
     "Remember to commit your changes!",
@@ -153,6 +162,25 @@ FAREWELLS_MESSAGES = [
     f"{UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}",
     f"If you faced any issues, please let me know, I'll try to reply quickly.\n"
     f"GitHub Issues: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}",
+    
+    # Advices
+    "Bored? Ask Gemini to tell you a realistic horror story (ಠ_ಠ)",
+    "Know Python? you can edit the source code and send me your modifications as feature requests.",
+    "Know Python? You can modify & test the source code, errors can also be logged if the option is ON.",
+    "Hint: Gemini web interface too slow or laggy? have a potato computer like mine? this is why Py-CLI was created!",
+    "Hint: You can change CLI colors from settings.py!",
+    "Hint: Error logging is ON by default, you may use it to send me errors. You can also turn it OFF if you wish.",
+    "Hint: Console width is best set to (80) or more, for Windows Command Prompt users, (79) is better.",
+    "Hint: Forgot how to use Gemini Py-CLI? type 'help' to see a very short and friendly menu; there is also "
+    "a handy toolbar at the bottom of the console (It can be turned off).",
+    "Hint: You can change MAX_HISTORY_MESSAGES in settings, but if chat history gets too long, Gemini will "
+    "start forgetting things, and the program might need more time while loading/saving chat.",
+    "Hint: Some options may slightly affect performances, like response typing effect, word suggestion & completion, error logging, etc."
+    "You can turn them OFF at any time.",
+    "Hint: Colors may not work in old consoles, like Windows Command Prompt; Either disable them, "
+    "or use a better console emulator; ConEmu is a recommended very lightweight option.",
+    "Hint: You are always encouraged to use a modern console emulator; If the console is old, the program "
+    "is still hardcoded to work, but with limited functionality, and so limited experience.",
 ]
  
 CONTINUE_MESSAGES = [
@@ -163,13 +191,14 @@ CONTINUE_MESSAGES = [
     
     # Funny
     'Acting blind...',
-    'You chooses to fight on!',
+    'He chooses to fight on!',
     "Don't just mess with the keyboard next time.",
     'Oof...',
     'Hmmm...',
+    'Oops...',
     'Yeah, this is ma boi!',
     'Your tenacity is.. endearing!',
-    'We have tireless avenger here!',
+    'We have a tireless avenger here!',
     'Relax, the best part is still ahead!',
     'I smell doubt...',
     'Something good is about to happen...',
@@ -178,4 +207,16 @@ CONTINUE_MESSAGES = [
     'Nevermind...',
     'What a smart move!',
     'Aha! wait.. what were we talking about?',
+    'Exit failed successfully.',
 ]
+
+
+
+
+
+
+
+# Values Correction (Ignore This Part)
+MAX_HISTORY_MESSAGES = MAX_HISTORY_MESSAGES // 2 * 2
+if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
+if VIM_EMACS_MODE not in (None, 'vi', 'emacs'): VIM_EMACS_MODE = None

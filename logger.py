@@ -3,6 +3,7 @@ import sys
 import logging
 import traceback
 from settings import LOG_ON, LOG_FILE
+from gemini import save_chat_history_json, cprint, separator
 
 # Logging Configuration 
 LOG_FORMAT = (
@@ -19,7 +20,7 @@ def setup_logger():
     logger.setLevel(logging.WARNING)  
 
     # 2. File Handler configuration.
-    file_handler = logging.FileHandler(LOG_FILE)
+    file_handler = logging.FileHandler(LOG_FILE, encoding='utf-8')
     file_handler.setLevel(logging.WARNING)
     
     # 3. Formatter.
@@ -79,9 +80,15 @@ def log_unhandled_exception(exc_type, exc_value, exc_traceback):
     """
     Custom handler called automatically by Python for all uncaught exceptions.
     It logs the error details and then exits the program gracefully.
-    """
-    # Print error to console (standard behavior).
-    sys.__excepthook__(exc_type, exc_value, exc_traceback) 
+    """  
+    # Save the chat seesion.
+    save_chat_history_json()
+
+    # Print error to console (standard behavior, with some customization).
+    separator(before='\n')
+    cprint('Unexpected error, program terminated!\n')
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+    separator()
     
     # Use 'traceback.format_exception' to get the full traceback structure.
     traceback_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)

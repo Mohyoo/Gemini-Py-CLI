@@ -1,8 +1,9 @@
 # 1) Part I: Initialization ----------------------------------------------------
 # Loading
-print('\n' + '+' + '-' * 78 + '+')
-print("| Loading libraries. Just a moment..." + ' ' * 42 + '|')
-print('+' + '-' * 78 + '+')
+if __name__ == '__main__':
+    print('\n' + '+' + '-' * 77 + '+')
+    print("| Loading libraries. Just a moment..." + ' ' * 41 + '|')
+    print('+' + '-' * 77 + '+')
 
 # Import Custom Modules
 try:
@@ -32,17 +33,17 @@ try:
     import threading
     from datetime import datetime
     from random import randint, choice
-    from time import sleep, perf_counter
-    from contextlib import redirect_stdout
-    from httpcore import RemoteProtocolError, ConnectError
+    from time import sleep, perf_counter, time as now_time
+    from pyperclip import PyperclipException, copy as clip_copy
+    from httpcore import RemoteProtocolError, ConnectError, ConnectTimeout, ReadTimeout
     from prompt_toolkit import prompt
     from prompt_toolkit.styles import Style
     from prompt_toolkit.history import FileHistory
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.formatted_text import FormattedText
     from google.genai import Client as GemClient
-    from google.genai.errors import ClientError, ServerError
     from google.genai.types import Content, Part
+    from google.genai.errors import ClientError, ServerError
     from rich.console import Console
     from rich.markdown import Markdown
     
@@ -59,8 +60,7 @@ try:
     if RESPONSE_EFFECT:
         from rich.text import Text 
         from rich.segment import Segment
-        from rich.console import RenderResult
-        
+        from rich.console import RenderResult   
     
 except Exception as error:
     print(f'\nError: {error}.')
@@ -169,7 +169,7 @@ class Keys():
                     buffer.save_to_undo_stack()
                 else:
                     self.trim_input_buffer(event)
-                    if SAVE_INPUT_ON_QUIT: self.save_history(original_text)
+                    if SAVE_INPUT_ON_STOP: self.save_history(original_text)
                     event.cli.exit(exception=KeyboardInterrupt())
 
         return key_bindings
@@ -222,6 +222,10 @@ class GeminiWorker(threading.Thread):
         except Exception as error:
             self.exception = error
 
+class SoftRestart(Exception):
+    """Custom exception to signal a safe restart of the chat session."""
+    pass
+
 if WORD_SUGGESTION:
     class LimitedWordCompleter(WordCompleter):
         """Overrides WordCompleter to enforce a limit on the number of returned completions."""
@@ -243,12 +247,14 @@ if WORD_SUGGESTION:
 
 
 
-
 # 3) Part III: Error Handlers --------------------------------------------------
 NetworkExceptions = (
     ConnectionError,
+    ReadTimeout,
+    ConnectTimeout,
     ConnectError,
     RemoteProtocolError,
+    httpx.ReadTimeout,
     httpx.HTTPError,
     httpx.ConnectError,
     httpx.RemoteProtocolError,
@@ -322,11 +328,18 @@ def catch_server_error_in_chat():
             # raise ServerError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
             worker = GeminiWorker(chat, user_input)
             worker.start()
+            start_time = now_time()
 
             # Loop while the worker thread is still running & Update the status at random intervals.
             with console.status(status=f'[bold {WAIT_1}]Waiting for response...[/bold {WAIT_1}]',
                                 spinner=SPINNER):
-                while worker.is_alive(): worker.join(SLEEP_INTERVAL)
+                while worker.is_alive():
+                    # Force HTTP timeout if the initialization method didn't work.
+                    elapsed_time = now_time() - start_time
+                    if elapsed_time > HTTP_TIMEOUT[1]:
+                        raise ConnectTimeout('Timeout!')
+                            
+                    worker.join(SLEEP_INTERVAL)
             
             if worker.exception: raise worker.exception            
             cprint(GR + 'Response received!' + RS)
@@ -347,6 +360,11 @@ def catch_server_error_in_chat():
             separator(color=RED)
             catch_client_error_in_chat(error)
             return None
+        
+        except NetworkExceptions:
+            separator(color=RED)
+            catch_network_error()
+            return None
             
     confirm_separator = True
     separator(color=RED)
@@ -355,8 +373,18 @@ def catch_server_error_in_chat():
 
 def catch_network_error():
     if LOG_ON: log_caught_exception()
-    msg = f"{RED}Failed to connect, check your network or firewall!{RS}"
-    box(msg, title='NETWORK ERROR', border_color=RED)
+    error = traceback.format_exc().lower()
+    if 'timeout' in error:
+        title = 'TIMEOUT'
+        msg = f"{RED}API call exceeded the hard timeout limit of ({HTTP_TIMEOUT[1]}) seconds.\n"
+        msg += f"{RED}Please, wait for sometime until the network becomes stable.\n"
+        msg += f"{YLW}You can change the HTTP timeout delay in settings."
+ 
+    else:
+        title = 'NETWORK ERROR'
+        msg = msg = f"{RED}Failed to connect, check your network or firewall!{RS}"
+       
+    box(msg, title=title, border_color=RED)
 
 def catch_exception(error):
     global confirm_separator
@@ -401,8 +429,8 @@ def catch_fatal_exception(error):
     else:
         clear_lines()
         
+    save_chat_history_json(hidden=True)
     separator(color=RED)
-    save_chat_history_json(up_separator=False)
     sys_exit(1)
 
 def catch_keyboard_interrupt():
@@ -463,6 +491,38 @@ def log_error(text, style='red', offset=3):
     cprint(RS, end='')
     console.log(text, style=style, _stack_offset=offset, end='\n\n')
 
+def copy_to_clipboard(text: str):
+    """
+    Copies a string to the system clipboard using pyperclip library.
+    Works seamlessly across Windows, macOS, and Linux.
+    """
+    msg = 'Last response was copied to clipboard!'
+    color = GR
+    
+    try:
+        # Copy (pyperclip handles the OS-specific details).
+        clip_copy(text)
+        raise Exception
+            
+    except PyperclipException as error:
+        # This catch is mainly for Linux environments where xclip, xsel, or wl-copy might be missing.
+        msg = "Could not access the clipboard!\n"
+        msg += f"Details: {error}."
+        color = RED
+        
+        error = str(error).lower()
+        if 'xclip' in error or 'xsel' in error:
+            msg += "\n\nYou likely need to install a command-line clipboard utility like 'xclip' or 'xsel'; "
+            msg += "try: 'sudo apt install xclip' or 'sudo yum install xclip'"
+    
+    except Exception as error:
+        msg = "An error occured when copying to clipboard!\n"
+        msg += f"Details: {error}."
+        color = RED
+
+    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
+    clear_lines()
+    
 def quick_sleep(delay: float):
     """Sleeps for 'delay' seconds in non-blocking short chunks."""
     slept_time = 0.0
@@ -475,6 +535,8 @@ def clear_lines(lines_to_erase=1):
     Simulates scanning and cleaning up previous empty lines by using 
     ANSI codes to move the cursor up and erase, then prints a separator.
     """
+    # ANSI escape codes won't work in the same way as colors.
+    if not USE_COLORS: return
     # \033[A:  Move cursor Up one line
     # \033[2K: Erase the entire current line
     for _ in range(lines_to_erase):
@@ -592,17 +654,19 @@ def help():
        -'clear' to clear the screen.
        -'help' for this guide menu.
        -'about' for program information.
-       -'copy' for copyright / copyleft.
-       -'see-last' to see last Gemini response.
-       -'save-last' to save last Gemini response to a text file.
+       -'license' for copyright.
+       -'see-last' to see last AI response.
+       -'copy' to copy last AI response to clipboard.
+       -'save-last' to save last AI response to a text file.
         (You will lose the formatting style and colors!)
        -'save-chat' to save the whole chat to a readable text file.
+       -'restart' for a quick session restart.
        
     4) More Shortcuts:
        -CTRL-Z/CTRL-Y to undo/redo.
        -CTRL-L to clear screen.
        -CTRL-R (Reverse Search) to search backward & find the most recent
-        match in history, keep pressing to move.
+        match in prompt history, keep pressing to move.
        -CTRL-S (Forward Search) used after CTRL-R to find older matches,
         keep pressing to move.
     
@@ -697,7 +761,6 @@ if RESPONSE_EFFECT:
 
         # 4. Split the full styled Text object into a list of new styled Text objects (lines)
         output_lines = full_text.split('\n')
-        
         return output_lines
 
     def print_markdown_line(text: str, delay_seconds: float = 0.05):
@@ -708,6 +771,7 @@ if RESPONSE_EFFECT:
         output_lines = get_styled_lines(text)
         
         # Print the styled lines one by one with a delay
+        console.show_cursor(False)
         for line in output_lines:
             console.print(line) 
             sleep(delay_seconds)
@@ -720,6 +784,7 @@ if RESPONSE_EFFECT:
         output_lines = get_styled_lines(text)
 
         # 3. Print the styled content word by word
+        console.show_cursor(False)
         for line in output_lines:
             if not str(line).strip():
                 # If the line contains only whitespace or is empty, print a newline and continue
@@ -753,18 +818,25 @@ if RESPONSE_EFFECT:
             # Print a final newline after the full line's content is printed
             console.print()
         
-    def print_markdown_char(text: str, delay_ms: float = 3):
+    def print_markdown_char(text: str, delay_ms: float = 2.5):
         """
         Take a string & Convert it to Markdown object.
         Print fully formatted Markdown content character-by-character with a delay.
         """
         output_lines = get_styled_lines(text)
         
-        if 'fast' in RESPONSE_EFFECT: wait = lambda: sleep_precise(delay_ms)
-        elif 'slow' in RESPONSE_EFFECT: wait = lambda: sleep(0.01)
-        else: wait = lambda: None
+        if 'fast' in RESPONSE_EFFECT:
+            isclose = math.isclose
+            wait = lambda: sleep_precise(delay_ms, isclose)
+            
+        elif 'slow' in RESPONSE_EFFECT:
+            wait = lambda: sleep(0.01)
+            
+        else:
+            wait = lambda: None
 
         # 3. Print the styled content character by character
+        console.show_cursor(False)
         for line in output_lines:
             # Iterate over the length of the styled line object
             for i in range(len(line)):
@@ -779,7 +851,7 @@ if RESPONSE_EFFECT:
             # After printing all characters in the line, print a newline
             console.print() 
     
-    def sleep_precise(milliseconds):
+    def sleep_precise(milliseconds, approximate):
         """
         High precision sleep function at the cost of high CPU usage.
         Using busy-wait loop via time.perf_counter(), the CPU is constantly
@@ -789,7 +861,7 @@ if RESPONSE_EFFECT:
         while perf_counter() < end_time:
             current_time = perf_counter()
             # Use math.isclose() due to float inaccuracies.
-            if math.isclose(current_time, end_time): break
+            if approximate(current_time, end_time): break
             pass
 
 
@@ -801,13 +873,19 @@ if RESPONSE_EFFECT:
 # 5) Part V: Main Functions ----------------------------------------------------
 def serialize_history():
     """Convert active chat history into a savable json."""
-    history = chat.get_history()
+    # Get history & Truncate it.
+    history_list = chat.get_history()
+    if not NO_HISTORY_LIMIT:
+        if len(history_list) > MAX_HISTORY_MESSAGES:
+            messages_to_keep = history_list[-MAX_HISTORY_MESSAGES:]
+            history_list = messages_to_keep
+            
     serializable_history = [
         {
             'role': content.role,
             'parts': [{'text': p.text} for p in content.parts if hasattr(p, 'text') and p.text],
         }
-        for content in history
+        for content in history_list
     ]
     
     return serializable_history
@@ -852,7 +930,7 @@ def prune_history_by_size():
     
     cprint(GR + 'Done!\n' + RS)
 
-def save_chat_history_json(up_separator=True, down_separator=True):
+def save_chat_history_json(up_separator=True, down_separator=True, hidden=False):
     """Save the chat history as a json file before quitting."""
     global chat_saved
     # Condition 1: Chat session must be active.
@@ -864,7 +942,6 @@ def save_chat_history_json(up_separator=True, down_separator=True):
     if empty: return
     
     # Condition 3: Active session must be a new chat or an extension to the saved one.
-    serializable_history = None
     try:
         serializable_history = serialize_history()
         new_history_json_str = json.dumps(serializable_history)
@@ -880,29 +957,29 @@ def save_chat_history_json(up_separator=True, down_separator=True):
     
     # Perform the save
     if active and not empty and changed:
-        if up_separator: separator()
-        cprint(GR + 'Saving chat history, one moment...' + RS)
+        if not hidden and up_separator: separator()
+        if not hidden: cprint(GR + 'Saving chat history, one moment...' + RS)
         
         if not serializable_history:
             try:
                 serializable_history = serialize_history()
             except Exception as error:
                 if LOG_ON: log_caught_exception()
-                cprint(f"{RED}Failed to save chat history: {error}!{RS}")
+                if not hidden: cprint(f"{RED}Failed to save chat history: {error}!{RS}")
         
         if serializable_history:
             try:
                 with open(CHAT_HISTORY_JSON, 'w', encoding='utf-8') as f:
-                    json.dump(serializable_history, f, indent=4)
+                    json.dump(serializable_history, f, indent=2)
                 
-                cprint(f"{GR}Chat history saved!{RS}")
+                if not hidden:  cprint(f"{GR}Chat history saved!{RS}")
                 chat_saved = True
             
             except Exception as error:
                 if LOG_ON: log_caught_exception()
-                cprint(f"{RED}Failed to save chat history: {error}!{RS}")
+                if not hidden: cprint(f"{RED}Failed to save chat history: {error}!{RS}")
                 
-        if down_separator: separator()
+        if not hidden and down_separator: separator()
         return True
 
 def save_chat_history_text():
@@ -989,6 +1066,11 @@ def get_last_response(command):
         print_response(last_response, title='Last Gemini Response')
         return
     
+    elif command == 'copy' and last_response:
+        # Copy the response to clipboard.
+        copy_to_clipboard(last_response)
+        return
+    
     box(msg, title='STATUS', border_color=color, text_color=color)
     clear_lines()
 
@@ -1033,7 +1115,6 @@ def load_chat_history():
                             initial_history.append(Content(role=item['role'], parts=parts))
                         except:
                             if LOG_ON: log_caught_exception()
-                            traceback.print_exc()
                             errors += 1
                             if errors == 1:
                                 cprint(f"{RED}({errors}) partial error occurred during loading chat history.{RS}")
@@ -1079,16 +1160,21 @@ def load_chat_history():
 
 def setup_chat():
     """Initializes the Gemini client and chat session."""
+    global restarting, chat_saved
     if GEMINI_API_KEY == "YOUR_API_KEY_HERE":
         catch_no_api_key()
         help()
         sys_exit(1)
     
     # Loading Screen
-    clear_lines(3)
-    print('+' + '-' * 78 + '+')
-    print("| Loading chat..." + ' ' * 62 + '|')
-    print('+' + '-' * 78 + '+')
+    if not restarting:
+        clear_lines(3)
+        print('+' + '-' * 77 + '+')
+        print("| Loading chat..." + ' ' * 61 + '|')
+        print('+' + '-' * 77 + '+')
+        restarting = False
+    else:
+        chat_saved = False
     
     error_occurred = None
     attempts = 0
@@ -1218,13 +1304,16 @@ def interpret_commands(command):
     elif command == 'clear':
         terminal(CLEAR_COMMAND)
 
-    elif command == 'save-last' or command == 'see-last':
+    elif command  in ('save-last', 'see-last', 'copy'):
         get_last_response(command)
         
     elif command == 'save-chat':
         save_chat_history_text()
+
+    elif command == 'restart':
+        raise SoftRestart
     
-    elif command == 'copy':
+    elif command == 'license':
         msg_1 = "Do whatever you want using 'Gemini Py-CLI', wherever you want."
         msg_2 = "Half of it was written using Gemini itself, so I won't complain.\n"
         msg_3 = f"But as a polite programmer request, I'll be happy if you mention my name."
@@ -1232,7 +1321,7 @@ def interpret_commands(command):
         clear_lines()
         
     elif command == 'about':
-        msg_1 = "Title: Gemini Py-CLI.\nAuthor: Mohyeddine Didouna, with a major assistance from Gemini."
+        msg_1 = "Title: Gemini Py-CLI.\nAuthor: Mohyeddine Didouna, with a major AI assistance."
         msg_2 = f"GitHub Home: {UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}"
         msg_3 = f"Issues Page: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}"
         box(msg_1, msg_2, msg_3, title='ABOUT', border_color=GR, text_color=GR)
@@ -1270,11 +1359,17 @@ def get_response():
                 worker = GeminiWorker(chat, user_input)
                 active = worker.is_alive
                 worker.start()
+                start_time = now_time()
 
-                # Loop while the worker thread is still running & Update the status at random intervals.
+                # Loop while the worker thread is still running.
                 with console.status(status=status_messages[0], spinner=SPINNER) as status:
                     message_index = 0
                     while active():
+                        # Force HTTP timeout if the initialization method didn't work.
+                        elapsed_time = now_time() - start_time
+                        if elapsed_time > HTTP_TIMEOUT[1]:
+                            raise ConnectTimeout('Timeout!')
+                        
                         # Sleep in short, responsive chunks.
                         delay = randint(*STATUS_UPDATE_DELAY)
                         slept_time = 0.0
@@ -1282,6 +1377,7 @@ def get_response():
                             worker.join(SLEEP_INTERVAL)
                             slept_time += SLEEP_INTERVAL
                         
+                        # Update status message.
                         if active() and (len(status_messages) == 1):
                             status.update(status=status_messages[0])
 
@@ -1400,7 +1496,7 @@ def run_chat():
             response = get_response()
             if not response: continue
             print_response(response)
-     
+
         except Interruption:
             farewell()
             continue
@@ -1433,19 +1529,20 @@ confirm_separator = True                        # Before confirming to quit, pri
 word_completer = None                           # Has a True value only if the PROMPT_HISTORY_FILE is present and WORD_SUGGESTION is True.
 keys = Keys().get_key_bindings()                # The custom keyboard shortcuts.
 chat_saved = False                              # True after the chat has been saved.
+restarting = False                              # Session restart flag.
 
 # Define global constants.
 CONTENT_WIDTH = CONSOLE_WIDTH - 4               # The width of characters inside box(), (4) is the sum of left & right borders.
 CLEAR_COMMAND = 'cls' if os.name == 'nt' else 'clear'
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')  # Used to clean a string from ANSI codes.
-WORD_AND_SPACE_PATTERN = re.compile(r'(\s+)')   # Used split lines into words, for word-by-word animation.
+WORD_AND_SPACE_PATTERN = re.compile(r'(\s+)')   # Used to split lines into words, for word-by-word animation.
 HISTORY_PATTERN = re.compile(                   # Used to shrink PROMPT_HISTORY_FILE to a valid history step.
     r'^#\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+$',
     re.MULTILINE
 )
 
 # Assign modules functions (To avoid repeated name resolution/lookup).
-terminal = os.system                            # Sends commands to the system.
+terminal = os.system                            # Send commands to the system.
 sys_exit = sys.exit
 stdout_write = sys.stdout.write                 # Write to stdout.
 stdout_flush = sys.stdout.flush                 # Flush the stdout for immediate output displaying.
@@ -1485,33 +1582,41 @@ prompt_style = Style.from_dict({                       # User prompt style.
 
 
 if __name__ == "__main__":
-    try:
-        # Load & Start chat client & session.
-        client, chat, http_client = setup_chat()
-        if chat:
-            # raise ValueError('Test' * 25)
-            # raise KeyboardInterrupt
-            console.show_cursor(False)
-            run_chat()
-            
-    except Interruption:
-        farewell()
-    
-    except SystemExit:
-        pass
-
-    except Exception as error:
+    while True:
         try:
-            catch_fatal_exception(error)
+            # Load & Start chat client & session.
+            client, chat, http_client = setup_chat()
+            if chat:
+                raise ValueError('Test' * 25)
+                # raise KeyboardInterrupt
+                run_chat()
+        
+        except SoftRestart:
+            # A hidden chat save.
+            save_chat_history_json(hidden=True)
+            # Restart.
+            msg = 'Restarting chat session...'
+            box(msg, title='SESSION RESTART', border_color=CYN, text_color=CYN)
+            restarting = True
+            continue
+                
         except Interruption:
-            separator('\n', color=RED)
-            sys_exit(1)
-    
-    finally:
-        # Release HTTP client.
-        try: http_client.close()
-        except: pass
-        # Secret save.
-        if not chat_saved:
-            with open(os.devnull, 'w', encoding='utf-8') as f, redirect_stdout(f):
-                save_chat_history_json()
+            farewell()
+        
+        except SystemExit:
+            break
+
+        except Exception as error:
+            try:
+                catch_fatal_exception(error)
+            except Interruption:
+                separator('\n', color=RED)
+                sys_exit(1)
+        
+        finally:
+            # Release HTTP client.
+            try: http_client.close()
+            except: pass
+            # Secret save.
+            if not chat_saved: save_chat_history_json(hidden=True)
+

@@ -180,6 +180,7 @@ exit
 clear
 about
 copy
+restart
 see-last
 save-last
 save-chat
