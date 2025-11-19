@@ -1,9 +1,13 @@
+<div style="text-align: center; padding: 20px;">
+  <h3 style="margin: 0; font-family: Arial, sans-serif; color: red">Stop Genocide in Gaza!</h3>
+  <img src="Palestine.jpg" alt="Flag" style="width: 300px; border-radius: 3%;">
+</div>
+
 ## Gemini Py-CLI
 A simple Gemini CLI program, written in Python. <br>
 Used for simple conversations. <br>
-Tested using Windows Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br>
-<span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
-🇵🇸
++ Tested using Windows Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br>
++ <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
 
 ---
 <span style="color:cyan">For people who don't know Python, it's just a prgram you install it, and execute it from Command Prompt or Terminal. After installing it, you only run 2 commands, one to install dependencies (which took me 3 min with my 80kb internet), then the main command which is instant.</span>
@@ -38,7 +42,7 @@ Tested using Windows Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
 2. Install required libraries, open CMD & type: `pip install httpx google-genai prompt_toolkit rich pyperclip`
-3. Clone this repository, or download the ZIP file.
+3. Clone this repository, or download the [ZIP](https://github.com/Mohyoo/Gemini-Py-CLI/archive/refs/heads/main.zip) file.
 4. Unleash the power of the script, open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
 
 #### 2) First Launch:

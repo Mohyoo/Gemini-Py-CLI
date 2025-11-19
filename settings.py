@@ -16,7 +16,7 @@ GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
 GEMINI_MODEL = 'gemini-2.5-flash'           # Advanced models are more expensive and have less API limits.
 MAX_HISTORY_MESSAGES = 512                  # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 ENTER_NEW_LINE = False                      # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
-WORD_SUGGESTION = True                      # Suggest words while typing in a menu popup.
+SUGGEST_FROM_WORDLIST = True                # Suggest words while typing, in a menu popup, based on a wordlist.
 SUGGEST_FROM_HISTORY = False                # Use the user's prompt history for inline word completion (SLOW).
 USE_COLORS = True                           # Better to disable it for old consoles.
 NO_ERROR_DETAILS = False                    # Never ask the user to see more details about an error.
@@ -68,7 +68,7 @@ IMPLICIT_INSTRUCTIONS = """
 # Very Very Advanced Settings
 SERVER_ERROR_ATTEMPTS = 3                   # How many times to try to get a response upon a server error.
 SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first error, then 2nd for next errors.
-HTTP_TIMEOUT = (3, 8)                       # 1st to establish the initial connection, 2nd is for the entire request.
+HTTP_TIMEOUT = (5, 15)                      # 1st to establish the initial connection, 2nd is for the entire request.
 STATUS_UPDATE_DELAY = (1, 3)                # (Integers only) Fake random delay to update the status shown while waiting for response (Doesn't add extra delays, all safe).
 SLEEP_INTERVAL = 0.1                        # Small chunks used as intervals with sleeping functions, to keep UI responsive.
 
@@ -138,6 +138,7 @@ FAREWELLS_MESSAGES = [
     "Seriously man? The excitement has just started!",
     "I'm watching you 0-0",
     "I see you :3",
+    "If a poison expires, then it becomes more poisonous or less poisonous? (o.O)",
     
     # Enthusiastic
     "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",

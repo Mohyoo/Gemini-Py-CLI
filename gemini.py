@@ -51,7 +51,7 @@ try:
     if IMPLICIT_INSTRUCTIONS_ON:
         from google.genai.types import GenerateContentConfig
         
-    if WORD_SUGGESTION:
+    if SUGGEST_FROM_WORDLIST:
         from prompt_toolkit.completion import WordCompleter
             
     if SUGGEST_FROM_HISTORY:
@@ -226,7 +226,7 @@ class SoftRestart(Exception):
     """Custom exception to signal a safe restart of the chat session."""
     pass
 
-if WORD_SUGGESTION:
+if SUGGEST_FROM_WORDLIST:
     class LimitedWordCompleter(WordCompleter):
         """Overrides WordCompleter to enforce a limit on the number of returned completions."""
         def get_completions(self, document, complete_event):
@@ -510,7 +510,6 @@ def copy_to_clipboard(text: str):
     try:
         # Copy (pyperclip handles the OS-specific details).
         clip_copy(text)
-        raise Exception
             
     except PyperclipException as error:
         # This catch is mainly for Linux environments where xclip, xsel, or wl-copy might be missing.
@@ -872,7 +871,7 @@ if RESPONSE_EFFECT:
             if approximate(current_time, end_time): break
             pass
 
-if WORD_SUGGESTION:
+if SUGGEST_FROM_WORDLIST:
     def load_word_completer():
         """
         Reads a list of words from a file, one word per line.
@@ -1105,7 +1104,7 @@ def get_last_response(command):
     try:
         last_response = response.text
     
-    except NameError:
+    except (NameError, AttributeError):
         history = chat.get_history()
         if history:
             # Find the last AI model message & Retrieve text attribute from the first Part object.
@@ -1269,11 +1268,11 @@ def setup_chat():
             # Welcome Screen & Notes...
             while True:
                 try:
-                    if WORD_SUGGESTION: load_word_completer()
+                    if SUGGEST_FROM_WORDLIST: load_word_completer()
                     welcome_screen()
                     load_chat_history()
                     
-                    if WORD_SUGGESTION and not word_completer:
+                    if SUGGEST_FROM_WORDLIST and not word_completer:
                         # Don't ask why I print then clean then print, I personally don't know.
                         cprint('\033[2K')
                         cprint(f"{YLW}Word suggestion is ON, but '{WORDLIST_FILE}' file is missing!{RS}")
@@ -1579,7 +1578,7 @@ def run_chat():
 # 6) Part VI: Remaining Global Objects & Starting Point ------------------------
 # Define global variables.
 confirm_separator = True                        # Before confirming to quit, print a separator only if no precedent one was already displayed.
-word_completer = None                           # Has a True value only if the PROMPT_HISTORY_FILE is present and WORD_SUGGESTION is True.
+word_completer = None                           # Has a True value only if the PROMPT_HISTORY_FILE is present and SUGGEST_FROM_WORDLIST is True.
 keys = Keys().get_key_bindings()                # The custom keyboard shortcuts.
 chat_saved = False                              # True after the chat has been saved.
 restarting = False                              # Session restart flag.
@@ -1672,4 +1671,4 @@ if __name__ == "__main__":
             except: pass
             # Save chat history & Clean log file.
             if not chat_saved: save_chat_history_json(hidden=True)
-            shrink_log_file()
+            if LOG_ON: shrink_log_file()
