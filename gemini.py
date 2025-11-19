@@ -11,6 +11,7 @@ try:
     if LOG_ON: from logger import *
 
 except Exception as error:
+    raise
     print(f'\nError: {error}.')
     print('Reinstall the program to restore the missing file.')
     quit(1)
@@ -44,6 +45,7 @@ try:
     from google.genai import Client as GemClient
     from google.genai.types import Content, Part
     from google.genai.errors import ClientError, ServerError
+    from rich.theme import Theme
     from rich.console import Console
     from rich.markdown import Markdown
     
@@ -60,7 +62,11 @@ try:
     if RESPONSE_EFFECT:
         from rich.text import Text 
         from rich.segment import Segment
-        from rich.console import RenderResult   
+        from rich.console import RenderResult 
+
+    if INPUT_HIGHLIGHT:
+        from prompt_toolkit.lexers import PygmentsLexer
+        from pygments.lexers import get_lexer_by_name
     
 except Exception as error:
     print(f'\nError: {error}.')
@@ -288,7 +294,7 @@ def catch_client_error_in_chat(error):
     msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}.\n"
     msg_2 = f"{YLW}Check your settings, especially the API key validation or limits."
     msg_3 = f"{YLW}If you exceeded characters limit (like hundreds of thousands of\n{YLW}characters), shorten your prompt!"
-    msg_4 = f"{YLW}Restarting the program might also help."
+    msg_4 = f"{YLW}Restarting the session might also help (Type 'restart')."
     box(msg_1, msg_2, msg_3, msg_4, title='CLIENT SIDE ERROR', border_color=RED, text_color = RED, secondary_color=RED)
 
 def catch_server_error_startup(error_occurred, attempts):
@@ -336,18 +342,11 @@ def catch_server_error_in_chat():
             # raise ServerError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
             worker = GeminiWorker(chat, user_input)
             worker.start()
-            start_time = now_time()
 
             # Loop while the worker thread is still running & Update the status at random intervals.
             with console.status(status=f'[bold {WAIT_1}]Waiting for response...[/bold {WAIT_1}]',
                                 spinner=SPINNER):
-                while worker.is_alive():
-                    # Force HTTP timeout if the initialization method didn't work.
-                    elapsed_time = now_time() - start_time
-                    if elapsed_time > HTTP_TIMEOUT[1]:
-                        raise ConnectTimeout('Timeout!')
-                            
-                    worker.join(SLEEP_INTERVAL)
+                while worker.is_alive(): worker.join(SLEEP_INTERVAL)
             
             if worker.exception: raise worker.exception            
             cprint(GR + 'Response received!' + RS)
@@ -361,7 +360,6 @@ def catch_server_error_in_chat():
                 break
                 
             print_status(lambda: quick_sleep(DELAY_2), f'Issue persisting, retrying in {DELAY_2} seconds...', 'yellow')
-            DELAY_2 += 1
             continue
         
         except ClientError as error:
@@ -380,19 +378,29 @@ def catch_server_error_in_chat():
     return response
 
 def catch_network_error():
+    global user_input
     if LOG_ON: log_caught_exception()
+    if restarting: clear_lines()
     error = traceback.format_exc().lower()
+    
     if 'timeout' in error:
         title = 'TIMEOUT'
-        msg = f"{RED}API call exceeded the hard timeout limit of ({HTTP_TIMEOUT[1]}) seconds.\n"
+        msg = f"{RED}API call exceeded the hard timeout limit of ({HTTP_TIMEOUT}) seconds.\n"
         msg += f"{RED}Please, wait for sometime until the network becomes stable.\n"
         msg += f"{YLW}You can change the HTTP timeout delay in settings."
  
     else:
         title = 'NETWORK ERROR'
-        msg = msg = f"{RED}Failed to connect, check your network or firewall!{RS}"
+        msg = f"{RED}Failed to connect, check your network or firewall!"
+        try:
+            if user_input and not restarting:
+                msg += f"\n{YLW}Press (UP) to get your prompt back."
+                user_input = None
+        except NameError:
+            pass
        
     box(msg, title=title, border_color=RED)
+    if restarting: clear_lines()
 
 def catch_exception(error):
     global confirm_separator
@@ -443,7 +451,7 @@ def catch_fatal_exception(error):
 
 def catch_keyboard_interrupt():
     msg_1 = f"{GR}Prompt cancelled, skipping..."
-    msg_2 = f'{GR}Rest assured, Google has no idea about what you just sent.'
+    msg_2 = f'{GR}Rest assured, Google has no idea about what you just sent (probably ;-;).'
     box(msg_1, msg_2, title='KEYBOARD INTERRUPTION', border_color=GR)
 
 
@@ -542,8 +550,8 @@ def clear_lines(lines_to_erase=1):
     Simulates scanning and cleaning up previous empty lines by using 
     ANSI codes to move the cursor up and erase, then prints a separator.
     """
-    # ANSI escape codes won't work in the same way as colors.
-    if not USE_COLORS: return
+    # Skip if not compatible with ANSI escape codes.
+    if not USE_ANSI: return
     # \033[A:  Move cursor Up one line
     # \033[2K: Erase the entire current line
     for _ in range(lines_to_erase):
@@ -673,9 +681,11 @@ def help():
        -CTRL-Z/CTRL-Y to undo/redo.
        -CTRL-L to clear screen.
        -CTRL-R (Reverse Search) to search backward & find the most recent
-        match in prompt history, keep pressing to move.
+        match in prompt history, keep pressing to move, press ESC to cancel.
        -CTRL-S (Forward Search) used after CTRL-R to find older matches,
-        keep pressing to move.
+        keep pressing to move, press ESC to cancel.
+       -Ctrl-X-Ctrl-E (Unix/Linux) to use an external editor for complex input,
+        once closed, edits are registered.
     
     5) Limitations:
        -Tables with many columns will appear chaotic.
@@ -1241,7 +1251,6 @@ def setup_chat():
         print('+' + '-' * 77 + '+')
         print("| Loading chat..." + ' ' * 61 + '|')
         print('+' + '-' * 77 + '+')
-        restarting = False
     else:
         chat_saved = False
     
@@ -1255,12 +1264,13 @@ def setup_chat():
             # raise httpx.RemoteProtocolError(message='Test')
             
             # Client Initialization & API Validation
-            timeout_config = httpx.Timeout(HTTP_TIMEOUT)
-            http_client = httpx.Client(timeout=timeout_config)
-
+            http_options = {
+                "timeout": HTTP_TIMEOUT * 1000, 
+            }
+            
             client = GemClient(
                 api_key=GEMINI_API_KEY,
-                http_options=http_client,
+                http_options=http_options,
             )
             
             if STARTUP_API_CHECK: client.models.list()
@@ -1268,7 +1278,7 @@ def setup_chat():
             # Welcome Screen & Notes...
             while True:
                 try:
-                    if SUGGEST_FROM_WORDLIST: load_word_completer()
+                    if SUGGEST_FROM_WORDLIST: load_word_completer()                   
                     welcome_screen()
                     load_chat_history()
                     
@@ -1296,7 +1306,8 @@ def setup_chat():
             )
             
             cprint()
-            return client, chat, http_client
+            restarting = False
+            return client, chat
 
         except ClientError as error:
             catch_client_error_startup(error)
@@ -1329,24 +1340,29 @@ def get_user_input():
     try:
         user_input = prompt(
             # Main options
+            style=prompt_style,
             message=prompt_message,
             placeholder=prompt_placeholder,
             prompt_continuation='....... ',
             multiline=True,
             wrap_lines=True,
+            key_bindings=keys,
             
             # Other options
-            style=prompt_style,
-            key_bindings=keys,
-            mouse_support=True,
+            mouse_support=MOUSE_SUPPORT,
             history=history,
             auto_suggest=auto_suggest,
             completer=word_completer,
             complete_while_typing=bool(word_completer),
+            complete_in_thread=bool(word_completer),
             rprompt=rprompt,
             bottom_toolbar=prompt_bottom_toolbar,
             editing_mode=VIM_EMACS_MODE,
             reserve_space_for_menu=True,
+            search_ignore_case=True,
+            enable_open_in_editor=True,
+            lexer=lexer,
+            set_exception_handler=lambda loop, context: None,
         )
         
     except Interruption:
@@ -1371,6 +1387,7 @@ def interpret_commands(command):
         clear_lines()
         
     elif command == 'clear':
+        # If alternate screen is ON, this won't affect the main screen.
         terminal(CLEAR_COMMAND)
 
     elif command  in ('save-last', 'see-last', 'copy'):
@@ -1428,17 +1445,11 @@ def get_response():
                 worker = GeminiWorker(chat, user_input)
                 active = worker.is_alive
                 worker.start()
-                start_time = now_time()
 
                 # Loop while the worker thread is still running.
                 with console.status(status=status_messages[0], spinner=SPINNER) as status:
                     message_index = 0
                     while active():
-                        # Force HTTP timeout if the initialization method didn't work.
-                        elapsed_time = now_time() - start_time
-                        if elapsed_time > HTTP_TIMEOUT[1]:
-                            raise ConnectTimeout('Timeout!')
-                        
                         # Sleep in short, responsive chunks.
                         delay = randint(*STATUS_UPDATE_DELAY)
                         slept_time = 0.0
@@ -1505,20 +1516,20 @@ def print_response(response, title='Gemini'):
         cprint(f"{GEM_BG}{GR}\n {title}: {RS}")
         
         # Display response according to the effect.
-        if RESPONSE_EFFECT == 'line':
-            print_markdown_line(response)
-        
-        elif RESPONSE_EFFECT == 'word':
-            print_markdown_word(response)
-        
-        elif 'char' in RESPONSE_EFFECT:
-            print_markdown_char(response)
+        if RESPONSE_EFFECT:
+            if RESPONSE_EFFECT == 'line':
+                print_markdown_line(response)
+            
+            elif RESPONSE_EFFECT == 'word':
+                print_markdown_word(response)
+            
+            elif 'char' in RESPONSE_EFFECT:
+                print_markdown_char(response)
         
         else:
-            formatted_response = Markdown(response)
-            
             # Clear the hidden console & Print the response to it.
-            temp_console.clear()
+            temp_console.clear
+            formatted_response = Markdown(response)
             temp_console.print(formatted_response)
             
             # Count the number of blank lines at the end of the output (Caused by Markdown() class).
@@ -1557,6 +1568,11 @@ def run_chat():
             user_input = get_user_input()
             if not user_input: continue
             
+            # This is only for testing, don't use it otherwise.
+            if user_input.startswith('exec '):
+                exec(user_input[5:])
+                continue
+            
             # Interpret commands
             command = user_input.strip().lower()
             if not interpret_commands(command): continue
@@ -1569,6 +1585,7 @@ def run_chat():
         except Interruption:
             farewell()
             continue
+
 
 
 
@@ -1598,12 +1615,21 @@ terminal = os.system                            # Send commands to the system.
 sys_exit = sys.exit
 stdout_write = sys.stdout.write                 # Write to stdout.
 stdout_flush = sys.stdout.flush                 # Flush the stdout for immediate output displaying.
-
 # Create necessary instances.
 history = FileHistory(PROMPT_HISTORY_FILE)      # Prompt history file path (To cycle through history while streaming input).
 auto_suggest = None                             # Suggest words based on user prompt history.
 if SUGGEST_FROM_HISTORY: auto_suggest = AutoSuggestFromHistory()
-console = Console(width=CONSOLE_WIDTH)          # Our main console, though not always used.
+console_theme = Theme({                         # Hyperlinks may not be clear, so we make them brighter.
+    "markdown.link": "bold magenta", 
+    "markdown.link_url": "italic bright_magenta",
+    "link": "bold magenta",
+    "repr.url": "italic bright_magenta",
+})
+
+console = Console(                              # Our main console, though not always used.
+    width=CONSOLE_WIDTH,
+    theme=console_theme
+)
 
 temp_console = Console(                         # A hidden console to capture uncertain output before displaying it.
     file=io.StringIO(),
@@ -1625,6 +1651,12 @@ if BOTTOM_TOOLBAR:
     prompt_bottom_toolbar = '\nKeys: (UP/DOWN) history | (CTRL-SPACE) new line | (CTRL-Z/CTRL-Y) undo/redo'
     prompt_bottom_toolbar += '\nCommands: (quit/exit) leave | (clear) clear screen | (help) guide'
 
+lexer = None
+if INPUT_HIGHLIGHT:
+    lexer_instance = get_lexer_by_name(INPUT_HIGHLIGHT_LANG)
+    lexer_class = lexer_instance.__class__
+    lexer = PygmentsLexer(lexer_class)
+
 prompt_style = Style.from_dict({                       # User prompt style.
     'rprompt': PROMPT_FG, 
     'prompt-continuation': PROMPT_FG, 
@@ -1633,11 +1665,11 @@ prompt_style = Style.from_dict({                       # User prompt style.
 
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     while True:
         try:
             # Load & Start chat client & session.
-            client, chat, http_client = setup_chat()
+            client, chat = setup_chat()
             if chat:
                 # raise ValueError('Test' * 25)
                 # raise KeyboardInterrupt
@@ -1666,9 +1698,6 @@ if __name__ == "__main__":
                 sys_exit(1)
         
         finally:
-            # Release HTTP client.
-            try: http_client.close()
-            except: pass
             # Save chat history & Clean log file.
             if not chat_saved: save_chat_history_json(hidden=True)
             if LOG_ON: shrink_log_file()

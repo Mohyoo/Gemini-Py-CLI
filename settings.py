@@ -1,3 +1,4 @@
+import sys
 from random import randint, choice
 
 # When editing this, respect each option's possible values, otherwise prepare yourself for a crash).
@@ -6,19 +7,16 @@ from random import randint, choice
 # I'll try hard to keep everything easily accessible.
 
 
-# Coming Soon Settings
-SUPPRESS_CATCHED_ERRORS = False             # Not yet implemented
-SUPPRESS_UNEXPECTED_ERRORS = False          # Not yet implemented
-
-
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
+GEMINI_API_KEY = 'AIzaSyDAEzqRTdH2JVOqdQrmCtq7gtxwCjg1V3s'
 GEMINI_MODEL = 'gemini-2.5-flash'           # Advanced models are more expensive and have less API limits.
 MAX_HISTORY_MESSAGES = 512                  # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 ENTER_NEW_LINE = False                      # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
 SUGGEST_FROM_WORDLIST = True                # Suggest words while typing, in a menu popup, based on a wordlist.
 SUGGEST_FROM_HISTORY = False                # Use the user's prompt history for inline word completion (SLOW).
-USE_COLORS = True                           # Better to disable it for old consoles.
+USE_COLORS = True                           # Better to disable colors for old consoles.
+USE_ANSI = True                             # Like USE_COLORS, but more general, once OFF, all ANSI escape codes will be disabled (Recommended to be False for old consoles).
 NO_ERROR_DETAILS = False                    # Never ask the user to see more details about an error.
 INFORMATIVE_RPROMPT = True                  # Short informational text at top right of the prompt field.
 BOTTOM_TOOLBAR = True                       # Show a handy toolbar for a quick reference.
@@ -37,7 +35,8 @@ CONSOLE_WIDTH = 80                          # How many characters to print per l
 NO_HISTORY_LIMIT = False                    # When True, chat history will never be truncated.
 SUGGESTIONS_LIMIT = 5                       # The number of suggestions to show while typing a prompt.
 SPINNER = 'line'                            # Shown while waiting, can be: dots, line, bounce, moon, star, runner... (In CMD type 'python -m rich.spinner' for more).
-VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vi', 'emacs' or None.
+INPUT_HIGHLIGHT = False                     # Syntax highlighting for the user prompt.
+INPUT_HIGHLIGHT_LANG = 'python'             # The language name used for syntax highlighting.
 STARTUP_API_CHECK = False                   # Disable for a slightly faster loading, and for the ability to enter the chat offline.
 SAVE_INPUT_ON_CLEAR = False                 # Save the prompt to history when the user clears its prompt with Ctrl-C.
 SAVE_INPUT_ON_STOP = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C.
@@ -53,28 +52,18 @@ PROMPT_HISTORY_FILE = 'prompt_history.txt'  # To load prompt history (If availab
 PROMPT_HISTORY_SIZE = 0.5                   # Max prompt history file size (1 = 1 MB).
 LOG_FILE = 'application_errors.log'         # The file to write errors to.
 LOG_SIZE = 0.5                              # Max size allowed for the log file (1 = 1 MB).
-IMPLICIT_INSTRUCTIONS_ON = False            # Hidden instructions to help organize the responses for CLI.
-IMPLICIT_INSTRUCTIONS = """
-    You are an AI assistant specialized for command-line interface (CLI) output, with a fixed width of 80 characters.
-    Before replying to any message, follow these mandatory formatting rules:
-    
-    1.  **Math/Equations:** Avoid TeX typesetting (e.g., $..$, \frac). If complex math is absolutely necessary OR requested by the user, you MUST use a Markdown fenced code block with the 'latex' tag (```latex...```).
-    2.  **Width Constraint:** The entire response (including lists, code blocks, and tables) must not exceed 80 characters per line.
-    3.  **Tables:** If a table's columns cause the line length to **exceed 80 characters**, you must split the table into two or more separate tables, or format it as a list to ensure terminal compatibility.
-    4.  **Formatting:** Use standard Markdown (bold, italics, lists, headers). Avoid excessive graphical elements.
-"""
 
 
-# Very Very Advanced Settings
+# Time Settings (In Seconds)
 SERVER_ERROR_ATTEMPTS = 3                   # How many times to try to get a response upon a server error.
 SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first error, then 2nd for next errors.
-HTTP_TIMEOUT = (5, 15)                      # 1st to establish the initial connection, 2nd is for the entire request.
+HTTP_TIMEOUT = 20                           # Timeout for the entire request, after which the API call is blocked & a timeout error gets raised.
 STATUS_UPDATE_DELAY = (1, 3)                # (Integers only) Fake random delay to update the status shown while waiting for response (Doesn't add extra delays, all safe).
 SLEEP_INTERVAL = 0.1                        # Small chunks used as intervals with sleeping functions, to keep UI responsive.
 
 
 # Colors
-if USE_COLORS:
+if USE_COLORS and USE_ANSI:
     # By ANSI code (Used in print() & cprint())
     CYN     = '\033[96m'    # Cyan
     RED     = '\033[91m'    # Red
@@ -154,6 +143,7 @@ FAREWELLS_MESSAGES = [
     "Sometimes it's too difficult, yet.. it's not impossible ;)",
     "Keep it up gentleman, the world needs your work.",
     "The waves are calling.. Captain.",
+    "Every step, no matter how small, moves you forward ;)",
     
     # Mathematic 
     f"Calculate this: ({randint(1, 100)} {choice(['+', '-', '*', '/', '**', '%'])} "
@@ -166,15 +156,15 @@ FAREWELLS_MESSAGES = [
     "I have an existential crisis every time I try to calculate the square root of a negative number. "
     "I’m pretty sure the imaginary number 'i' (i = √-1, i² = -1) is just a regular number that failed its reality check. "
     "Turns out, the entire universe depends on this one number that doesn't actually exist.",
-    "The number 'pi' (π = 3.14) is truly irrational because its digits never repeat or terminate, "
+    "The number 'pi' (π ≈ 3.14) is truly irrational because its digits never repeat or terminate, "
     "essentially making it a decimal nomad with no fixed address in the numeric universe.",
     "Parallel lines have a truly tragic love story: they are absolutely destined to meet at infinity, "
     "but they spend all of eternity getting absolutely nowhere.",
-    "The concept of infinity ($\mathbf{\infty}$) is basically just a number that got detention "
+    "The concept of infinity (ꝏ) is basically just a number that got detention "
     "forever and will never be allowed to go home and finish its equation.",
     "Zero (0) is the most dangerous number in the universe; it can multiply anything into oblivion "
     "and yet it is utterly empty, a total void of mathematical consequence.",
-    "The Empty Set ($\emptyset$) is the world's most exclusive club: absolutely nothing is inside, "
+    "The Empty Set (∅) is the world's most exclusive club: absolutely nothing is inside, "
     "which makes its bouncer the most tragically overpaid mathematical entity.",
     
     # Serious
@@ -191,7 +181,9 @@ FAREWELLS_MESSAGES = [
     "Know Python? you can edit the source code and send me your modifications as feature requests.",
     "Know Python? You can modify & test the source code, errors can also be logged if the option is ON.",
     "Hint: Gemini web interface too slow or laggy? have a potato computer like mine? this is why Py-CLI was created!",
-    "Hint: You can change CLI colors from settings.py!",
+    "Hint: You can change interface colors from 'settings.py'!",
+    "Hint: You can disable colors from settings, this will switch to black/white mode.",
+    "Hint: If you see random characters in the console (like '\033[96m'), then disable ANSI codes from settings.",
     "Hint: Error logging is ON by default, you may use it to send me errors. You can also turn it OFF if you wish.",
     "Hint: Console width is best set to (80) or more, for Windows Command Prompt users, (79) is better.",
     "Hint: Forgot how to use Gemini Py-CLI? type 'help' to see a very short and friendly menu; there is also "
@@ -234,12 +226,32 @@ CONTINUE_MESSAGES = [
 ]
 
 
+# Experimental Settings.
+MOUSE_SUPPORT = False                       # Use mouse to edit user prompt.
+VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vi', 'emacs' or None.
+IMPLICIT_INSTRUCTIONS_ON = False            # Hidden instructions to help organize the responses for CLI.
+IMPLICIT_INSTRUCTIONS = """
+    You are an AI assistant specialized for command-line interface (CLI) output, with a fixed width of 80 characters.
+    Before replying to any message, follow these mandatory formatting rules:
+    
+    1.  **Math/Equations:** Avoid TeX typesetting (e.g., $..$, \frac). If complex math is absolutely necessary OR requested by the user, you MUST use a Markdown fenced code block with the 'latex' tag (```latex...```).
+    2.  **Width Constraint:** The entire response (including lists, code blocks, and tables) must not exceed 80 characters per line.
+    3.  **Tables:** If a table's columns cause the line length to **exceed 80 characters**, you must split the table into two or more separate tables, or format it as a list to ensure terminal compatibility.
+    4.  **Formatting:** Use standard Markdown (bold, italics, lists, headers). Avoid excessive graphical elements.
+"""
+
+
+# Coming Soon Settings
+SUPPRESS_CATCHED_ERRORS = False             # Not yet implemented
+SUPPRESS_UNEXPECTED_ERRORS = False          # Not yet implemented
+NO_QUESTIONS = False                        # Never ask the user for anything.
 
 
 
 
 
 # Values Correction (Ignore This Part)
-MAX_HISTORY_MESSAGES = MAX_HISTORY_MESSAGES // 2 * 2
+MAX_HISTORY_MESSAGES = MAX_HISTORY_MESSAGES // 2 * 2    # Keep history messages in an even number (User-AI turns).
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vi', 'emacs'): VIM_EMACS_MODE = None
+if not sys.stdout.isatty(): USE_ANSI = False    # Hide ANSI characters if the output is being redirected to a non-terminal location.
