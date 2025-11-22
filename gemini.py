@@ -5,10 +5,15 @@ if __name__ == '__main__':
     print("| Loading libraries. Just a moment..." + ' ' * 41 + '|')
     print('+' + '-' * 77 + '+')
 
+# Change current working directory to the script's dir, to keep it portable.
+import os
+script_dir = os.path.dirname(os.path.abspath(__file__))
+os.chdir(script_dir)
+
 # Import Custom Modules
 try:
     from settings import *
-    if ERROR_LOG_ON: from error_logger import log_caught_exception
+    if ERROR_LOG_ON: from error_logger import *
     if GLOBAL_LOG_ON: from global_logger import setup_global_console_logger, in_time_log
 
 except Exception as error:
@@ -25,7 +30,6 @@ try:
     # Necessary
     import re
     import io
-    import os
     import sys
     import math
     import json
@@ -34,6 +38,7 @@ try:
     import traceback
     from threading import Thread
     from datetime import datetime
+    from webbrowser import open as browser_open
     from random import randint, choice, uniform
     from time import sleep, perf_counter, time as now_time
     from shutil import copy as copy_file, move as move_file
@@ -52,7 +57,7 @@ try:
     from rich.markdown import Markdown
     
     # Conditional
-    if IMPLICIT_INSTRUCTIONS_ON:
+    if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
         from google.genai.types import GenerateContentConfig
         
     if SUGGEST_FROM_WORDLIST:
@@ -112,8 +117,8 @@ class Keys():
     INTERRUPT = ('c-c', 'c-d')
     UNDO = 'c-z'
     REDO = 'c-y'
-    SELECT_ALL = 'c-a'
-    F_KEYS = {'f1': 'show', 'f2': 'copy', 'f3': 'restart', 'f4': 'quit', 'f5': 'discard', 'f6': 'kill'}
+    # SELECT_ALL = 'c-a'
+    F_KEYS = {'f1': 'show', 'f2': 'copy', 'f3': 'restart', 'f4': 'quit', 'f5': 'discard', 'f6': 'kill', 'f7': 'help'}
 
     # Define variables.
     redo_fallback_stack = []
@@ -182,14 +187,17 @@ class Keys():
             # for _ in range(len(text)): buffer.cursor_right()
         
         for key, command in self.F_KEYS.items():
-            # Had to give each function a different name because somehow it was getting overwritten each loop.
-            exec("@key_bindings.add(key)\n"
-                f"def {key}_{command}(event):\n"
-                      # Quickly execute a command by its F-Key.
-                 "    original_text = event.cli.current_buffer.text\n"
-                 "    if SAVE_INPUT_ON_STOP: self.save_history(original_text)\n"
-                f"    event.cli.current_buffer.text = '{command}'\n"
-                f"    event.cli.exit(result='{command}')")
+            @key_bindings.add(key)
+            def _(event, command=command, key_handler_instance=self):
+                """
+                Quickly execute a command by its F-Key.
+                1. 'command=command': Captures the loop value (F-Key command) immediately.
+                2. 'key_handler_instance=self': Captures the instance for 'self.save_history'.
+                """
+                original_text = event.cli.current_buffer.text
+                if SAVE_INPUT_ON_STOP: self.save_history(original_text)
+                event.cli.current_buffer.text = command
+                event.cli.exit(result=command)
 
         for key in self.NEW_LINE:
             if not isinstance(key, tuple): key = (key,)
@@ -575,6 +583,7 @@ def copy_to_clipboard(text: str):
             
     except PyperclipException as error:
         # This catch is mainly for Linux environments where xclip, xsel, or wl-copy might be missing.
+        if ERROR_LOG_ON: log_caught_exception()
         msg = "Could not access the clipboard!\n"
         msg += f"Details: {error}."
         color = RED
@@ -585,6 +594,7 @@ def copy_to_clipboard(text: str):
             msg += "try: 'sudo apt install xclip' or 'sudo yum install xclip'"
     
     except Exception as error:
+        if ERROR_LOG_ON: log_caught_exception()
         msg = "An error occured when copying to clipboard!\n"
         msg += f"Details: {error}."
         color = RED
@@ -680,6 +690,21 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     
     cprint(box_string, wrap=False)
 
+def open_path(path_to_open):
+    """
+    Opens a file or folder using the default OS application/file explorer.
+    Works reliably across Windows, macOS, and Linux.
+    """
+    if not os.path.exists(path_to_open):
+        msg = "Requested file/folder isn't present in the current working directory."
+        box(msg, title='ERROR', border_color=RED, text_color=RED)
+        clear_lines()
+        return
+
+    # webbrowser.open() handles both files and directories
+    browser_open(path_to_open)
+    clear_lines(2)
+
 def welcome_screen():
     """Display a short welcoming screen."""
     gemini_logo_string = (
@@ -724,6 +749,9 @@ def help(short=False):
        -'clear' to clear the screen.
        -'show' to show last AI response.
        -'copy' to copy last AI response to clipboard.
+       -'remember' at prompt start to save it with high priority.
+        (Saved info are shared across all chat sessions).
+       -'saved-info' to open the saved info file for manual edit.
        -'save-last' to save last AI response to a text file.
         (You will lose the formatting style and colors!)
        -'save-chat' to save the whole chat to a readable text file.
@@ -752,6 +780,7 @@ def help(short=False):
         once the editor is closed, changes are registered.
     
     6) More Commands:
+       -'open' to open the program's directory.
        -'pop-last' to remove the last message pair from history; you can use
         it multiple times to remove messages in a row, or type 'pop-last 3'
         for example to remove last (3) messages pairs.
@@ -763,8 +792,8 @@ def help(short=False):
        -'restore-all' to restore all of the deleted messages.
        -'del-prompt' to delete the whole prompt history file, and lose all
         past history, future prompts won't be affected (No cancel option!).
-       -'del-all' to wipe private files: chat + prompt history + log files.
-        (No cancel option!)
+       -'del-all' to wipe private files: chat + prompt history + log files
+        + saved info (No cancel option!)
        -'clear-log' to clear both log files, future logging won't be affected.
        -'about' for program information.
        -'license' for copyright.
@@ -1075,7 +1104,28 @@ if ERROR_LOG_ON:
         with open(ERROR_LOG_FILE, 'w', encoding='utf-8') as f:
             f.writelines(collected_lines)
 
-
+if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
+    def load_system_instructions():
+        """
+        Load & Return system instructions to AI at startup.
+        They can be either implicit instructions, or saved info, or both.
+        """
+        system_instructions = ''
+        
+        if SAVED_INFO and os.path.exists(SAVED_INFO_FILE):
+            try:
+                with open(SAVED_INFO_FILE, 'r', encoding='utf-8') as f:
+                    saved_info_content = f.read().strip()
+                if saved_info_content: 
+                    system_instructions += 'User Saved Information:\n' + saved_info_content + '\n\n'
+            except:
+                if ERROR_LOG_ON: log_caught_exception()
+                pass
+            
+        if IMPLICIT_INSTRUCTIONS_ON and IMPLICIT_INSTRUCTIONS.strip():
+            system_instructions += 'Your Implicit Instructions as AI:\n' + IMPLICIT_INSTRUCTIONS.strip()
+        
+        return system_instructions
 
 
 
@@ -1093,7 +1143,11 @@ def del_all():
     # Warning.
     cprint()
     separator(color=YLW)
-    to_remove_files = [ERROR_LOG_FILE, GLOBAL_LOG_FILE, CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT, LAST_RESPONSE_FILE, PROMPT_HISTORY_FILE]
+    to_remove_files = [
+        ERROR_LOG_FILE, GLOBAL_LOG_FILE, CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT,
+        LAST_RESPONSE_FILE, PROMPT_HISTORY_FILE, SAVED_INFO_FILE
+    ]
+    
     cprint(f'{YLW}WARNING! The program will exit & wipe the following files:')
     for file in to_remove_files: cprint('- ' + file)
     cprint('')
@@ -1125,6 +1179,7 @@ def del_all():
         try:
             with open(file, 'w', encoding='utf-8'): pass
         except:
+            if ERROR_LOG_ON: log_caught_exception()
             pass
     
     raise SystemExit
@@ -1631,10 +1686,11 @@ def setup_chat():
                     farewell()
                     continue
             
-            # Start chat session with/out the implicit instructions
+            # Start chat session with/out the system instructions (Implicit orders + saved info).
             config = None
-            if IMPLICIT_INSTRUCTIONS_ON:
-                config = GenerateContentConfig(system_instruction=(IMPLICIT_INSTRUCTIONS))
+            system_instructions = load_system_instructions()
+            if system_instructions:
+                config = GenerateContentConfig(system_instruction=system_instructions)
             
             chat = client.chats.create(
                 model=GEMINI_MODEL,
@@ -1719,9 +1775,10 @@ def get_user_input():
         clear_lines(2)
         return None
 
-def interpret_commands(command):
+def interpret_commands(user_input):
     """If the user input is a special command, execute it."""
     global discarding, history
+    command = user_input.strip().lower()
     
     if command == 'quit' or command == 'exit':
         cprint()
@@ -1737,6 +1794,35 @@ def interpret_commands(command):
         
     elif command == 'clear':
         system(CLEAR_COMMAND)
+    
+    elif command == 'open':
+        open_path('.')
+    
+    elif command == 'saved-info':
+        open_path(SAVED_INFO_FILE)
+    
+    elif command.startswith('remember ') and SAVED_INFO:
+        try:
+            first_line_written = False
+            with open(SAVED_INFO_FILE, 'a', encoding='utf-8') as f:
+                for line in user_input.splitlines():
+                    if not first_line_written:
+                        f.write(f'\n- {line}\n')
+                        first_line_written = True
+                    else:
+                        f.write(f'  {line}\n')
+                
+            msg = f"Information saved!\nYou can also manually edit your info in '{SAVED_INFO_FILE}'."
+            color = GR
+        
+        except Exception as error:
+            if ERROR_LOG_ON: log_caught_exception()
+            msg = f"Couldn't save your info!\nError: {error}"
+            color = RED
+            
+        box(msg, title='SAVED INFO STATUS', border_color=color, text_color=color, secondary_color=RED)
+        clear_lines()
+        return True
     
     elif command  in ('save-last', 'show', 'copy'):
         get_last_response(command)
@@ -1766,6 +1852,7 @@ def interpret_commands(command):
             msg = f"File '{PROMPT_HISTORY_FILE}' not found!"
             color = YLW
         except Exception as e:
+            if ERROR_LOG_ON: log_caught_exception()
             msg = f"An error occurred: {e}."
             color = RED
         
@@ -1788,7 +1875,7 @@ def interpret_commands(command):
         discarding = True
         try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
         except: pass
-        msg = 'Clearing recent messages & Quitting...\nManually saved messages & logs are kept!'
+        msg = 'Clearing recent messages & Quitting...\nManually saved content & logs are kept!'
         box(msg, title='DISCARD & KILL', border_color=YLW, text_color=YLW)
         clear_lines()
         raise SystemExit
@@ -1812,7 +1899,11 @@ def interpret_commands(command):
         msg_3 = f"Issues Page: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}"
         box(msg_1, msg_2, msg_3, title='ABOUT', border_color=GR, text_color=GR)
         clear_lines()
-        
+    
+    # This is only for testing, don't use it otherwise.
+    elif command.startswith('exec '):
+        exec(user_input[5:])
+                
     else:
         return True
 
@@ -1978,14 +2069,8 @@ def run_chat():
             user_input = get_user_input()
             if not user_input: continue
             
-            # This is only for testing, don't use it otherwise.
-            if user_input.startswith('exec '):
-                exec(user_input[5:])
-                continue
-            
             # Interpret commands
-            command = user_input.strip().lower()
-            if not interpret_commands(command): continue
+            if not interpret_commands(user_input): continue
 
             # Get & Print Response
             response = get_response()
@@ -2002,11 +2087,12 @@ def run_chat():
 
 
 
+
+
 # 6) Part VI: Remaining Global Objects & Starting Point ------------------------
 # Define global variables.
 confirm_separator = True                        # Before confirming to quit, print a separator only if no precedent one was already displayed.
 word_completer = None                           # Has a True value only if the PROMPT_HISTORY_FILE is present and SUGGEST_FROM_WORDLIST is True.
-keys = Keys().get_key_bindings()                # The custom keyboard shortcuts.
 chat_saved = False                              # True after the chat has been saved.
 restarting = False                              # Session restart flag.
 discarding = False                              # Session discard flag.
@@ -2066,8 +2152,8 @@ prompt_placeholder = FormattedText([                   # User prompt placeholder
 
 prompt_bottom_toolbar = None                           # User prompt toolbar.
 if BOTTOM_TOOLBAR:
-    prompt_bottom_toolbar = '\nKeys: (UP/DOWN) history | (CTRL-SPACE) new line | (CTRL-Z/CTRL-Y) undo/redo'
-    prompt_bottom_toolbar += '\nCommands: (quit/exit) leave | (clear) clear screen | (help) guide'
+    prompt_bottom_toolbar = '\n(CTRL-SPACE) new line | (UP/DOWN) history | (CTRL-Z/CTRL-Y) undo/redo'
+    prompt_bottom_toolbar += '\n(F3) restart | (F4) quit | (CTRL-L) clear | (CTRL-C) cancel | (F7) help'
 
 lexer = None
 if INPUT_HIGHLIGHT:
@@ -2080,6 +2166,14 @@ prompt_style = Style.from_dict({                       # User prompt style.
     'prompt-continuation': PROMPT_FG, 
     'bottom-toolbar': f'bg:{PROMPT_FG} fg: black', 
 }) 
+
+keys = Keys().get_key_bindings()                       # The custom keyboard shortcuts.
+# from prompt_toolkit.key_binding import merge_key_bindings
+# from prompt_toolkit.key_binding.defaults import load_key_bindings
+# keys = merge_key_bindings([                            
+    # load_key_bindings(),
+    # Keys().get_key_bindings()]
+# )
 
 
 

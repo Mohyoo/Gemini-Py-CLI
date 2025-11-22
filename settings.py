@@ -14,6 +14,7 @@ MAX_HISTORY_MESSAGES = 512                  # The maximum number of chat history
 ENTER_NEW_LINE = False                      # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
 SUGGEST_FROM_WORDLIST = True                # Suggest words while typing, in a menu popup, based on a wordlist.
 SUGGEST_FROM_HISTORY = False                # Use the user's prompt history for inline word completion (SLOW).
+SAVED_INFO = True                           # If True, user input will be saved with highest priority if he starts it with 'remember'.
 USE_COLORS = True                           # Better to disable colors for old consoles.
 USE_ANSI = True                             # Like USE_COLORS, but more general, once OFF, all ANSI escape codes will be disabled (Recommended to be False for old consoles).
 NO_ERROR_DETAILS = False                    # Never ask the user to see more details about an error.
@@ -46,6 +47,7 @@ GLOBAL_LOG_ON = True                        # To log the entire console output t
 
 
 # Very Advanced Settings
+SAVED_INFO_FILE = 'saved_info.txt'          # To save important informations at user request.
 LAST_RESPONSE_FILE = 'last_response.txt'    # To save last Gemini response in a text file.
 WORDLIST_FILE = 'word_suggestion.txt'       #A small wordlist used for word suggestion.
 CHAT_HISTORY_JSON = 'chat_history.json'     # To save/load chat history to/from a json file (If available).
@@ -207,7 +209,7 @@ FAREWELLS_MESSAGES = [
     "Hint: ANSI codes are the way we tell the console to show colors and some other effects, "
     "but they're not compatible with every console.",
     "Advice: At night, consider enabling dark mode & night light (warmth) mode to protect your eyes, "
-    "you'll get used to them over time believe me ;)"
+    "you'll get used to them over time believe me ;)",
     
     # Quotes
     "If you change the way you look at things, the things you at change...",

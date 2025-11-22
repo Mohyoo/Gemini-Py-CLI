@@ -40,45 +40,51 @@ class StdoutTee:
         self.ignore_strings = ignore_strings if ignore_strings else []
         self._logging_active = False
         self._buffer = ''
+        self._lock = threading.Lock()
 
     def write(self, s):
         # 1. Write to the real console immediately
         self.original_stdout.write(s)
+        
+        # Acquire the lock. No other thread can proceed past here until this thread releases it.
+        with self._lock:
+            # Accumulate in buffer
+            self._buffer += s
+            
+            if self._logging_active:
+                return
 
-        # 2. Accumulate in buffer
-        self._buffer += s
+            # 2. Process lines ONLY when a newline occurs
+            if '\n' in self._buffer:
+                self._logging_active = True
+                try:
+                    while '\n' in self._buffer:
+                        # Split the first available line
+                        line, self._buffer = self._buffer.split('\n', 1)
+                        
+                        # FIX: Handle Carriage Returns (\r).
+                        # Apps like 'Rich' or 'Prompt_toolkit' write: "Loading\rDone".
+                        # We keep only the final state (the part after the last \r).
+                        if '\r' in line:
+                            line = line.rsplit('\r', 1)[-1]
 
-        # 3. Process lines ONLY when a newline occurs
-        if not self._logging_active:
-            self._logging_active = True
-            try:
-                while '\n' in self._buffer:
-                    # Split the first available line
-                    line, self._buffer = self._buffer.split('\n', 1)
+                        # Clean ANSI codes
+                        cleaned_line = ANSI_ESCAPE_PATTERN.sub('', line)
+
+                        # We check 'if x in cleaned_line' so partial matches work
+                        if self.ignore_strings and any(ignored in cleaned_line for ignored in self.ignore_strings):
+                            continue
+
+                        # We use rstrip() to remove trailing spaces but keep the line itself
+                        log_method = getattr(self.logger, LOG_LEVEL_NAME.lower())
+                        log_method(cleaned_line.rstrip())
+
+                except Exception:
+                    # Failsafe to prevent logging errors from crashing the main app
+                    pass
                     
-                    # FIX: Handle Carriage Returns (\r).
-                    # Apps like 'Rich' or 'Prompt_toolkit' write: "Loading\rDone".
-                    # We keep only the final state (the part after the last \r).
-                    if '\r' in line:
-                        line = line.rsplit('\r', 1)[-1]
-
-                    # Clean ANSI codes
-                    cleaned_line = ANSI_ESCAPE_PATTERN.sub('', line)
-
-                    # FIX: Omit ignored strings
-                    # We check 'if x in cleaned_line' so partial matches work
-                    if self.ignore_strings and any(ignored in cleaned_line for ignored in self.ignore_strings):
-                        continue
-
-                    # We use rstrip() to remove trailing spaces but keep the line itself
-                    log_method = getattr(self.logger, LOG_LEVEL_NAME.lower())
-                    log_method(cleaned_line.rstrip())
-
-            except Exception:
-                # Failsafe to prevent logging errors from crashing the main app
-                pass
-            finally:
-                self._logging_active = False
+                finally:
+                    self._logging_active = False
 
     def flush(self):
         self.original_stdout.flush()

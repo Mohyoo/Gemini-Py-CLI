@@ -18,11 +18,12 @@ Used for simple conversations. <br>
 * Made primarily for low-spec or slow internet users, including myself (Not yet perfect, but in progress).
 * Worked even with a dead connection (< 15 kb/s); Yeah! but with only short messages (< 100 characters).
 * I respect privacy (because I'm a user like you too), thus I don't hold or manipulate any personal data, even with error log (which can be turned OFF), the program removes file paths and user prompts, keeping only what is absolutely needed.
-* History can be saved locally in many forms, even if the program crashes:
+* Content can be saved locally in many forms, even if the program crashes:
 	+ Automatically, save chat history to a json file.
 	+ Automatically, save prompt history to a text file.
 	+ At request, save chat history to a human readable text file.
     + At request, save the last Gemini response to a simple text file.
+    + At request, keep saved info (shared across chat sessions).
 * Colorful & vital console text.
 * Customizable, you can edit many settings, like colors, delays, completion...
   (Not all areas are modifiable yet, but in progress).
@@ -69,31 +70,10 @@ By the way, there is a serie of commented `raise` statements in the script, igno
 
 ---
 
-## Advices
-1. If you cancel a sent prompt earlier, Google will not receive it at all.
-2. If you have a very slow internet that even browsers don't respond with:
-    + Break your prompt into parts (< 100 characters).
-    + Make sure the AI response will be short or broken into parts.
-    + Periodically, restart both your network adapter & chat session.
-    + And **BANG!** you are a network hacker!
-3. The lower you set options (e.g: small history file size, faster typing effect), the better performance & network latency you get.
-4. For old consoles (e.g: Windows CMD), some features must be OFF for the program to function correctly (e.g: colors, ANSI codes, console width).
+## Wiki
+Visit [Wiki](https://github.com/Mohyoo/Gemini-Py-CLI/wiki) for some valuable information.
 
-
-## Privacy Summary
-* If you want to help future visitors about privacy concerns, please help fulfill this page: [Gemini Terms](https://tosdr.org/en/service/7887).
-
-* From this program's side, there is no data collection, or any anti-privacy matter (malware, adware, spyware...), but from Google's side:
-
-* Google AI Data Collection:
-    + Default Use (Free Tier): Google can use your prompts & AI responses to develop, improve, and train its models and services.
-    + Your Data is Not Private by Default: If you are using the free Google AI Studio key, you have no guarantee that your data won't be used for training.
-    + Data Ownership: You retain ownership of the content you create, but you grant Google a license to use it to operate the service.
-    + No Code Opt-Out: You cannot configure Google API python library to stop data collection or training usage for standard API keys.
-
-* Privacy Solution:
-    + Vertex AI: The only guaranteed way to ensure your data is not used is to switch to Google Cloud Vertex AI. This is a feature of their enterprise/paid service tier.
-    + Data Retention: Data is generally retained for a limited period for safety monitoring and debugging, regardless of the training policy.
+Don't worry, there is no bla bla bla... everything is summarized for you.
 
 ## To Do
 1. Handle big markdown tables so that they appear readable.

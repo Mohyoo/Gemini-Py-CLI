@@ -3,6 +3,7 @@ import sys
 import logging
 import traceback
 from settings import ERROR_LOG_ON, ERROR_LOG_FILE
+from gemini import save_chat_history_json, cprint, separator
 
 # Logging Configuration 
 LOG_FORMAT = (
@@ -83,7 +84,6 @@ def log_unhandled_exception(exc_type, exc_value, exc_traceback):
     Custom handler called automatically by Python for all uncaught exceptions.
     It logs the error details and then exits the program gracefully.
     """ 
-    from gemini import save_chat_history_json, cprint, separator
     # Save the chat seesion.
     save_chat_history_json()
 
