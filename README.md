@@ -1,6 +1,6 @@
 <div style="text-align: center; padding: 20px;">
-  <h3 style="margin: 0; font-family: Arial, sans-serif; color: red">Stop Genocide in Gaza!</h3>
-  <img src="Palestine.jpg" alt="Flag" style="width: 300px; border-radius: 3%;">
+  <h3 style="margin: 0; font-family: Arial, sans-serif; color: red">Palestine Children, Women and Men are dying...</h3>
+  <img src="Palestine.jpg" alt="Palestine Flag" style="width: 475px; border-radius: 3%;">
 </div>
 
 ## Gemini Py-CLI
@@ -10,32 +10,27 @@ Used for simple conversations. <br>
 + <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
 
 ---
-<span style="color:cyan">For people who don't know Python, it's just a prgram you install it, and execute it from Command Prompt or Terminal. After installing it, you only run 2 commands, one to install dependencies (which took me 3 min with my 80kb internet), then the main command which is instant.</span>
+<span style="color:cyan">For people who don't know Python, it's just a small command-line program. After installing it, you only run 2 commands, one to install dependencies (which took me 3 min with my 80kb/s internet), then the main command which is instant.</span>
 
 ----
 
 ## Features
-* Made primarly for low-spec or slow internet users, including myself (Not yet perfect, but in progress).
-
+* Made primarily for low-spec or slow internet users, including myself (Not yet perfect, but in progress).
+* Worked even with a dead connection (< 15 kb/s); Yeah! but with only short messages (< 100 characters).
 * I respect privacy (because I'm a user like you too), thus I don't hold or manipulate any personal data, even with error log (which can be turned OFF), the program removes file paths and keeps only what is absolutely needed.
-
 * History can be saved locally in many forms, even if the program crashes:
 	+ Automatically, save chat history to a json file.
 	+ Automatically, save prompt history to a text file.
 	+ At request, save chat history to a human readable text file.
     + At request, save the last Gemini response to a simple text file.
-
+* Colorful & vital console text.
 * Customizable, you can edit many settings, like colors, delays, completion...
   (Not all areas are modifiable yet, but in progress).
-
 * Word suggestion & completion:
 	+ Suggest from a wordlist, a menu popup to choose a word from.
 	+ Suggest from history, you get inline completion upon typing words from previous prompts.
-
 * Cross platform, binaries are not yet created, perhaps on request I'll do that (I'm too lazy).
-
-* Common keyboard shortcuts + Vim/Emacs shortcuts (default off, beta) + Mouse support (beta).
-
+* Common keyboard shortcuts + Vim/Emacs shortcuts (beta) + Mouse support (beta).
 * Stubborn error handling, yet still not perfect.
 
 ## Quick Start
@@ -52,11 +47,11 @@ and paste it in **settings.py** (First few lines). <br> ***(It's free and easy t
 3. Run the script again: `python gemini.py`
 
 #### 3) Usage:
-1. Type 'quit' or 'exit' to quit.
-2. Press 'Ctrl-C' to cancel a prompt, stop a response, or quit
+1. Press 'Ctrl-Space' to add a new line to your prompt.
+2. Press 'Ctrl-C' to clear/cancel a prompt, stop a response, or quit
 the program.
-3. Press 'Ctrl-Space' to add a new line to your prompt.
-5. Type 'help' for more details (It's not too long, just 1 min reading).
+3. Type 'quit' or 'exit' to leave.
+4. Type 'help' for more details (It's not too long, just 1 min reading).
 
 #### 4) Limitations:
 1. Tables with many columns will appear chaotic.
@@ -73,6 +68,16 @@ Let's just hope google won't change its Gemini server protocols. <br>
 By the way, there is a serie of commented `raise` statements in the script, ignore them, they are just for testing.
 
 ---
+
+## Advices
+1. If you cancel a sent prompt earlier, Google will not receive it at all.
+2. If you have a very slow internet that even browsers don't respond with:
+    + Break your prompt into parts (< 100 characters).
+    + Make sure the AI response will be short or broken into parts.
+    + Periodically, restart both your network adapter & chat session.
+    + And **BANG!** you are a network hacker!
+3. The lower you set options (e.g: small history file size, faster typing effect), the better performance & network latency you get.
+4. For old consoles (e.g: Windows CMD), some features must be OFF for the program to function correctly (e.g: colors, ANSI codes, console width).
 
 ## To Do
 1. Handle big markdown tables so that they appear readable.

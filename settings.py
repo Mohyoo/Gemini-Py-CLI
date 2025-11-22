@@ -9,6 +9,7 @@ from random import randint, choice
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
+GEMINI_API_KEY = 'AIzaSyDAEzqRTdH2JVOqdQrmCtq7gtxwCjg1V3s'
 GEMINI_MODEL = 'gemini-2.5-flash'           # Advanced models are more expensive and have less API limits.
 MAX_HISTORY_MESSAGES = 512                  # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 ENTER_NEW_LINE = False                      # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
@@ -24,9 +25,10 @@ RESPONSE_EFFECT = 'line'                    # Effect while displaying response, 
                                                 # 'line' for line-by-line animation (Recommended).
                                                 # 'word' for word-by-word animation (Satisfying).
                                                 # 'char' for an almost instant character-by-character animation (Safe, but may be unnoticeable).
-                                                # 'char slow' for a smooth character-by-character animation (Safe to use, but really slow).
+                                                # 'char slow' for a smooth character-by-character animation (Safe, but really slow).
                                                 # 'char fast' for a fast character-by-character animation; you should check if this causes a high CPU usage in your computer
                                                 # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
+                                                # * All 'char' animations can cause glitchs!
 
 
 # Advanced Settings
@@ -38,8 +40,9 @@ INPUT_HIGHLIGHT = False                     # Syntax highlighting for the user p
 INPUT_HIGHLIGHT_LANG = 'python'             # The language name used for syntax highlighting.
 STARTUP_API_CHECK = False                   # Disable for a slightly faster loading, and for the ability to enter the chat offline.
 SAVE_INPUT_ON_CLEAR = False                 # Save the prompt to history when the user clears its prompt with Ctrl-C.
-SAVE_INPUT_ON_STOP = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C.
-LOG_ON = True                               # To log errors to a file, console output won't be affected.
+SAVE_INPUT_ON_STOP = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys.
+ERROR_LOG_ON = True                         # To log errors to a file, console output won't be affected.
+GLOBAL_LOG_ON = True                        # To log the entire console output to a file, it gets cleared on each launch, visual console output won't be affect.
 
 
 # Very Advanced Settings
@@ -49,15 +52,16 @@ CHAT_HISTORY_JSON = 'chat_history.json'     # To save/load chat history to/from 
 CHAT_HISTORY_TEXT = 'chat_history.txt'      # To save chat history as a simple text file (If available).
 PROMPT_HISTORY_FILE = 'prompt_history.txt'  # To load prompt history (If available).
 PROMPT_HISTORY_SIZE = 0.5                   # Max prompt history file size (1 = 1 MB).
-LOG_FILE = 'application_errors.log'         # The file to write errors to.
-LOG_SIZE = 0.5                              # Max size allowed for the log file (1 = 1 MB).
+ERROR_LOG_FILE = 'application_errors.log'                  # The file to write errors to (Level: warning, error, critical).
+GLOBAL_LOG_FILE = 'application_console_output.log'         # The file to write the entire console output to + optionally hidden debug info (Level: debug, info).
+LOG_SIZE = 0.5                              # Max size allowed for the error log file (1 = 1 MB).
 
 
 # Time Settings (In Seconds)
 SERVER_ERROR_ATTEMPTS = 3                   # How many times to try to get a response upon a server error.
-SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first error, then 2nd for next errors.
-HTTP_TIMEOUT = 20                           # Timeout for the entire request, after which the API call is blocked & a timeout error gets raised.
-STATUS_UPDATE_DELAY = (1, 3)                # (Integers only) Fake random delay to update the status shown while waiting for response (Doesn't add extra delays, all safe).
+SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first server error attempt, then 2nd for next attempts.
+HTTP_TIMEOUT = 30                           # Timeout for the entire request, after which the API call is blocked & a timeout error gets raised.
+STATUS_UPDATE_DELAY = (1.5, 3)              # Fake random delay to update the status shown while waiting for response (Doesn't add extra delays, all safe).
 SLEEP_INTERVAL = 0.1                        # Small chunks used as intervals with sleeping functions, to keep UI responsive.
 
 
@@ -127,6 +131,10 @@ FAREWELLS_MESSAGES = [
     "I'm watching you 0-0",
     "I see you :3",
     "If a poison expires, then it becomes more poisonous or less poisonous? (o.O)",
+    "Cheese has holes.\nMore cheese = More holes.\nMore holes = Less cheese.\nMore cheese = Less cheese (O.O)",
+    "You are breathing involuntary; but now that you knew, you have to breath voluntary :P",
+    "Cleaning crime scene...\nAlright! ready to escape."
+    "Normal mode OFF, switching to Agent Six..."
     
     # Enthusiastic
     "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
@@ -143,6 +151,7 @@ FAREWELLS_MESSAGES = [
     "Keep it up gentleman, the world needs your work.",
     "The waves are calling.. Captain.",
     "Every step, no matter how small, moves you forward ;)",
+    "Ok enough playing, time to study.",
     
     # Mathematic 
     f"Calculate this: ({randint(1, 100)} {choice(['+', '-', '*', '/', '**', '%'])} "
@@ -150,8 +159,8 @@ FAREWELLS_MESSAGES = [
     f"NOOOOOOOOOOOOOOOOOOOOOO...O\nTask: Calculate the partial sum of the sequence: "
     f"({(' ' + choice(['+', '*']) + ' ').join(['O₁', 'O₂', 'O₃', '...', 'On'])})\n"
     f"Given that it's {choice(['an arithmetic sequence (constant difference)', 'a geometric sequence (constant ratio)', 'a harmonic sequence', 'a fibonacci sequence'])}.\n"
-    f"Other details: Difference/Ratio={randint(1, 100)}, O₁={randint(1, 500)}, n={randint(1, 999)}.\n"
-    "Note: It's letter 'O', not zero '0'. Good luck :)",
+    f"Other details: Difference/Ratio={randint(1, 100)}, O₁={randint(1, 500)}, n={randint(1, 999)}\n"
+    "Note: It's letter 'O' not zero '0'. Good luck :)",
     "I have an existential crisis every time I try to calculate the square root of a negative number. "
     "I’m pretty sure the imaginary number 'i' (i = √-1, i² = -1) is just a regular number that failed its reality check. "
     "Turns out, the entire universe depends on this one number that doesn't actually exist.",
@@ -159,11 +168,11 @@ FAREWELLS_MESSAGES = [
     "essentially making it a decimal nomad with no fixed address in the numeric universe.",
     "Parallel lines have a truly tragic love story: they are absolutely destined to meet at infinity, "
     "but they spend all of eternity getting absolutely nowhere.",
-    "The concept of infinity (ꝏ) is basically just a number that got detention "
+    "The concept of infinity (∞) is basically just a number that got detention "
     "forever and will never be allowed to go home and finish its equation.",
     "Zero (0) is the most dangerous number in the universe; it can multiply anything into oblivion "
     "and yet it is utterly empty, a total void of mathematical consequence.",
-    "The Empty Set (∅) is the world's most exclusive club: absolutely nothing is inside, "
+    "The Empty Set (ø) is the world's most exclusive club: absolutely nothing is inside, "
     "which makes its bouncer the most tragically overpaid mathematical entity.",
     
     # Serious
@@ -182,7 +191,7 @@ FAREWELLS_MESSAGES = [
     "Hint: Gemini web interface too slow or laggy? have a potato computer like mine? this is why Py-CLI was created!",
     "Hint: You can change interface colors from 'settings.py'!",
     "Hint: You can disable colors from settings, this will switch to black/white mode.",
-    "Hint: If you see random characters in the console (like '\033[96m'), then disable ANSI codes from settings.",
+    "Hint: If you see random characters in the console (like '\ 0 3 3 [ 9 6 m'), then disable ANSI codes from settings.",
     "Hint: Error logging is ON by default, you may use it to send me errors. You can also turn it OFF if you wish.",
     "Hint: Console width is best set to (80) or more, for Windows Command Prompt users, (79) is better.",
     "Hint: Forgot how to use Gemini Py-CLI? type 'help' to see a very short and friendly menu; there is also "
@@ -191,10 +200,31 @@ FAREWELLS_MESSAGES = [
     "start forgetting things, and the program might need more time while loading/saving chat.",
     "Hint: Some options may slightly affect performances, like response typing effect, word suggestion & completion, error logging, etc."
     "You can turn them OFF at any time.",
-    "Hint: Colors may not work in old consoles, like Windows Command Prompt; Either disable them, "
-    "or use a better console emulator; ConEmu is a recommended very lightweight option.",
+    "Hint: Colors & ANSI codes may not work in old consoles, like Windows Command Prompt; either disable them, "
+    "or use a better console emulator; ConEmu is a recommended very lightweight option for Windows.",
     "Hint: You are always encouraged to use a modern console emulator; If the console is old, the program "
     "is still hardcoded to work, but with limited functionality, and so limited experience.",
+    "Hint: ANSI codes are the way we tell the console to show colors and some other effects, "
+    "but they're not compatible with every console.",
+    "Advice: At night, consider enabling dark mode & night light (warmth) mode to protect your eyes, "
+    "you'll get used to them over time believe me ;)"
+    
+    # Quotes
+    "If you change the way you look at things, the things you at change...",
+    "The best time to plant a tree was 20 years ago. The second best time is now.",
+    "We don't see things as they are, we see them as we are.",
+    "The eye sees only what the mind is prepared to comprehend.",
+    "To simply observe is to understand.",
+    "I used to think that the brain was the most wonderful organ in my body. Then I realized who was telling me this.",
+    "My fake plants died because I forgot to pretend to water them.",
+    "When nothing is going right, go left!",
+    "Two things are infinite: the universe and human stupidity; and I'm not sure about the universe.",
+    "Before you diagnose yourself with depression or low self-esteem, first make "
+    "sure that you are not, in fact, just surrounded by assholes.",
+    "The problem with the world is that the intelligent people are full of doubts, "
+    "while the stupid ones are full of confidence.",
+    "When a man opens a car door for his wife, it's either a new car or a new wife :3",
+    "The way we see the problem is the problem ;)",
 ]
  
 CONTINUE_MESSAGES = [
@@ -205,23 +235,26 @@ CONTINUE_MESSAGES = [
     
     # Funny
     'Acting blind...',
-    'He chooses to fight on!',
     "Don't just mess with the keyboard next time.",
     'Oof...',
     'Hmmm...',
     'Oops...',
+    'I smell doubt...',
+    'I can feel something bad is coming...',
+    'Nevermind...',
+    'Aha! wait.. what were we talking about?',
+    'Exit failed successfully.',
+    'This is a messing around...',
+    
+    # Enthusiastic
     'Yeah, this is ma boi!',
+    'He chooses to fight on!',
     'Your tenacity is.. endearing!',
     'We have a tireless avenger here!',
     'Relax, the best part is still ahead!',
-    'I smell doubt...',
     'Something good is about to happen...',
-    'I can feel something bad is coming...',
-    'This is what I like to hear!',
-    'Nevermind...',
     'What a smart move!',
-    'Aha! wait.. what were we talking about?',
-    'Exit failed successfully.',
+    'This is what I like to hear!',
 ]
 
 
@@ -241,8 +274,8 @@ IMPLICIT_INSTRUCTIONS = """
 
 
 # Coming Soon Settings
-SUPPRESS_CATCHED_ERRORS = False             # Not yet implemented
-SUPPRESS_UNEXPECTED_ERRORS = False          # Not yet implemented
+SUPPRESS_CATCHED_ERRORS = False             # Never show catched errors.
+SUPPRESS_UNEXPECTED_ERRORS = False          # Never show fatal errors, let it be a sudden exit.
 NO_QUESTIONS = False                        # Never ask the user for anything.
 
 
@@ -253,5 +286,4 @@ NO_QUESTIONS = False                        # Never ask the user for anything.
 MAX_HISTORY_MESSAGES = MAX_HISTORY_MESSAGES // 2 * 2    # Keep history messages in an even number (User-AI turns).
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vi', 'emacs'): VIM_EMACS_MODE = None
-
 if not sys.stdout.isatty(): USE_ANSI = False    # Hide ANSI characters if the output is being redirected to a non-terminal location.

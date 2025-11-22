@@ -41,7 +41,6 @@ give
 good
 great
 health
-help
 history
 how
 idea
@@ -175,12 +174,21 @@ structure
 syntax
 variable
 
-quit
-exit
+help
+help-2
 clear
-about
 copy
-restart
-see-last
+show
 save-last
 save-chat
+pop-last
+restore-last
+restore-all
+del-prompt
+about
+license
+discard
+kill
+quit
+exit
+restart

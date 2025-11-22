@@ -8,7 +8,8 @@ if __name__ == '__main__':
 # Import Custom Modules
 try:
     from settings import *
-    if LOG_ON: from logger import *
+    if ERROR_LOG_ON: from error_logger import log_caught_exception
+    if GLOBAL_LOG_ON: from global_logger import setup_global_console_logger, in_time_log
 
 except Exception as error:
     raise
@@ -33,8 +34,9 @@ try:
     import traceback
     from threading import Thread
     from datetime import datetime
-    from random import randint, choice
+    from random import randint, choice, uniform
     from time import sleep, perf_counter, time as now_time
+    from shutil import copy as copy_file, move as move_file
     from pyperclip import PyperclipException, copy as clip_copy
     from httpcore import RemoteProtocolError, ConnectError, ConnectTimeout, ReadTimeout
     from prompt_toolkit import prompt
@@ -78,6 +80,18 @@ except (KeyboardInterrupt, EOFError):
     quit(0)
 
 
+# Prepare the global logger.
+if GLOBAL_LOG_ON:
+    # Define the visual clutter to hide from global log.
+    OMIT_LIST = [
+        # "Keys: (UP/DOWN)",
+        # "Commands: (quit/exit)",
+    ]
+
+    # Initialize.
+    setup_global_console_logger(ignore_strings=OMIT_LIST)
+
+
 
 
 
@@ -98,6 +112,7 @@ class Keys():
     INTERRUPT = ('c-c', 'c-d')
     UNDO = 'c-z'
     REDO = 'c-y'
+    F_KEYS = {'f1': 'show', 'f2': 'copy', 'f3': 'restart', 'f4': 'quit', 'f5': 'discard', 'f6': 'kill'}
 
     # Define variables.
     redo_fallback_stack = []
@@ -155,6 +170,16 @@ class Keys():
                 buffer.text = restored_text
                 buffer.cursor_position = self.first_diff_index(before_redo, restored_text) + 1
         
+        for key, command in self.F_KEYS.items():
+            # Had to give each function a different name because somehow it was getting overwritten each loop.
+            exec("@key_bindings.add(key)\n"
+                f"def {key}_{command}(event):\n"
+                      # Quickly execute a command by its F-Key.
+                 "    original_text = event.cli.current_buffer.text\n"
+                 "    if SAVE_INPUT_ON_STOP: self.save_history(original_text)\n"
+                f"    event.cli.current_buffer.text = '{command}'\n"
+                f"    event.cli.exit(result='{command}')")
+
         for key in self.NEW_LINE:
             if not isinstance(key, tuple): key = (key,)
             @key_bindings.add(*key)
@@ -177,7 +202,7 @@ class Keys():
                     self.trim_input_buffer(event)
                     if SAVE_INPUT_ON_STOP: self.save_history(original_text)
                     event.cli.exit(exception=KeyboardInterrupt())
-
+        
         return key_bindings
     
     def trim_input_buffer(self, event):
@@ -212,10 +237,14 @@ class Keys():
         return min_len
 
 class GeminiWorker(Thread):
-    """A worker thread to run & control the asynchronous (unblockable) API call."""
+    """
+    A worker thread to run & control the asynchronous (unblockable) API call.
+    Set to 'daemon' so the thread is terminated automatically on main program
+    exit or on exception (like KeyboardInterrupt).
+    """
     def __init__(self, chat_session, user_input, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.daemon = True      # Set to daemon so the process is terminated automatically on main program exit.
+        self.daemon = True
         self.chat = chat_session
         self.user_input = user_input
         self.response = None
@@ -281,7 +310,7 @@ def catch_no_api_key():
     box(msg_1, msg_2, msg_3, msg_4, title='NO API KEY PROVIDED', border_color=RED, text_color=RED)
 
 def catch_client_error_startup(error):
-    if LOG_ON: log_caught_exception()
+    if ERROR_LOG_ON: log_caught_exception()
     msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}.\n"
     msg_2 = f"{RED}Check your settings, especially the API key validation or limits."
     msg_3 = f"{GR}For a new key, visit: {UL}https://aistudio.google.com/app/api-keys{RS}"
@@ -290,7 +319,7 @@ def catch_client_error_startup(error):
     box(msg_1, msg_2, msg_3, msg_4, msg_5, title='CLIENT SIDE ERROR', border_color=RED, text_color=RED, secondary_color=RED)
 
 def catch_client_error_in_chat(error):
-    if LOG_ON: log_caught_exception()
+    if ERROR_LOG_ON: log_caught_exception()
     msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}.\n"
     msg_2 = f"{YLW}Check your settings, especially the API key validation or limits."
     msg_3 = f"{YLW}If you exceeded characters limit (like hundreds of thousands of\n{YLW}characters), shorten your prompt!"
@@ -298,7 +327,7 @@ def catch_client_error_in_chat(error):
     box(msg_1, msg_2, msg_3, msg_4, title='CLIENT SIDE ERROR', border_color=RED, text_color = RED, secondary_color=RED)
 
 def catch_server_error_startup(error_occurred, attempts):
-    if LOG_ON: log_caught_exception()
+    if ERROR_LOG_ON: log_caught_exception()
     MAX_ATTEMPTS, DELAY_1, DELAY_2 = SERVER_ERROR_ATTEMPTS, *SERVER_ERROR_DELAY
     if not error_occurred:
         separator('\n', color=RED)
@@ -327,14 +356,21 @@ def catch_server_error_startup(error_occurred, attempts):
     
 def catch_server_error_in_chat():
     global confirm_separator
-    if LOG_ON: log_caught_exception()
+    if ERROR_LOG_ON: log_caught_exception()
     MAX_ATTEMPTS, DELAY_1, DELAY_2 = SERVER_ERROR_ATTEMPTS, *SERVER_ERROR_DELAY
     
     confirm_separator = False
     separator('\n', color=RED)
     cprint(f"{RED}A temporary server problem occurred.")
     cprint(f'It might be a service overloading, maintenance or backend errors...')
-    print_status(lambda: quick_sleep(DELAY_1), f'Retrying in {DELAY_1} seconds...', 'yellow')
+    
+    try:
+        print_status(lambda: quick_sleep(DELAY_1), f'Retrying in {DELAY_1} seconds...', 'yellow')
+        
+    except Interruption:
+        separator(color=RED)
+        cprint()
+        return
     
     response = None
     for attempt in range(SERVER_ERROR_ATTEMPTS):
@@ -365,12 +401,17 @@ def catch_server_error_in_chat():
         except ClientError as error:
             separator(color=RED)
             catch_client_error_in_chat(error)
-            return None
+            return
         
         except NetworkExceptions:
             separator(color=RED)
             catch_network_error()
-            return None
+            return
+        
+        except Interruption:
+            separator(color=RED)
+            cprint()
+            return
             
     confirm_separator = True
     separator(color=RED)
@@ -379,7 +420,7 @@ def catch_server_error_in_chat():
 
 def catch_network_error():
     global user_input
-    if LOG_ON: log_caught_exception()
+    if ERROR_LOG_ON: log_caught_exception()
     if restarting: clear_lines()
     error = traceback.format_exc().lower()
     
@@ -404,7 +445,7 @@ def catch_network_error():
 
 def catch_exception(error):
     global confirm_separator
-    if LOG_ON: log_caught_exception()
+    if ERROR_LOG_ON: log_caught_exception()
     separator('\n', color=RED)
     log_error(f'An error occurred:\n"{error}"')
     if not NO_ERROR_DETAILS:
@@ -426,7 +467,7 @@ def catch_exception(error):
     separator(color=RED, end='\n\n')
 
 def catch_fatal_exception(error):
-    if LOG_ON: log_caught_exception()
+    if ERROR_LOG_ON: log_caught_exception(level='critical')
     separator('\n', color=RED)
     cprint(f"{GR + BD}Congratulations! You found it. It's a BUG!")
     cprint(f"To be honest, I'm really sorry for that.")
@@ -450,9 +491,9 @@ def catch_fatal_exception(error):
     sys_exit(1)
 
 def catch_keyboard_interrupt():
-    msg_1 = f"{GR}Prompt cancelled, skipping..."
-    msg_2 = f'{GR}Rest assured, Google has no idea about what you just sent (probably ;-;).'
-    box(msg_1, msg_2, title='KEYBOARD INTERRUPTION', border_color=GR)
+    msg_1 = f"Prompt cancelled, skipping..."
+    msg_2 = f'Rest assured, Google has no idea about what you just sent (probably ;-;).'
+    box(msg_1, msg_2, title='KEYBOARD INTERRUPTION', border_color=GR, text_color=GR, secondary_color=GR)
 
 
 
@@ -469,7 +510,7 @@ def cprint(text='', end='\n', wrap=True, flush=True):
     """
     # Wrap even if LENGTH = CONSOLE_WIDTH so that '\n' stays in the same line
     text = str(text)
-    if wrap and (len(text) >= CONSOLE_WIDTH):
+    if wrap and (visual_len(text) >= CONSOLE_WIDTH):
         lines = text.split('\n')
         wrapped_lines = []
         
@@ -487,13 +528,13 @@ def cprint(text='', end='\n', wrap=True, flush=True):
     stdout_write(text + end)
     if flush: stdout_flush()
 
-def print_status(action, text='Waiting...', color='green'):
+def print_status(action: callable, text='Waiting...', color='green'):
     """Display a vital text so that the program doesn't feel stuck."""
     with console.status(status=f"[bold {color}]{text}[/bold {color}]",
                         spinner=SPINNER):
         action()
 
-def log_error(text, style='red', offset=3):
+def log_error(text: str, style='red', offset=3):
     """
     Display a special message for errors, including time and line.
     
@@ -557,7 +598,7 @@ def clear_lines(lines_to_erase=1):
     for _ in range(lines_to_erase):
         cprint('\033[A\033[2K', end='')
 
-def visual_len(text_with_ansi):
+def visual_len(text_with_ansi: str):
     """Returns the visible length of a string, ignoring ANSI codes."""
     # ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
     return len(ANSI_ESCAPE.sub('', text_with_ansi))
@@ -569,7 +610,7 @@ def separator(before='', after='', char='─', color=GRY, width=CONSOLE_WIDTH, e
     console.print(color + before + char * width + after + RS,
                   end=end, no_wrap=True, soft_wrap=True, overflow='ignore')
 
-def box(*texts, title='Message', border_color='', text_color='', secondary_color='', width=CONSOLE_WIDTH):
+def box(*texts: str, title='Message', border_color='', text_color='', secondary_color='', width=CONSOLE_WIDTH):
     """
     Draw a box using standard ASCII characters, respecting ANSI colors inside.
     
@@ -642,59 +683,106 @@ def welcome_screen():
     f"{RS}"
     )
 
-    terminal(CLEAR_COMMAND)
+    system(CLEAR_COMMAND)
     separator()
     cprint(f"{GR}Welcome to {gemini_logo_string}{GR} Py-CLI! (An API-based chat)", wrap=False)
     cprint(f"Chat Initialized (Type '{UL}help{RS}{GR}' for a quick start.){RS}\n", wrap=False)
  
-def help():
+def help(short=False):
     """Print a quick cheatsheet."""
-    MESSAGE = f"""
+    LONG = f"""
     1) First Thing First:
        -Get an API key from: {UL}https://aistudio.google.com/app/api-keys{RS}
         and paste it in 'settings.py' (first few lines). Remember, it's free,
         easy to get, and generous for the free tier (Just requires an account).
-       -You can change other settings if you wish (e.g: The used Gemini model).
+       -You can change other settings if you wish (e.g: The Gemini model).
     
     2) Keyboard Shortcuts (While in Prompt):
        -ENTER to send.
        -CTRL-SPACE, SHIFT-TAB or CTRL-J to add a new line to your prompt
         (SHIFT-ENTER won't work, and it will submit your text!)
-       -CTRL-C to clear / cancel a prompt, stop a response, or quit.
+       -CTRL-C or CTRL-D to clear / cancel a prompt, stop a response, or quit.
+        (If you press it earlier upon submitting prompt, you will have a chance
+        that google won't receive it at all)
        -UP/DOWN arrows to navigate between input lines / history prompts,
         or to accept word suggestions.
     
     3) Special Commands (While in Prompt):
-       -'quit' or 'exit' to leave.
        -'clear' to clear the screen.
+       -'show' to show last AI response.
        -'copy' to copy last AI response to clipboard.
-       -'see-last' to see last AI response.
        -'save-last' to save last AI response to a text file.
         (You will lose the formatting style and colors!)
        -'save-chat' to save the whole chat to a readable text file.
+       -'discard' to destroy everything done in current session and restart.
+        (Won't affect log files & manually saved content)
+       -'kill' to destroy everything done in current session and exit.
+       -'quit' or 'exit' to leave.
        -'restart' for a quick session restart.
-       -'help' for this guide menu.
-       -'about' for program information.
-       -'license' for copyright.
+    
+    4) F-Keys & Their Commands:
+       -F1: show
+       -F2: copy
+       -F3: quit
+       -F4: restart
+       -F5: discard
+       -F6: kill
        
-    4) More Shortcuts:
+    5) More Shortcuts:
        -CTRL-Z/CTRL-Y to undo/redo.
        -CTRL-L to clear screen.
        -CTRL-R (Reverse Search) to search backward & find the most recent
         match in prompt history, keep pressing to move, press ESC to cancel.
        -CTRL-S (Forward Search) used after CTRL-R to find older matches,
-        keep pressing to move, press ESC to cancel.
+        keep pressing to move, press ESC to cancel or confirm.
        -Ctrl-X-Ctrl-E (Unix/Linux) to use an external editor for complex input,
-        once closed, edits are registered.
+        once the editor is closed, changes are registered.
     
-    5) Limitations:
+    6) More Commands:
+       -'pop-last' to remove the last message pair from history; you can use
+        it multiple times to remove messages in a row, or type 'pop-last 3'
+        for example to remove last (3) messages pairs.
+        (Permanent, takes effect at next session)
+       -'pop-all' to clear chat history, future messages won't be affected.
+        (May cause an extra delay at exit)
+       -'restore-last' to restore last removed message(s) pair(s), you can use
+        it multiple times if you deleted many times.
+       -'restore-all' to restore all of the deleted messages.
+       -'del-prompt' to delete the whole prompt history file, and lose all
+        past history, future prompts won't be affected (No cancel option!).
+       -'about' for program information.
+       -'license' for copyright.
+    
+    7) Limitations:
        -Tables with many columns will appear chaotic.
        -Special characters (Like LaTeX syntax) will appear as a plain text.
-       -Some other bugs I didn't discover yet :)
+       -Some other bugs I didn't discover yet :/
     """
     
-    MESSAGE = textwrap.dedent(MESSAGE).lstrip('\n').rstrip()
-    box(MESSAGE, title='HELP MENU', border_color=YLW, text_color=YLW, secondary_color=YLW,)
+    SHORT = f"""
+    1) First:
+       -Get an API key from: {UL}https://aistudio.google.com/app/api-keys{RS}
+        and paste it in 'settings.py' (first few lines). it's free,
+        easy to get, and generous (Just requires an account).
+    
+    2) Hotkeys:
+       -ENTER to send.
+       -CTRL-SPACE to add a new line to your prompt.
+       -CTRL-C to clear / cancel a prompt, stop a response, or quit.
+       -UP/DOWN arrows to navigate between input lines / history prompts,
+        or to accept word suggestions.
+    
+    3) Commands:
+       -'show' to show last AI response.
+       -'copy' to copy last AI response to clipboard.
+       -'quit' or 'exit' to leave.
+       -'help' for this guide menu.
+       {GR}-'help-2' for the full guide (Don't worry, not too long).{RS}
+    """
+    
+    message = SHORT if short else LONG
+    message = textwrap.dedent(message).lstrip('\n').rstrip()
+    box(message, title='HELP MENU', border_color=YLW, text_color=YLW, secondary_color=YLW)
 
 def farewell(confirmed=False):
     """
@@ -746,18 +834,16 @@ def farewell(confirmed=False):
     sys_exit(0)
  
 if RESPONSE_EFFECT:
-    def get_styled_lines(text: str) -> list[Text]:
+    def get_styled_lines(markdown: Markdown) -> list[Text]:
         """
         Takes raw Markdown text, renders it into rich segments, flattens the result,
         assembles it into a single styled Text object, and returns it split into 
         a list of styled lines. This is the shared core logic for all typewriter effects.
         * If you didn't understand this, fine, nor did I.
         """
-        formatted_response = Markdown(text)
-
         # 1. Render the Markdown object to internal segments.
         segments: RenderResult = list(console.render(
-            formatted_response,
+            markdown,
             console.options
         ))
         
@@ -780,85 +866,82 @@ if RESPONSE_EFFECT:
         output_lines = full_text.split('\n')
         return output_lines
 
-    def print_markdown_line(text: str, delay_seconds: float = 0.05):
+    def print_markdown_line(markdown: Markdown, delay_seconds: float = 0.05):
         """
         Take a string & Convert it to Markdown object.
         Print fully formatted Markdown content line-by-line with a delay.
         """
-        output_lines = get_styled_lines(text)
+        global current_response_line
+        output_lines = get_styled_lines(markdown)
+        console.show_cursor(False)
+        current_response_line = 0
         
         # Print the styled lines one by one with a delay
-        console.show_cursor(False)
         for line in output_lines:
-            console.print(line) 
+            console.print(line)
+            current_response_line += 1
             sleep(delay_seconds)
 
-    def print_markdown_word(text: str, delay_seconds: float = 0.09):
+    def print_markdown_word(markdown: Markdown, delay_seconds: float = 0.09):
         """
         Prints fully formatted Markdown content word-by-word with a delay.
         Uses slicing and regex to preserve formatting and correct spacing.
         """
-        output_lines = get_styled_lines(text)
+        global current_response_line
+        output_lines = get_styled_lines(markdown)
+        console.show_cursor(False)
+        current_response_line = 0
 
         # 3. Print the styled content word by word
-        console.show_cursor(False)
         for line in output_lines:
             if not str(line).strip():
                 # If the line contains only whitespace or is empty, print a newline and continue
                 console.print()
                 continue
                 
-            line_content = str(line)
             # Use regex to split text into [word, space, word, space, ...]
-            parts = WORD_AND_SPACE_PATTERN.split(line_content)
-            
-            current_pos = 0 
+            parts = WORD_AND_SPACE_PATTERN.split(str(line))
+            current_pos = 0
             
             for part in parts:
-                if not part:
-                    continue
-                
+                if not part: continue
                 part_length = len(part)
                 
-                # CRITICAL: Use slicing to get the styled segment
+                # Use slicing to get the styled segment
                 styled_part_segment = line[current_pos : current_pos + part_length]
                 
                 # Print the part (could be a word or a space block), without a final newline
-                console.print(styled_part_segment, end="")
+                console.print(styled_part_segment, end='')
+                if not current_pos: current_response_line += 1
                 
                 # Apply delay only if it's a word (non-whitespace)
-                if part.strip():
-                    sleep(delay_seconds)
+                if part.strip(): sleep(delay_seconds)
                 
                 current_pos += part_length
 
             # Print a final newline after the full line's content is printed
             console.print()
         
-    def print_markdown_char(text: str, delay_ms: float = 2.5):
+    def print_markdown_char(markdown: Markdown, delay_ms: float = 2.5):
         """
         Take a string & Convert it to Markdown object.
         Print fully formatted Markdown content character-by-character with a delay.
         """
-        output_lines = get_styled_lines(text)
+        global current_response_line
+        output_lines = get_styled_lines(markdown)
+        console.show_cursor(False)
+        current_response_line = 0
         
-        if 'fast' in RESPONSE_EFFECT:
-            isclose = math.isclose
-            wait = lambda: sleep_precise(delay_ms, isclose)
-            
-        elif 'slow' in RESPONSE_EFFECT:
-            wait = lambda: sleep(0.01)
-            
-        else:
-            wait = lambda: None
+        if 'fast' in RESPONSE_EFFECT: wait = lambda: sleep_precise(delay_ms, math.isclose)
+        elif 'slow' in RESPONSE_EFFECT: wait = lambda: sleep(0.01)
+        else: wait = lambda: None
 
         # 3. Print the styled content character by character
-        console.show_cursor(False)
         for line in output_lines:
             # Iterate over the length of the styled line object
+            current_response_line += 1
             for i in range(len(line)):
                 # Create a copy of the line and truncate it to just the current character (i to i+1)
-                char_segment = line.copy()
                 char_segment = line[i:i + 1]
                 
                 # Print the single, styled character without a final newline
@@ -866,7 +949,7 @@ if RESPONSE_EFFECT:
                 wait()
                 
             # After printing all characters in the line, print a newline
-            console.print() 
+            console.print()
     
     def sleep_precise(milliseconds, approximate):
         """
@@ -898,22 +981,22 @@ if SUGGEST_FROM_WORDLIST:
         except FileNotFoundError:
             pass
 
-if LOG_ON:
+if ERROR_LOG_ON:
     def shrink_log_file():
         """Shrinks the log file to a target size by keeping the most recent lines."""
         # Quick Check
         MAX_SIZE = LOG_SIZE * 1024 * 1024
-        if not os.path.exists(LOG_FILE): return
-        file_size = os.path.getsize(LOG_FILE) * 10
+        if not os.path.exists(ERROR_LOG_FILE): return
+        file_size = os.path.getsize(ERROR_LOG_FILE) * 10
         if file_size <= (MAX_SIZE): return
         
         # Open the log file
         try:
-            with open(LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+            with open(ERROR_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
                 all_lines = f.readlines()
         
         except:
-            if LOG_ON: log_caught_exception()
+            if ERROR_LOG_ON: log_caught_exception()
             return
             
         # Collect lines from the end in reverse order
@@ -939,9 +1022,8 @@ if LOG_ON:
         collected_lines.reverse()
         
         # Write the shrunk content to the new file
-        with open(LOG_FILE, 'w', encoding='utf-8') as f:
+        with open(ERROR_LOG_FILE, 'w', encoding='utf-8') as f:
             f.writelines(collected_lines)
-
 
 
 
@@ -952,13 +1034,23 @@ if LOG_ON:
 # 5) Part V: Main Functions ----------------------------------------------------
 def serialize_history():
     """Convert active chat history into a savable json."""
-    # Get history & Truncate it.
+    global messages_to_remove
+    # Get history & Exclude removed messages.
     history_list = chat.get_history()
+    
+    if messages_to_remove:
+        history_list = [item for idx, item in enumerate(history_list) if idx not in messages_to_remove]
+        messages_to_remove.clear()
+    
+    if not history_list: return []
+    
+    # Respect history max limit.
     if not NO_HISTORY_LIMIT:
         if len(history_list) > MAX_HISTORY_MESSAGES:
             messages_to_keep = history_list[-MAX_HISTORY_MESSAGES:]
             history_list = messages_to_keep
-            
+    
+    # Serialize it.
     serializable_history = [
         {
             'role': content.role,
@@ -1011,7 +1103,7 @@ def prune_history_file():
 
 def save_chat_history_json(up_separator=True, down_separator=True, hidden=False):
     """Save the chat history as a json file before quitting."""
-    global chat_saved
+    global chat_saved, messages_to_remove
     # Condition 1: Chat session must be active.
     try: active = bool(chat)
     except NameError: return
@@ -1020,15 +1112,20 @@ def save_chat_history_json(up_separator=True, down_separator=True, hidden=False)
     empty = chat.get_history() == []
     if empty: return
     
-    # Condition 3: Active session must be a new chat or an extension to the saved one.
+    # Condition 3: Active session must be a new chat or a modification to the saved one.
     try:
-        serializable_history = serialize_history()
-        new_history_json_str = json.dumps(serializable_history)
-        with open(CHAT_HISTORY_JSON, 'r', encoding='utf-8') as f:
-            old_history_dicts = json.load(f)
+        if messages_to_remove:      # Case 1: Messages were deleted.
+            changed = bool(messages_to_remove)
+            serializable_history = None
         
-        old_history_json_str = json.dumps(old_history_dicts)
-        changed = new_history_json_str != old_history_json_str
+        else:                       # Case 2: Messages were added.
+            serializable_history = serialize_history()
+            new_history_json_str = json.dumps(serializable_history)
+            with open(CHAT_HISTORY_JSON, 'r', encoding='utf-8') as f:
+                old_history_dicts = json.load(f)
+            
+            old_history_json_str = json.dumps(old_history_dicts)
+            changed = new_history_json_str != old_history_json_str
         
     except:
         serializable_history = None
@@ -1039,23 +1136,27 @@ def save_chat_history_json(up_separator=True, down_separator=True, hidden=False)
         if not hidden and up_separator: separator()
         if not hidden: cprint(GR + 'Saving chat history, one moment...' + RS)
         
-        if not serializable_history:
+        # Serialize history if not already done.
+        if serializable_history == None:
             try:
                 serializable_history = serialize_history()
             except Exception as error:
-                if LOG_ON: log_caught_exception()
+                if ERROR_LOG_ON: log_caught_exception()
                 if not hidden: cprint(f"{RED}Failed to save chat history: {error}!{RS}")
         
-        if serializable_history:
+        # Save chat, weither messages were added, removed or the entire chat was cleared.
+        if serializable_history or serializable_history == []:
             try:
                 with open(CHAT_HISTORY_JSON, 'w', encoding='utf-8') as f:
                     json.dump(serializable_history, f, indent=2)
                 
-                if not hidden:  cprint(f"{GR}Chat history saved!{RS}")
+                if not hidden:
+                    if serializable_history: cprint(f"{GR}Chat history saved!{RS}")
+                    else: cprint(f"{GR}Chat history saved & cleared!{RS}")
                 chat_saved = True
             
             except Exception as error:
-                if LOG_ON: log_caught_exception()
+                if ERROR_LOG_ON: log_caught_exception()
                 if not hidden: cprint(f"{RED}Failed to save chat history: {error}!{RS}")
                 
         if not hidden and down_separator: separator()
@@ -1090,7 +1191,7 @@ def save_chat_history_text():
             color = GR
         
         except Exception as error:
-            if LOG_ON: log_caught_exception()
+            if ERROR_LOG_ON: log_caught_exception()
             msg = f"Failed to save chat!\n{error}"
             color = RED
     
@@ -1107,7 +1208,7 @@ def get_last_response(command):
     Either save or display it.
     """
     last_response = None
-    msg = 'Checked both active & history mesages, but current conversation is empty.'
+    msg = 'Checked both active & history messages, but current conversation is empty.'
     color = YLW
     
     # Get last response from current session, if it's not active, check chat history.
@@ -1136,11 +1237,11 @@ def get_last_response(command):
             color = GR
         
         except Exception as error:
-            if LOG_ON: log_caught_exception()
+            if ERROR_LOG_ON: log_caught_exception()
             msg = f"Failed to save last response!\n{error}"
             color = RED
     
-    elif command == 'see-last' and last_response:
+    elif command == 'show' and last_response:
         # Display the last response.
         print_response(last_response, title='Last Gemini Response')
         return
@@ -1153,6 +1254,120 @@ def get_last_response(command):
     box(msg, title='STATUS', border_color=color, text_color=color)
     clear_lines()
 
+def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
+    """
+    Retrieves the last user message and model reply and stores them globally.
+    Then use them inside serialize_history() for elimnination.
+    """
+    global messages_to_remove
+    history = chat.get_history()
+    history_len = len(history) - len(messages_to_remove)
+    if remove_all: n_turns = history_len // 2
+    
+    # To remove the last completed turn, we need at least 2 messages.
+    if history_len == 0:
+        msg = 'Current conversation is empty :/'
+        color = YLW
+        
+    elif history_len == 1:
+        messages_to_remove.append(0)
+        messages_to_remove_steps.append(1)
+        msg = "Found only one message in the whole chat, from one side: '"
+        msg += 'You' if history[0].role == 'user' else 'Gemini'
+        msg += "'.\nSo chat history was cleared."
+        color = YLW
+        
+    else:
+        # Check for overflow.
+        msg = ''
+        overflow = None
+        if n_turns > history_len / 2:
+            n_turns = history_len // 2
+            msg = f'{RED}Overflow! falling back to current chat history length: ({n_turns}).\n'
+            overflow = True
+        
+        messages_to_remove_steps.append(0)
+        issue = None   
+        
+        for n in range(n_turns):
+            # Check for a complete turn (user + model).
+            last_role = history[-(1 + 2 * n)].role
+            second_to_last_role = history[-(2 + 2 * n)].role
+            
+            if last_role == 'model' and second_to_last_role == 'user':
+                i1 = history_len - (1 + 2 * n)
+                i2 = history_len - (2 + 2 * n)
+                messages_to_remove.extend([i1, i2])
+                messages_to_remove_steps[-1] += 2
+            
+            else:
+                # Something must be wrong.
+                issue = True
+                i = history_len - (1 + 2 * n)
+                messages_to_remove.append(i)     # Remove the last chat message, weither user or model.
+                messages_to_remove_steps[-1] += 1
+                
+                while history[-1].role == 'user':
+                    i = history_len - (1 + 2 * n)
+                    messages_to_remove.append(i) # Ensure sure the last chat message is the model response.
+                    messages_to_remove_steps[-1] += 1
+                
+        if n_turns == 1: msg += 'Last message pair removed!'
+        else: msg += f'Last ({n_turns}) messages pairs removed!'
+        color = GR
+        
+        if n_turns == history_len / 2:
+            if remove_all: msg += f"\n{YLW}Remember! you've cleared the chat history."
+            else: msg += f"\n{YLW}But know that you've removed all available chat messages."
+        
+        # Just in case, make sure the first message is not kept in case of overflow.
+        if overflow and (n_turns != history_len / 2):
+            messages_to_remove.append(0)
+            messages_to_remove_steps[-1] += 1
+            issue = True
+        
+        if issue:
+                msg += f'\n{YLW}Found a small problem in chat history, but it should have been fixed.'
+                msg += f"\n{YLW}You can check '{CHAT_HISTORY_JSON}' file later to eliminate doubt."
+    
+        msg += "\nChanges will take effect at next session, you can type 'restart' for a quick refresh."
+        
+    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
+    clear_lines()
+
+def restore_removed_messages(command):
+    """
+    Restore either every deleted message pair.
+    Or restore only the last popped/removed messages, so earlier removed ones will not be restored."""
+    global messages_to_remove, messages_to_remove_steps
+    
+    if messages_to_remove_steps:
+        if command == 'restore-last':
+            n = messages_to_remove_steps[-1]
+            for _ in range(n): messages_to_remove.pop()
+            messages_to_remove_steps.pop()
+            
+            x = int(n / 2)
+            if x == 1: msg = 'Last removed message pair was restored!'
+            else: msg = f'Last ({x}) removed messages pairs were restored!'
+            color = GR
+        
+        elif command == 'restore-all':
+            n = len(messages_to_remove)
+            messages_to_remove.clear()
+            messages_to_remove_steps.clear()
+            x = int(n / 2)
+            if x == 1: msg = 'Found only (1) deleted message, and it was restored.'
+            else:  msg = f'All ({x}) removed messages pairs were restored!'
+            color = GR
+        
+    else:
+        msg = "You didn't remove any message in current session."
+        color = YLW
+        
+    box(msg, title='STATUS', border_color=color, text_color=color)
+    clear_lines()
+    
 def load_chat_history():
     """Load chat history, if it meets the conditions."""
     global initial_history, confirm_separator
@@ -1193,7 +1408,7 @@ def load_chat_history():
                             parts = [Part(text=p['text']) for p in item['parts']]
                             initial_history.append(Content(role=item['role'], parts=parts))
                         except:
-                            if LOG_ON: log_caught_exception()
+                            if ERROR_LOG_ON: log_caught_exception()
                             errors += 1
                             if errors == 1:
                                 cprint(f"{RED}({errors}) partial error occurred during loading chat history.{RS}")
@@ -1204,7 +1419,8 @@ def load_chat_history():
                     
                     loaded_messages = len(initial_history)
                     if loaded_messages:
-                        cprint(f"{CYN}Loaded ({len(initial_history)}) history steps from '{CHAT_HISTORY_JSON}'.{RS}")
+                        n = len(initial_history)
+                        cprint(f"{CYN}Loaded ({n}) history steps / ({int(n / 2)}) messages pairs from '{CHAT_HISTORY_JSON}'.{RS}")
                     elif not loaded_messages and not errors:
                         cprint(f"{YLW}File '{CHAT_HISTORY_JSON}' seems to be empty.{RS}")
                     elif not loaded_messages and errors:
@@ -1215,14 +1431,14 @@ def load_chat_history():
                     break
                     
                 except Exception as error:
-                    if LOG_ON: log_caught_exception()
+                    if ERROR_LOG_ON: log_caught_exception()
                     cprint(f"{RED}Failed to load chat history ({error}).\n{YLW}Starting a new chat...{RS}")
                     initial_history = []
                     break
             
             elif load_history == 'n':
                 cprint(f"{YLW}Ignoring history...")
-                cprint(f"History will be overwritten after you send your first message.{RS}")
+                cprint(f"History will be overwritten at exit, if you send a message.{RS}")
                 break
                 
             else:
@@ -1259,11 +1475,11 @@ def setup_chat():
     
     while True:
         try:
-            # raise ServerError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
+            # if attempts == 0: raise ServerError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
             # raise ClientError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
             # raise httpx.RemoteProtocolError(message='Test')
             
-            # Client Initialization & API Validation
+            # Client Initialization.
             http_options = {
                 "timeout": HTTP_TIMEOUT * 1000, 
             }
@@ -1273,19 +1489,39 @@ def setup_chat():
                 http_options=http_options,
             )
             
-            if STARTUP_API_CHECK: client.models.list()
+            # API Validation.
+            if STARTUP_API_CHECK:
+                try:
+                    if attempts: cprint(GR + '◊ Sending request...' + RS)
+                    client.models.list()
+                    if attempts:
+                        clear_lines()
+                        cprint(GR + 'Response received!' + RS)
+                        separator(color=RED)
+                
+                except ServerError:
+                    if attempts: clear_lines()
+                    raise    
+                    
+                except:
+                    if attempts: separator(color=RED)
+                    raise
             
-            # Welcome Screen & Notes...
+            # Preparation & Welcome Screen...
             while True:
                 try:
-                    if SUGGEST_FROM_WORDLIST: load_word_completer()                   
+                    if SUGGEST_FROM_WORDLIST: load_word_completer()
+                    try: copy_file(PROMPT_HISTORY_FILE, PROMPT_HISTORY_FILE + '.bak')
+                    except: pass
+                    
+                    console.set_window_title('Gemini Py-CLI')
                     welcome_screen()
                     load_chat_history()
                     
                     if SUGGEST_FROM_WORDLIST and not word_completer:
                         # Don't ask why I print then clean then print, I personally don't know.
                         cprint('\033[2K')
-                        cprint(f"{YLW}Word suggestion is ON, but '{WORDLIST_FILE}' file is missing!{RS}")
+                        cprint(f"{YLW}Suggestions from a wordlist is ON, but '{WORDLIST_FILE}' file is missing!{RS}")
                         separator(end='')
                         
                     break
@@ -1311,7 +1547,7 @@ def setup_chat():
 
         except ClientError as error:
             catch_client_error_startup(error)
-            help()
+            help(short=True)
             sys_exit(1)
         
         except ServerError as error:
@@ -1362,12 +1598,18 @@ def get_user_input():
             search_ignore_case=True,
             enable_open_in_editor=True,
             lexer=lexer,
-            set_exception_handler=lambda loop, context: None,
+            set_exception_handler=lambda *args, **kwargs: None,
         )
         
     except Interruption:
         farewell()
         return None
+    
+    # Log.
+    if GLOBAL_LOG_ON:
+        if rprompt: in_time_log(' ' * (CONSOLE_WIDTH - len(rprompt)) + rprompt + '\n')
+        else: in_time_log(' ')
+        in_time_log(' You > ' + user_input)
         
     # Return input.
     if user_input.strip():
@@ -1378,24 +1620,74 @@ def get_user_input():
 
 def interpret_commands(command):
     """If the user input is a special command, execute it."""
+    global discarding, history
+    
     if command == 'quit' or command == 'exit':
         cprint()
         farewell(confirmed=True)
     
     elif command == 'help':
+        help(short=True)
+        clear_lines()    
+        
+    elif command == 'help-2':
         help()
         clear_lines()
         
     elif command == 'clear':
-        # If alternate screen is ON, this won't affect the main screen.
-        terminal(CLEAR_COMMAND)
-
-    elif command  in ('save-last', 'see-last', 'copy'):
+        system(CLEAR_COMMAND)
+    
+    elif command  in ('save-last', 'show', 'copy'):
         get_last_response(command)
         
     elif command == 'save-chat':
         save_chat_history_text()
 
+    elif command.startswith('pop-last'):
+        if len(command) > 8: n_turns = int(float(command[8:]))
+        else: n_turns = 1
+        store_last_turn_for_exclusion(n_turns)  
+        
+    elif command.startswith('pop-all'):
+        store_last_turn_for_exclusion(remove_all=True)
+    
+    elif command in ['restore-last', 'restore-all']:
+        restore_removed_messages(command)
+    
+    elif command == 'del-prompt':
+        try:
+            os.remove(PROMPT_HISTORY_FILE)
+            history = FileHistory(PROMPT_HISTORY_FILE)
+            msg = f"File '{PROMPT_HISTORY_FILE}' removed successfully."
+            msg += "\nIf you ever cancel, type 'discard', else it'll be lost permanently."
+            color = GR
+        except FileNotFoundError:
+            msg = f"File '{PROMPT_HISTORY_FILE}' not found!"
+            color = YLW
+        except Exception as e:
+            msg = f"An error occurred: {e}."
+            color = RED
+        
+        box(msg, title='STATUS', border_color=color, text_color=color)
+        clear_lines()
+    
+    elif command == 'discard':
+        discarding = True
+        try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
+        except: pass
+        history = FileHistory(PROMPT_HISTORY_FILE)
+        box('Discarding current session...', title='DISCARD', border_color=YLW, text_color=YLW)
+        clear_lines()
+        raise SoftRestart
+    
+    elif command == 'kill':
+        discarding = True
+        try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
+        except: pass
+        box('Clearing recent messages & Quitting...', title='DISCARD & KILL', border_color=YLW, text_color=YLW)
+        clear_lines()
+        raise SystemExit
+        
     elif command == 'restart':
         raise SoftRestart
     
@@ -1422,11 +1714,11 @@ def get_response():
         # 1. Preparation.
         cprint()
         status_messages = [
-            f'[bold {WAIT_1}]Sending message...[/bold {WAIT_1}]',
+            f'[bold {WAIT_1}]Sending Message...[/bold {WAIT_1}]',
             f'[bold {WAIT_1}]Analysis...[/bold {WAIT_1}]',
             f'[bold {WAIT_1}]Thinking...[/bold {WAIT_1}]',
-            f'[bold {WAIT_1}]Generating response...[/bold {WAIT_1}]',
-            f'[bold {WAIT_1}]Receiving response...[/bold {WAIT_1}]',
+            f'[bold {WAIT_1}]Generating Response...[/bold {WAIT_1}]',
+            f'[bold {WAIT_1}]Receiving Response...[/bold {WAIT_1}]',
             f'[bold {WAIT_2}]Response is taking longer than usual...[/bold {WAIT_2}]',
         ]
         
@@ -1451,7 +1743,7 @@ def get_response():
                     message_index = 0
                     while active():
                         # Sleep in short, responsive chunks.
-                        delay = randint(*STATUS_UPDATE_DELAY)
+                        delay = uniform(*STATUS_UPDATE_DELAY)
                         slept_time = 0.0
                         while active() and (slept_time < delay):
                             worker.join(SLEEP_INTERVAL)
@@ -1465,8 +1757,6 @@ def get_response():
                             message_index += 1
                             status.update(status=status_messages[message_index])
 
-
-                
                 if worker.exception: raise worker.exception
                 response = worker.response
                 clear_lines()
@@ -1495,6 +1785,7 @@ def get_response():
         catch_network_error()
  
     except Interruption:
+        # Our thread is a daemon, so it's already killed here.
         catch_keyboard_interrupt()
     
     except Exception as error:
@@ -1514,41 +1805,52 @@ def print_response(response, title='Gemini'):
         # Prepare the response
         if not isinstance(response, str): response = response.text
         cprint(f"{GEM_BG}{GR}\n {title}: {RS}")
+        formatted_response = Markdown(response)
+        
+        # Clear the hidden console & Print the response to it.
+        temp_console.clear
+        temp_console.print(formatted_response)
+        
+        # Count the number of blank lines at the end of the output (Caused by Markdown() class).
+        exported_text = temp_console.file.getvalue()
+        lines = exported_text.splitlines()[-15:]
+        
+        lines_to_remove = 0
+        for line in reversed(lines):
+            striped_line = ANSI_ESCAPE.sub('', line).strip()
+            if not striped_line: lines_to_remove += 1
+            else: break
         
         # Display response according to the effect.
         if RESPONSE_EFFECT:
             if RESPONSE_EFFECT == 'line':
-                print_markdown_line(response)
+                print_markdown_line(formatted_response)
             
             elif RESPONSE_EFFECT == 'word':
-                print_markdown_word(response)
+                print_markdown_word(formatted_response)
             
             elif 'char' in RESPONSE_EFFECT:
-                print_markdown_char(response)
+                print_markdown_char(formatted_response)
         
-        else:
-            # Clear the hidden console & Print the response to it.
-            temp_console.clear
-            formatted_response = Markdown(response)
-            temp_console.print(formatted_response)
-            
-            # Count the number of blank lines at the end of the output (Caused by Markdown() class).
-            exported_text = temp_console.file.getvalue()
-            lines = exported_text.splitlines()[-15:]
-            
-            lines_to_remove = 0
-            for line in reversed(lines):
-                striped_line = ANSI_ESCAPE.sub('', line).strip()
-                if not striped_line: lines_to_remove += 1
-                else: break
-            
-            # Print response.
+        # Print response without animation.
+        else:           
             console.print(formatted_response)
-            clear_lines(lines_to_remove)
-            stdout_flush()
+        
+        # A quick cleanup.
+        clear_lines(lines_to_remove)
+        stdout_flush()
     
     except Interruption:
-        cprint()
+        # Clear empty lines from blocked response.
+        if RESPONSE_EFFECT != 'line': cprint()
+        if RESPONSE_EFFECT and current_response_line:
+            blocked_response = reversed(exported_text.splitlines()[:current_response_line])
+            for line in blocked_response:
+                striped_line = ANSI_ESCAPE.sub('', line).strip()
+                if not striped_line: clear_lines()
+                else: break
+        
+        # Inform.
         box(
             f'{GR}Response blocked (but saved!), skipping the rest of it...',
             title='KEYBOARD INTERRUPTION',
@@ -1579,7 +1881,7 @@ def run_chat():
 
             # Get & Print Response
             response = get_response()
-            if not response: continue
+            if not response or type(response) is type(None): continue
             print_response(response)
 
         except Interruption:
@@ -1599,6 +1901,10 @@ word_completer = None                           # Has a True value only if the P
 keys = Keys().get_key_bindings()                # The custom keyboard shortcuts.
 chat_saved = False                              # True after the chat has been saved.
 restarting = False                              # Session restart flag.
+discarding = False                              # Session discard flag.
+messages_to_remove = []                         # Store selected messages for deletion at exit.
+messages_to_remove_steps = []                   # Used to undo messages removal.
+current_response_line = 0                       # Used to clean output upon blocking a response.
 
 # Define global constants.
 CONTENT_WIDTH = CONSOLE_WIDTH - 4               # The width of characters inside box(), (4) is the sum of left & right borders.
@@ -1611,10 +1917,11 @@ HISTORY_PATTERN = re.compile(                   # Used to shrink PROMPT_HISTORY_
 )
 
 # Assign modules functions (To avoid repeated name resolution/lookup).
-terminal = os.system                            # Send commands to the system.
+system = os.system                            # Send commands to the system.
 sys_exit = sys.exit
 stdout_write = sys.stdout.write                 # Write to stdout.
 stdout_flush = sys.stdout.flush                 # Flush the stdout for immediate output displaying.
+
 # Create necessary instances.
 history = FileHistory(PROMPT_HISTORY_FILE)      # Prompt history file path (To cycle through history while streaming input).
 auto_suggest = None                             # Suggest words based on user prompt history.
@@ -1628,13 +1935,16 @@ console_theme = Theme({                         # Hyperlinks may not be clear, s
 
 console = Console(                              # Our main console, though not always used.
     width=CONSOLE_WIDTH,
-    theme=console_theme
+    theme=console_theme,
+    no_color=not USE_COLORS,    # 
+    highlight=USE_COLORS,
+    # color_system arg controls the overall color support, accepts "auto", "standard", "256", "truecolor", or None to disable all color output.
 )
 
 temp_console = Console(                         # A hidden console to capture uncertain output before displaying it.
     file=io.StringIO(),
     width=CONSOLE_WIDTH,
-    force_terminal=True
+    force_terminal=True,
 )
 
 prompt_message = FormattedText([                       # User prompt message.
@@ -1677,7 +1987,9 @@ if __name__ == '__main__':
         
         except SoftRestart:
             # A hidden chat save.
-            save_chat_history_json(hidden=True)
+            if not discarding:
+                save_chat_history_json(hidden=True)
+                discarding = False
             # Restart.
             msg = 'Restarting chat session...'
             box(msg, title='SESSION RESTART', border_color=CYN, text_color=CYN)
@@ -1698,6 +2010,8 @@ if __name__ == '__main__':
                 sys_exit(1)
         
         finally:
-            # Save chat history & Clean log file.
-            if not chat_saved: save_chat_history_json(hidden=True)
-            if LOG_ON: shrink_log_file()
+            # Save chat history & Clean log file & prompt backup.
+            if not chat_saved and not discarding: save_chat_history_json(hidden=True)
+            if ERROR_LOG_ON: shrink_log_file()
+            try: os.remove(PROMPT_HISTORY_FILE + '.bak')
+            except: pass
