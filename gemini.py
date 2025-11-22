@@ -320,7 +320,7 @@ def catch_client_error_startup(error):
 
 def catch_client_error_in_chat(error):
     if ERROR_LOG_ON: log_caught_exception()
-    msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}.\n"
+    msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}\n"
     msg_2 = f"{YLW}Check your settings, especially the API key validation or limits."
     msg_3 = f"{YLW}If you exceeded characters limit (like hundreds of thousands of\n{YLW}characters), shorten your prompt!"
     msg_4 = f"{YLW}Restarting the session might also help (Type 'restart')."
@@ -450,7 +450,8 @@ def catch_exception(error):
     log_error(f'An error occurred:\n"{error}"')
     if not NO_ERROR_DETAILS:
         try:
-            see_error = input(f"See the details? (y/n) ").strip().lower()
+            see_error = input("See the details? (y/n): ").strip().lower()
+            if GLOBAL_LOG_ON: in_time_log(f"See the details? (y/n): {see_error}")
         except Interruption:
             confirm_separator = False
             cprint()
@@ -477,7 +478,8 @@ def catch_fatal_exception(error):
     log_error(f'A fatal error occurred:\n"{error}"\nAnd the program has to QUIT.')
     
     if not NO_ERROR_DETAILS:
-        see_error = input("See the details? (y/n) ").strip().lower()
+        see_error = input("See the details? (y/n): ").strip().lower()
+        if GLOBAL_LOG_ON: in_time_log(f"See the details? (y/n): {see_error}")
         if see_error == 'y':
             cprint(RED + traceback.format_exc().strip() + RS)
         else:
@@ -750,6 +752,9 @@ def help(short=False):
        -'restore-all' to restore all of the deleted messages.
        -'del-prompt' to delete the whole prompt history file, and lose all
         past history, future prompts won't be affected (No cancel option!).
+       -'del-all' to wipe private files: chat + prompt history + log files.
+        (No cancel option!)
+       -'clear-log' to clear both log files, future logging won't be affected.
        -'about' for program information.
        -'license' for copyright.
     
@@ -803,6 +808,7 @@ def farewell(confirmed=False):
         while True:
             try:
                 confirm = input(text).lower().strip()
+                if GLOBAL_LOG_ON: in_time_log(text + confirm)
                 break
             except Interruption:
                 # Stubborn Mode (To avoid accidental exit)
@@ -981,6 +987,39 @@ if SUGGEST_FROM_WORDLIST:
         except FileNotFoundError:
             pass
 
+if ERROR_LOG_ON and GLOBAL_LOG_ON:
+    def clear_log_files():
+        """Open log files, clear them, close."""
+        error_log = 0
+        global_log = 0
+        
+        try:
+            with open(ERROR_LOG_FILE, 'w', encoding='utf-8'): pass
+        except:
+            error_log += 1
+        
+        try:
+            with open(GLOBAL_LOG_FILE, 'w', encoding='utf-8'): pass
+        except:
+            global_log += 1
+        
+        if error_log and global_log:
+            msg = "Couldn't delete log files!"
+            color = RED
+            
+        elif error_log:
+            msg = f"File '{ERROR_LOG_FILE}' was deleted.\nBut '{GLOBAL_LOG_FILE}' wasn't!"
+            
+        elif global_log:
+            msg = f"File '{GLOBAL_LOG_FILE}' was deleted.\nBut '{ERROR_LOG_FILE}' wasn't!"
+            
+        else:
+            msg = 'Log files deleted!'
+            color = GR
+            
+        box(msg, title='LOG CLEANUP', border_color=color, text_color=color)
+        clear_lines()
+
 if ERROR_LOG_ON:
     def shrink_log_file():
         """Shrinks the log file to a target size by keeping the most recent lines."""
@@ -1031,7 +1070,51 @@ if ERROR_LOG_ON:
 
 
 
+
 # 5) Part V: Main Functions ----------------------------------------------------
+def del_all():
+    """Nuclear option, performs a factory reset for the program data."""
+    global discarding
+    
+    # Warning.
+    cprint()
+    separator(color=YLW)
+    to_remove_files = [ERROR_LOG_FILE, GLOBAL_LOG_FILE, CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT, LAST_RESPONSE_FILE, PROMPT_HISTORY_FILE]
+    cprint(f'{YLW}WARNING! The program will exit & wipe the following files:')
+    for file in to_remove_files: cprint('- ' + file)
+    cprint('')
+    
+    # Confirm.
+    text = f"Are you sure you want to reset everything? (y/n): {RS}"
+    confirm = None
+    
+    while True:
+        try:
+            confirm = input(text).lower().strip()
+            if GLOBAL_LOG_ON: in_time_log(text + confirm)
+            break
+        except Interruption:
+            cprint()
+            break
+    
+    # Cancel.
+    if confirm != 'y':
+        cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+        separator(color=YLW)
+        return
+    
+    # Do it.
+    cprint(GR + 'Clearing everything & Quitting...')
+    separator(color=YLW)
+    discarding = True
+    for file in to_remove_files:
+        try:
+            with open(file, 'w', encoding='utf-8'): pass
+        except:
+            pass
+    
+    raise SystemExit
+
 def serialize_history():
     """Convert active chat history into a savable json."""
     global messages_to_remove
@@ -1386,11 +1469,13 @@ def load_chat_history():
             useful = content != '[]'
     
     if file_exist and not empty and useful:
-        answer = f"{CYN}Chat history available, load it? (y/n):{RS} "
+        question = f"{CYN}Chat history available, load it? (y/n):{RS} "
         invalid_answer = False
         while True:
             try:
-                load_history = input(answer).lower().strip()
+                load_history = input(question).lower().strip()
+                if GLOBAL_LOG_ON: in_time_log(question + load_history)
+                
             except:
                 cprint()
                 confirm_separator = False
@@ -1443,7 +1528,7 @@ def load_chat_history():
                 
             else:
                 if invalid_answer: clear_lines()
-                answer = CYN + "Either 'Yes' or 'No' (y/n): " + RS
+                question = CYN + "Either 'Yes' or 'No' (y/n): " + RS
                 invalid_answer = True
     
     elif not file_exist:
@@ -1609,7 +1694,7 @@ def get_user_input():
     if GLOBAL_LOG_ON:
         if rprompt: in_time_log(' ' * (CONSOLE_WIDTH - len(rprompt)) + rprompt + '\n')
         else: in_time_log(' ')
-        in_time_log(' You > ' + user_input)
+        in_time_log(' You >  ' + user_input)
         
     # Return input.
     if user_input.strip():
@@ -1671,6 +1756,9 @@ def interpret_commands(command):
         box(msg, title='STATUS', border_color=color, text_color=color)
         clear_lines()
     
+    elif command == 'clear-log':
+        clear_log_files()
+    
     elif command == 'discard':
         discarding = True
         try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
@@ -1684,9 +1772,13 @@ def interpret_commands(command):
         discarding = True
         try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
         except: pass
-        box('Clearing recent messages & Quitting...', title='DISCARD & KILL', border_color=YLW, text_color=YLW)
+        msg = 'Clearing recent messages & Quitting...\nManually saved messages & logs are kept!'
+        box(msg, title='DISCARD & KILL', border_color=YLW, text_color=YLW)
         clear_lines()
         raise SystemExit
+    
+    elif command == 'del-all':
+        reset_all()
         
     elif command == 'restart':
         raise SoftRestart
@@ -1714,11 +1806,11 @@ def get_response():
         # 1. Preparation.
         cprint()
         status_messages = [
-            f'[bold {WAIT_1}]Sending Message...[/bold {WAIT_1}]',
+            f'[bold {WAIT_1}]Sending message...[/bold {WAIT_1}]',
             f'[bold {WAIT_1}]Analysis...[/bold {WAIT_1}]',
             f'[bold {WAIT_1}]Thinking...[/bold {WAIT_1}]',
-            f'[bold {WAIT_1}]Generating Response...[/bold {WAIT_1}]',
-            f'[bold {WAIT_1}]Receiving Response...[/bold {WAIT_1}]',
+            f'[bold {WAIT_1}]Generating response...[/bold {WAIT_1}]',
+            f'[bold {WAIT_1}]Receiving response...[/bold {WAIT_1}]',
             f'[bold {WAIT_2}]Response is taking longer than usual...[/bold {WAIT_2}]',
         ]
         

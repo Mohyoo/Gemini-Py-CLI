@@ -185,10 +185,12 @@ pop-last
 restore-last
 restore-all
 del-prompt
+clear-log
 about
 license
 discard
 kill
+del-all
 quit
 exit
 restart

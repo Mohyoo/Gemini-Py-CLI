@@ -6,8 +6,10 @@ import threading
 from settings import GLOBAL_LOG_FILE
 
 # A quick cleanup.
-try: os.remove(GLOBAL_LOG_FILE)
-except: pass
+try:
+    with open(GLOBAL_LOG_FILE, 'w', encoding='utf-8'): pass
+except:
+    pass
 
 # ANSI stripping regex - captures standard colors (CSI) AND Window Titles/Links (OSC).
 ANSI_ESCAPE_PATTERN = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\].*?(?:\x07|\x1B\\))')
@@ -24,7 +26,8 @@ LOG_LEVEL_MAP = {
 LOG_LEVEL_NAME = 'DEBUG'    # The level used for logging.
 LOG_LEVEL_INT = LOG_LEVEL_MAP[LOG_LEVEL_NAME]
 LOG_FORMAT = '%(asctime)s - T:%(threadName)-10s - %(levelname)-8s | %(message)s'
-LOG_ROOT = True             # If True, it'll log main thread + other thread + libraries debugging messages.
+LOG_ROOT = False            # If True, it'll log main thread + other threads + libraries debugging messages.
+LINE_SEPARATOR = '-'        # If LOG_ROOT is ON, this'll add a separator if the thread or the module who's logging changes.
 
 original_stdout = None      # Used to keep console output intact.
 console_logger = None       # An instance of the logger.
@@ -88,31 +91,59 @@ class StdoutTee:
         return getattr(self.original_stdout, name)
 
 
-class ThreadSeparatorFilter(logging.Filter):
-    """Inserts a separator line when the logging thread changes."""
-    def __init__(self, logger):
-        super().__init__()
-        # Start tracking from the main thread's name
-        self.last_thread_name = threading.main_thread().name
-        self.logger = logger # Need access to the logger to inject the separator
-
-    def filter(self, record):
-        current_thread_name = record.threadName
+class SeparatingFileHandler(logging.FileHandler):
+    """
+    A custom file handler that inserts a separator line 
+    when the logging thread or the logging library changes.
+    """
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Use a non-existent name initially
+        self.last_thread_name = ''
+        self.last_logger_name = ''
+        self.switched = False
         
-        if current_thread_name != self.last_thread_name:
-            # 1. Temporarily remove the filter to prevent infinite recursion
-            self.logger.removeFilter(self)
-            
-            # 2. Inject the separator log entry at a low level (e.g., INFO)
-            self.logger.info("-" * 80)
-            
-            # 3. Re-add the filter
-            self.logger.addFilter(self)
-            
-            # 4. Update the tracking variable
+    def emit(self, record):
+        """Write the separator."""
+        current_thread_name = record.threadName
+        current_logger_name = record.name
+        
+        # Define the possible names for your application's logger
+        APP_LOGGER_NAMES = ('root', 'console_output_tee')
+        
+        # Check for change in thread OR logger
+        thread_changed = current_thread_name != self.last_thread_name
+        
+        # Check for change in log source (App -> Lib or Lib -> App)
+        is_app = current_logger_name in APP_LOGGER_NAMES
+        last_is_app = self.last_logger_name in APP_LOGGER_NAMES if self.last_logger_name else True
+        source_changed = self.switched and (is_app != last_is_app)
+        
+        if thread_changed or source_changed:
+            if self.stream is None:
+                self.stream = self._open()
+
+            # Separate and label if there was a previous log entry
+            if self.switched:
+                if thread_changed and not source_changed:
+                    separator_line = f"{LINE_SEPARATOR * 6} THREAD SWITCHED TO: {current_thread_name} {LINE_SEPARATOR * (18 - len(current_thread_name))}|{LINE_SEPARATOR * 100}\n"
+                elif source_changed:
+                    if is_app:
+                        separator_line = f"{LINE_SEPARATOR * 6} APPLICATION LOGS RESUME {LINE_SEPARATOR * 15}|{LINE_SEPARATOR * 100}\n"
+                    else:
+                        separator_line = f"{LINE_SEPARATOR * 6} LIBRARY: {current_logger_name} {LINE_SEPARATOR * (29 - len(current_logger_name))}|{LINE_SEPARATOR * 100}\n"
+                else: # Should only be a thread change
+                    separator_line = f"{LINE_SEPARATOR * 6} THREAD SWITCHED TO: {current_thread_name} {LINE_SEPARATOR * (18 - len(current_thread_name))}|{LINE_SEPARATOR * 100}\n"
+                
+                # Write separator line
+                self.stream.write(separator_line)
+
+            # Update the trackers
             self.last_thread_name = current_thread_name
-            
-        return True # Always allow the current log record to pass
+            self.last_logger_name = current_logger_name # <<< NEW TRACKER UPDATE
+            self.switched = True
+        
+        super().emit(record)
 
 
 def setup_global_console_logger(log_file=GLOBAL_LOG_FILE, ignore_strings=None):
@@ -133,20 +164,22 @@ def setup_global_console_logger(log_file=GLOBAL_LOG_FILE, ignore_strings=None):
     console_logger.setLevel(LOG_LEVEL_INT)
     
     # delay=True ensures the file is only created when we actually write to it
-    file_handler = logging.FileHandler(log_file, encoding='utf-8', delay=True)
+    if LOG_ROOT: file_handler = SeparatingFileHandler(log_file, encoding='utf-8', delay=True)
+    else: file_handler = logging.FileHandler(log_file, encoding='utf-8', delay=True)
     
     # Simplified format: Just the timestamp and the message
     formatter = logging.Formatter(LOG_FORMAT, datefmt='%Y-%m-%d %H:%M:%S')
     file_handler.setFormatter(formatter)
     file_handler.setLevel(LOG_LEVEL_INT)
     console_logger.addHandler(file_handler)
-    console_logger.addFilter(ThreadSeparatorFilter(console_logger))
-
+    
+    # Inject the logger into StdoutTee
     sys.stdout = StdoutTee(original_stdout, console_logger, ignore_strings)
     in_time_log(f"Global logger initialized to '{log_file}'.")
 
 def in_time_log(text: str):
     """Logs custom text directly to the file logger, bypassing the StdoutTee."""
+    text = ANSI_ESCAPE_PATTERN.sub('', text)
     if console_logger:
         for line in text.splitlines():
             log_method = getattr(console_logger, LOG_LEVEL_NAME.lower())

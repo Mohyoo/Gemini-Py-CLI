@@ -9,7 +9,6 @@ from random import randint, choice
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
-GEMINI_API_KEY = 'AIzaSyDAEzqRTdH2JVOqdQrmCtq7gtxwCjg1V3s'
 GEMINI_MODEL = 'gemini-2.5-flash'           # Advanced models are more expensive and have less API limits.
 MAX_HISTORY_MESSAGES = 512                  # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 ENTER_NEW_LINE = False                      # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
