@@ -112,6 +112,7 @@ class Keys():
     INTERRUPT = ('c-c', 'c-d')
     UNDO = 'c-z'
     REDO = 'c-y'
+    SELECT_ALL = 'c-a'
     F_KEYS = {'f1': 'show', 'f2': 'copy', 'f3': 'restart', 'f4': 'quit', 'f5': 'discard', 'f6': 'kill'}
 
     # Define variables.
@@ -169,6 +170,16 @@ class Keys():
                 restored_text = self.redo_fallback_stack.pop()
                 buffer.text = restored_text
                 buffer.cursor_position = self.first_diff_index(before_redo, restored_text) + 1
+        
+        # @key_bindings.add(self.SELECT_ALL)
+        # def _(event):
+            # """Selects the entire content of the current buffer."""
+            # buffer = event.cli.current_buffer
+            # text = buffer.text
+            # if not text : return
+            # for _ in range(len(text)): buffer.cursor_left()
+            # buffer.start_selection()
+            # for _ in range(len(text)): buffer.cursor_right()
         
         for key, command in self.F_KEYS.items():
             # Had to give each function a different name because somehow it was getting overwritten each loop.
@@ -450,8 +461,8 @@ def catch_exception(error):
     log_error(f'An error occurred:\n"{error}"')
     if not NO_ERROR_DETAILS:
         try:
+            if GLOBAL_LOG_ON: in_time_log("See the details? (y/n):")
             see_error = input("See the details? (y/n): ").strip().lower()
-            if GLOBAL_LOG_ON: in_time_log(f"See the details? (y/n): {see_error}")
         except Interruption:
             confirm_separator = False
             cprint()
@@ -478,8 +489,8 @@ def catch_fatal_exception(error):
     log_error(f'A fatal error occurred:\n"{error}"\nAnd the program has to QUIT.')
     
     if not NO_ERROR_DETAILS:
+        if GLOBAL_LOG_ON: in_time_log("See the details? (y/n):")
         see_error = input("See the details? (y/n): ").strip().lower()
-        if GLOBAL_LOG_ON: in_time_log(f"See the details? (y/n): {see_error}")
         if see_error == 'y':
             cprint(RED + traceback.format_exc().strip() + RS)
         else:
@@ -804,11 +815,11 @@ def farewell(confirmed=False):
         confirm_separator = True
         wrong_answer = 0
         text = f"{YLW}Are you sure you want to quit? (y/n): {RS}"
+        if GLOBAL_LOG_ON: in_time_log(text)
         
         while True:
             try:
                 confirm = input(text).lower().strip()
-                if GLOBAL_LOG_ON: in_time_log(text + confirm)
                 break
             except Interruption:
                 # Stubborn Mode (To avoid accidental exit)
@@ -1071,6 +1082,9 @@ if ERROR_LOG_ON:
 
 
 
+
+
+
 # 5) Part V: Main Functions ----------------------------------------------------
 def del_all():
     """Nuclear option, performs a factory reset for the program data."""
@@ -1086,12 +1100,12 @@ def del_all():
     
     # Confirm.
     text = f"Are you sure you want to reset everything? (y/n): {RS}"
+    if GLOBAL_LOG_ON: in_time_log(text)
     confirm = None
     
     while True:
         try:
             confirm = input(text).lower().strip()
-            if GLOBAL_LOG_ON: in_time_log(text + confirm)
             break
         except Interruption:
             cprint()
@@ -1470,11 +1484,12 @@ def load_chat_history():
     
     if file_exist and not empty and useful:
         question = f"{CYN}Chat history available, load it? (y/n):{RS} "
+        if GLOBAL_LOG_ON: in_time_log(question)
         invalid_answer = False
+        
         while True:
             try:
                 load_history = input(question).lower().strip()
-                if GLOBAL_LOG_ON: in_time_log(question + load_history)
                 
             except:
                 cprint()
@@ -1543,12 +1558,13 @@ def setup_chat():
     global restarting, chat_saved
     if GEMINI_API_KEY == "YOUR_API_KEY_HERE":
         catch_no_api_key()
-        help()
+        help(short=True)
         sys_exit(1)
     
     # Loading Screen
     if not restarting:
-        clear_lines(3)
+        print()
+        clear_lines(4)
         print('+' + '-' * 77 + '+')
         print("| Loading chat..." + ' ' * 61 + '|')
         print('+' + '-' * 77 + '+')
@@ -1656,7 +1672,13 @@ def get_user_input():
     if INFORMATIVE_RPROMPT:
         current_time = datetime.now().strftime('%I:%M %p')
         rprompt = f"[{GEMINI_MODEL} | {current_time}]"
-
+    
+    # Log.
+    if GLOBAL_LOG_ON:
+        if rprompt: in_time_log(' ' * (CONSOLE_WIDTH - len(rprompt)) + rprompt + '\n')
+        else: in_time_log(' ')
+        in_time_log(' You >  ' + str(prompt_placeholder[0][1]))
+        
     # Stream input.
     try:
         user_input = prompt(
@@ -1689,12 +1711,6 @@ def get_user_input():
     except Interruption:
         farewell()
         return None
-    
-    # Log.
-    if GLOBAL_LOG_ON:
-        if rprompt: in_time_log(' ' * (CONSOLE_WIDTH - len(rprompt)) + rprompt + '\n')
-        else: in_time_log(' ')
-        in_time_log(' You >  ' + user_input)
         
     # Return input.
     if user_input.strip():
@@ -1778,7 +1794,7 @@ def interpret_commands(command):
         raise SystemExit
     
     elif command == 'del-all':
-        reset_all()
+        del_all()
         
     elif command == 'restart':
         raise SoftRestart

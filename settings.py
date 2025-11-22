@@ -41,12 +41,13 @@ STARTUP_API_CHECK = False                   # Disable for a slightly faster load
 SAVE_INPUT_ON_CLEAR = False                 # Save the prompt to history when the user clears its prompt with Ctrl-C.
 SAVE_INPUT_ON_STOP = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys.
 ERROR_LOG_ON = True                         # To log errors to a file, console output won't be affected.
-GLOBAL_LOG_ON = True                        # To log the entire console output to a file, it gets cleared on each launch, visual console output won't be affect.
+GLOBAL_LOG_ON = True                        # To log the entire console output to a file + optionally hidden debugging info,
+                                                # it gets cleared on each launch, visual console output won't be affect.
 
 
 # Very Advanced Settings
 LAST_RESPONSE_FILE = 'last_response.txt'    # To save last Gemini response in a text file.
-WORDLIST_FILE = 'word_suggestion.txt'       # A small wordlist used for word suggestion.
+WORDLIST_FILE = 'word_suggestion.txt'       #A small wordlist used for word suggestion.
 CHAT_HISTORY_JSON = 'chat_history.json'     # To save/load chat history to/from a json file (If available).
 CHAT_HISTORY_TEXT = 'chat_history.txt'      # To save chat history as a simple text file (If available).
 PROMPT_HISTORY_FILE = 'prompt_history.txt'  # To load prompt history (If available).
@@ -61,13 +62,13 @@ SERVER_ERROR_ATTEMPTS = 3                   # How many times to try to get a res
 SERVER_ERROR_DELAY = (3, 5)                 # 1st to wait upon first server error attempt, then 2nd for next attempts.
 HTTP_TIMEOUT = 30                           # Timeout for the entire request, after which the API call is blocked & a timeout error gets raised.
 STATUS_UPDATE_DELAY = (1.5, 3)              # Fake random delay to update the status shown while waiting for response (Doesn't add extra delays, all safe).
-SLEEP_INTERVAL = 0.1                        # Small chunks used as intervals with sleeping functions, to keep UI responsive.
+SLEEP_INTERVAL = 0.1                        #Small chunks used as intervals with sleeping functions, to keep UI responsive.
 
 
 # Colors
 if USE_COLORS and USE_ANSI:
     # By ANSI code (Used in print() & cprint())
-    CYN     = '\033[96m'    # Cyan
+    CYN     = '\033[96m'    # Red
     RED     = '\033[91m'    # Red
     GR      = '\033[92m'    # Green
     YLW     = '\033[93m'    # Yellow
@@ -132,8 +133,8 @@ FAREWELLS_MESSAGES = [
     "If a poison expires, then it becomes more poisonous or less poisonous? (o.O)",
     "Cheese has holes.\nMore cheese = More holes.\nMore holes = Less cheese.\nMore cheese = Less cheese (O.O)",
     "You are breathing involuntary; but now that you knew, you have to breath voluntary :P",
-    "Cleaning crime scene...\nAlright! ready to escape."
-    "Normal mode OFF, switching to Agent Six..."
+    "Cleaning crime scene...\nAlright! ready to escape.",
+    "Normal mode OFF, switching to Agent Six...",
     
     # Enthusiastic
     "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
@@ -190,7 +191,7 @@ FAREWELLS_MESSAGES = [
     "Hint: Gemini web interface too slow or laggy? have a potato computer like mine? this is why Py-CLI was created!",
     "Hint: You can change interface colors from 'settings.py'!",
     "Hint: You can disable colors from settings, this will switch to black/white mode.",
-    "Hint: If you see random characters in the console (like '\ 0 3 3 [ 9 6 m'), then disable ANSI codes from settings.",
+    "Hint: If you see random characters in the console (like '\\033[96m'), then disable ANSI codes from settings.",
     "Hint: Error logging is ON by default, you may use it to send me errors. You can also turn it OFF if you wish.",
     "Hint: Console width is best set to (80) or more, for Windows Command Prompt users, (79) is better.",
     "Hint: Forgot how to use Gemini Py-CLI? type 'help' to see a very short and friendly menu; there is also "
@@ -262,13 +263,15 @@ MOUSE_SUPPORT = False                       # Use mouse to edit user prompt.
 VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vi', 'emacs' or None.
 IMPLICIT_INSTRUCTIONS_ON = False            # Hidden instructions to help organize the responses for CLI.
 IMPLICIT_INSTRUCTIONS = """
-    You are an AI assistant specialized for command-line interface (CLI) output, with a fixed width of 80 characters.
-    Before replying to any message, follow these mandatory formatting rules:
-    
-    1.  **Math/Equations:** Avoid TeX typesetting (e.g., $..$, \frac). If complex math is absolutely necessary OR requested by the user, you MUST use a Markdown fenced code block with the 'latex' tag (```latex...```).
-    2.  **Width Constraint:** The entire response (including lists, code blocks, and tables) must not exceed 80 characters per line.
-    3.  **Tables:** If a table's columns cause the line length to **exceed 80 characters**, you must split the table into two or more separate tables, or format it as a list to ensure terminal compatibility.
-    4.  **Formatting:** Use standard Markdown (bold, italics, lists, headers). Avoid excessive graphical elements.
+You are an AI assistant specialized for command-line interface (CLI) output, with a fixed width of 80 characters.
+Before replying to any message, follow these mandatory formatting rules:
+
+1.  **Math/Equations:** Avoid TeX typesetting (e.g., $..$, rac). If complex math is absolutely necessary
+      OR requested by the user, you MUST use a Markdown fenced code block with the 'latex' tag (```latex...```).
+2.  **Width Constraint:** The entire response (including lists, code blocks, and tables) must not exceed 80 characters per line.
+3.  **Tables:** If a table's columns cause the line length to **exceed 80 characters**, you must split the table
+      into two or more separate tables, or format it as a list to ensure terminal compatibility.
+4.  **Formatting:** Use standard Markdown (bold, italics, lists, headers). Avoid excessive graphical elements.
 """
 
 
@@ -285,4 +288,4 @@ NO_QUESTIONS = False                        # Never ask the user for anything.
 MAX_HISTORY_MESSAGES = MAX_HISTORY_MESSAGES // 2 * 2    # Keep history messages in an even number (User-AI turns).
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vi', 'emacs'): VIM_EMACS_MODE = None
-if not sys.stdout.isatty(): USE_ANSI = False    # Hide ANSI characters if the output is being redirected to a non-terminal location.
+if not sys.stdout.isatty(): USE_ANSI = False            # Hide ANSI characters if the output is being redirected to a non-terminal location.
