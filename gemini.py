@@ -283,7 +283,7 @@ if SUGGEST_FROM_WORDLIST:
         """Overrides WordCompleter to enforce a limit on the number of returned completions."""
         def get_completions(self, document, complete_event):
             # Do not complete after whitespaces.
-            if document.text.endswith((' ', '\t', '\n')):
+            if document.text.endswith((' ', '\t', '\n', '\r', '\x0b', '\x0c')):
                 return
                 
             # Call the base class's method to get all completions.
@@ -745,6 +745,7 @@ def help(short=False):
         that google won't receive it at all)
        -UP/DOWN arrows to navigate between input lines / history prompts,
         or to accept word suggestions.
+       -CTRL-Z/CTRL-Y to undo/redo.
     
     3) Special Commands (While in Prompt):
        -'clear' to clear the screen.
@@ -753,34 +754,26 @@ def help(short=False):
        -'remember' at prompt start to save it with high priority.
         (Saved info are shared across all chat sessions).
        -'saved-info' to open the saved info file for manual edit.
+        (Changes take effect at next session)
        -'save-last' to save last AI response to a text file.
         (You will lose the formatting style and colors!)
        -'save-chat' to save the whole chat to a readable text file.
+       -'restart' for a quick session restart.
+       -'quit' or 'exit' to leave.
        -'discard' to destroy everything done in current session and restart.
         (Won't affect log files & manually saved content)
        -'kill' to destroy everything done in current session and exit.
-       -'quit' or 'exit' to leave.
-       -'restart' for a quick session restart.
     
     4) F-Keys & Their Commands:
        -F1: show
        -F2: copy
-       -F3: quit
-       -F4: restart
+       -F3: restart
+       -F4: quit
        -F5: discard
        -F6: kill
-       
-    5) More Shortcuts:
-       -CTRL-Z/CTRL-Y to undo/redo.
-       -CTRL-L to clear screen.
-       -CTRL-R (Reverse Search) to search backward & find the most recent
-        match in prompt history, keep pressing to move, press ESC to cancel.
-       -CTRL-S (Forward Search) used after CTRL-R to find older matches,
-        keep pressing to move, press ESC to cancel or confirm.
-       -Ctrl-X-Ctrl-E (Unix/Linux) to use an external editor for complex input,
-        once the editor is closed, changes are registered.
+       -F7: help
     
-    6) More Commands:
+    5) More Commands:
        -'open' to open the program's directory.
        -'pop-last' to remove the last message pair from history; you can use
         it multiple times to remove messages in a row, or type 'pop-last 3'
@@ -798,6 +791,16 @@ def help(short=False):
        -'clear-log' to clear both log files, future logging won't be affected.
        -'about' for program information.
        -'license' for copyright.
+    
+    6) More Shortcuts (System / Terminal Dependent):
+       -CTRL-L to clear screen.
+       -CTRL-R (Reverse Search) to search backward & find the most recent
+        match in prompt history, keep pressing to move, press ESC to cancel
+        or confirm.
+       -CTRL-S (Forward Search) used after CTRL-R to find older matches,
+        keep pressing to move.
+       -Ctrl-X-Ctrl-E (Unix/Linux) to use an external editor for complex input,
+        once the editor is closed, changes are registered.
     
     7) Limitations:
        -Tables with many columns will appear chaotic.
@@ -1108,25 +1111,33 @@ if ERROR_LOG_ON:
 if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
     def load_system_instructions():
         """
-        Load & Return system instructions to AI at startup.
-        They can be either implicit instructions, or saved info, or both.
+        - Load system instructions at startup; they can be either implicit orders,
+          saved info, or both.
+        - Then return the configuration object.
         """
         system_instructions = ''
         
+        # Check saved info first.
         if SAVED_INFO and os.path.exists(SAVED_INFO_FILE):
             try:
                 with open(SAVED_INFO_FILE, 'r', encoding='utf-8') as f:
                     saved_info_content = f.read().strip()
                 if saved_info_content: 
-                    system_instructions += 'User Saved Information:\n' + saved_info_content + '\n\n'
+                    system_instructions += 'User Saved Information:\n' + saved_info_content + '\n\n\n'
             except:
                 if ERROR_LOG_ON: log_caught_exception()
                 pass
-            
+        
+        # Check implicit order.
         if IMPLICIT_INSTRUCTIONS_ON and IMPLICIT_INSTRUCTIONS.strip():
             system_instructions += 'Your Implicit Instructions as AI:\n' + IMPLICIT_INSTRUCTIONS.strip()
         
-        return system_instructions
+        # Create the configuration object if available.
+        config = None
+        if system_instructions:
+            config = GenerateContentConfig(system_instruction=system_instructions)
+                
+        return config
 
 
 
@@ -1689,9 +1700,8 @@ def setup_chat():
             
             # Start chat session with/out the system instructions (Implicit orders + saved info).
             config = None
-            system_instructions = load_system_instructions()
-            if system_instructions:
-                config = GenerateContentConfig(system_instruction=system_instructions)
+            if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
+                config = load_system_instructions()
             
             chat = client.chats.create(
                 model=GEMINI_MODEL,
@@ -2187,12 +2197,12 @@ keys = Keys().get_key_bindings()                       # The custom keyboard sho
 if __name__ == '__main__':
     while True:
         try:
+            # raise ValueError('Test' * 25)
+            # raise KeyboardInterrupt
+            
             # Load & Start chat client & session.
             client, chat = setup_chat()
-            if chat:
-                # raise ValueError('Test' * 25)
-                # raise KeyboardInterrupt
-                run_chat()
+            if chat: run_chat()
         
         except SoftRestart:
             # A hidden chat save.

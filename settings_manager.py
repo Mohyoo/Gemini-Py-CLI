@@ -12,28 +12,65 @@ import questionary
 # - 'type': 'bool', 'select', 'text' or 'digit'.
 # - 'options': A list of choices (only required if type is 'select')
 
+SPACE = ' ' * 13
 MANAGED_SETTINGS = [
     {
         'key': 'GEMINI_API_KEY',
-        'desc': 'Your Google API key; you can get it easily from:\n             https://aistudio.google.com/app/api-keys\n',
+        'desc': 'Your Google API key; you can get it easily from:\n             '
+                'https://aistudio.google.com/app/api-keys\n',
         'type': 'text'
     },
     {
         'key': 'GEMINI_MODEL',
-        'desc': 'The AI model to use; advanced models are more expensive and have less API limits.',
+        'desc': 'The AI model to use; advanced models are more expensive and\n' + SPACE +
+                'have less API limits. These are aliases to the latest versions\n' + SPACE +
+                'For more specific models, read: Reference/AI Models\n',
         'type': 'select',
-        'options': ['gemini-2.5-flash', 'gemini-pro', 'gemini-1.5-pro', 'gemini-ultra']
+        'options': ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest']
     },
     {
         'key': 'MAX_HISTORY_MESSAGES',
-        'desc': 'Maximum number of chat history messages to keep; keep it low to save internet bandwidth & loading/saving time.',
+        'desc': 'Maximum number of chat history messages to keep; set it low\n' + SPACE +
+                'to save internet bandwidth & loading/saving time.\n',
         'type': 'digit'
-    },    
+    },
+    {
+        'key': 'NO_HISTORY_LIMIT',
+        'desc': 'When True, chat history will never be truncated.',
+        'type': 'bool'
+    },     
     {
         'key': 'ENTER_NEW_LINE',
-        'desc': 'If True, Enter inserts a new line, and Esc-Enter submits;\n             '
+        'desc': 'If True, Enter inserts a new line, and Esc-Enter submits;\n' + SPACE +
                 'if False, Enter submits, and Esc-Enter inserts a new line.\n',
         'type': 'bool'
+    },
+    {
+        'key': 'SAVED_INFO',
+        'desc': "If True, your prompt will be saved with highest priority\n" + SPACE +
+                "if you start it with 'remember'.\n",
+        'type': 'bool',
+    },
+    {
+        'key': 'USE_COLORS',
+        'desc': 'Enable terminal colors; better to disable this for old consoles.',
+        'type': 'bool'
+    },
+    {
+        'key': 'USE_ANSI',
+        'desc': 'Once False, all ANSI escape codes (including colors) will be\n' + SPACE +
+                'disabled (Recommended to be False for old consoles)\n',
+        'type': 'bool'
+    },
+    {
+        'key': 'INFORMATIVE_RPROMPT',
+        'desc': "Short informational text at top right of the prompt field.",
+        'type': 'bool',
+    },
+    {
+        'key': 'BOTTOM_TOOLBAR',
+        'desc': "Show a handy bottom toolbar for a quick reference.",
+        'type': 'bool',
     },
     {
         'key': 'RESPONSE_EFFECT',
@@ -54,27 +91,63 @@ MANAGED_SETTINGS = [
         'options': ['None', 'line', 'word', 'char', 'char slow', 'char fast']
     },
     {
-        'key': 'USE_COLORS',
-        'desc': 'Enable terminal colors; better to disable this for old consoles.',
+        'key': 'SPINNER',
+        'desc': 'Shown while waiting for AI response; these are the simplest,\n' + SPACE +
+                'for more, see: Reference/Spinner Shapes.\n',
+        'type': 'select',
+        'options': ['line', 'dots', 'arc', 'point', 'circle', 'bounce', 'star']
+    },
+    {
+        'key': 'SUGGEST_FROM_WORDLIST',
+        'desc': "Suggest words while typing, in a menu popup, based on a wordlist\n" + SPACE +
+                "file (Default file: word_suggestion.txt).\n",
         'type': 'bool'
     },
     {
-        'key': 'USE_ANSI',
-        'desc': 'Once False, all ANSI escape codes (including colors) will be\n             '
-                'disabled (Recommended to be False for old consoles)\n',
+        'key': 'SUGGEST_FROM_HISTORY',
+        'desc': "Use your prompt history for inline word completion (SLOW).",
         'type': 'bool'
+    },
+    {
+        'key': 'SUGGESTIONS_LIMIT',
+        'desc': "The number of menu suggestions to show while typing a prompt.",
+        'type': 'digit'
+    },
+    {
+        'key': 'CONSOLE_WIDTH',
+        'desc': "N° of characters to print per line (Should be < Console window).\n" + SPACE +
+                "(79) may be the best for old consoles.\n",
+        'type': 'digit'
+    },
+    {
+        'key': 'INPUT_HIGHLIGHT',
+        'desc': 'Syntax color highlighting for your prompt.',
+        'type': 'bool',
     },
     {
         'key': 'INPUT_HIGHLIGHT_LANG',
-        'desc': 'Syntax highlighting language for input',
+        'desc': 'Syntax highlighting language for your prompt.\n' + SPACE +
+                'These are just the most common, for more, see:\n' + SPACE +
+                "'Reference/Lexers Alisases' and look for your language alias.\n",
         'type': 'select',
-        'options': ['python', 'javascript', 'html', 'markdown', 'text']
+        'options': ['markdown', 'bash', 'diff', 'ini', 'python', 'c++', 'c#', 'java', 'yaml', 'sql', 'php', 'xml', 'html', 'javascript', 'css']
     },
     {
-        'key': 'SPINNER',
-        'desc': 'Loading animation style',
-        'type': 'select',
-        'options': ['line', 'dots', 'bounce', 'moon', 'star', 'monkey']
+        'key': 'NO_ERROR_DETAILS',
+        'desc': "True = Never ask you to see more details about an error.",
+        'type': 'bool',
+    },
+    {
+        'key': 'ERROR_LOG_ON',
+        'desc': "To log errors to a file, console output won't be affected.",
+        'type': 'bool',
+    },
+    {
+        'key': 'GLOBAL_LOG_ON',
+        'desc': "To log the entire console output to a file + optionally hidden\n" + SPACE +
+                "debugging info, it gets cleared on each launch; visual console\n" + SPACE +
+                "output won't be affect.",
+        'type': 'bool',
     },
 ]
 
@@ -160,12 +233,14 @@ def main():
     
     # Style.
     style = questionary.Style([
-        ('qmark', 'fg:#00FFFF bold'),     # Question mark color/style
-        ('question', 'bold'),             # Question text color/style
-        ('selected', 'fg:#673AB7'),       # Selected item in lists
-        ('pointer', 'fg:cyan bold'),      # Selection pointer (e.g., the '>' symbol)
-        ('instruction', 'fg:#999999'),    # Instructions text
+        ('qmark', 'fg:#00FFFF bold'),       # Question mark color/style
+        ('question', 'bold'),               # Question text color/style
+        ('selected', 'fg:black bg:yellow'), # Selected item in lists
+        ('pointer', 'fg:cyan bold'),        # Selection pointer (e.g., the '>' symbol)
+        ('instruction', 'fg:#999999'),      # Instructions text
     ])
+    
+    last_selected_key = None
     
     while True:
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -177,7 +252,7 @@ def main():
             current_val = find_current_value(lines, item['key'])
             # Format: "VARIABLE (Current: value) - Description"
             choices.append(questionary.Choice(
-                title=f"{item['key']:<25} [{str(current_val)}]",
+                title=f"{item['key']:<26} [{str(current_val)}]",
                 value=item['key']
             ))
             
@@ -186,7 +261,7 @@ def main():
 
         # 2. Show Menu
         print(f"{'-' * 24} Simple Editor for {FILE_PATH} {'-' * 24}")
-        print('♦ You can always press CTRL-C to cancel anything.\n')
+        print('♦ You can always press (CTRL-C) to cancel anything.\n')
         
         selected_key = questionary.select(
             "Select a setting to change:",
@@ -194,6 +269,7 @@ def main():
             use_shortcuts=False,
             qmark="⚙️",
             style=style,
+            default=last_selected_key,
         ).ask()
 
         if selected_key == "EXIT" or selected_key is None:
@@ -217,26 +293,36 @@ def main():
         
         try:
             if config['type'] == 'bool':
+                last_selected_key = selected_key
+                choices = ['True', 'False', '< Cancel >']
+                default = str(current_val) if str(current_val) in choices else None
                 new_val = questionary.select(
                     f"Set {selected_key} to:",
-                    choices=['True', 'False', '< Cancel >'],
+                    choices=choices,
                     qmark='◊',
                     style=style,
+                    default=default,
                 ).ask()
-                if new_val == '< Cancel >': continue
+                
+                if new_val in['< Cancel >', None]: continue
                 new_val = (new_val == 'True')
 
             elif config['type'] == 'select':
-                opts = config['options'] + ['< Cancel >']
+                last_selected_key = selected_key
+                choices = config['options'] + ['< Cancel >']
+                default = str(current_val) if str(current_val) in choices else None
                 new_val = questionary.select(
                     f"Choose a value:",
                     qmark='◊',
-                    choices=opts,
+                    choices=choices,
                     style=style,
+                    default=default,
                 ).ask()
-                if new_val == '< Cancel >': continue
+                
+                if new_val in['< Cancel >', None]: continue
 
             elif config['type'] in ['text', 'digit']:
+                last_selected_key = selected_key
                 new_val = questionary.text(
                     f"Enter value:",
                     default=str(current_val),
@@ -244,7 +330,7 @@ def main():
                     style=style
                 ).ask()
                 
-                if new_val is None: continue
+                if new_val is None or not str(new_val).strip(): continue
                 if config['type'] == 'digit':
                     new_val = ''.join([c for c in new_val if c.isdigit()])
                     new_val = float(new_val)
@@ -255,7 +341,7 @@ def main():
             if save_change(selected_key, new_val):
                 print(f"\n[✓] Saved: {selected_key} = {new_val}")
             else:
-                print("\n[!] Could not find variable in file.")
+                print(f"\n[!] Could not find variable in '{FILE_PATH}' file.")
                 
             try: input("    Press Enter to continue...")
             except: pass

@@ -15,52 +15,47 @@ Used for simple conversations. <br>
 ----
 
 ## Features
-* Made primarily for low-spec or slow internet users, including myself (Not yet perfect, but in progress).
-* Worked even with a dead connection (< 15 kb/s); Yeah! but with only short messages (< 100 characters).
-* I respect privacy (because I'm a user like you too), thus I don't hold or manipulate any personal data, even with error log (which can be turned OFF), the program removes file paths and user prompts, keeping only what is absolutely needed.
+* Made primarily for low-spec or slow internet users; Worked even with a dead connection (< 15 kb/s); Yeah! but with only short messages (< 100 characters).
+* Privacy respect, the program doesn't send, hold or manipulate any personal data, your ***API key*** is only yours; even with logs (which can be turned OFF), the program removes file paths and user prompts, keeping only what is absolutely needed.
 * Content can be saved locally in many forms, even if the program crashes:
-	+ Automatically, save chat history to a json file.
-	+ Automatically, save prompt history to a text file.
-	+ At request, save chat history to a human readable text file.
-    + At request, save the last Gemini response to a simple text file.
-    + At request, keep saved info (shared across chat sessions).
+	+ Automatically, save chat history & prompt history to a structured text file.
+	+ At request, save chat history, last AI response or saved info to a human readable text file.
 * Colorful & vital console text.
-* Customizable, you can edit many settings, like colors, delays, completion...
-  (Not all areas are modifiable yet, but in progress).
 * Word suggestion & completion:
 	+ Suggest from a wordlist, a menu popup to choose a word from.
 	+ Suggest from history, you get inline completion upon typing words from previous prompts.
-* Cross platform, binaries are not yet created, perhaps on request I'll do that (I'm too lazy).
+* Customizable, you can edit many settings, like colors, delays, completion...
+  (Not all areas are modifiable yet, but in progress).
 * Common keyboard shortcuts + Vim/Emacs shortcuts (beta) + Mouse support (beta).
+* Cross platform, binaries are not yet created, perhaps on request I'll do that (I'm too lazy).
 * Stubborn error handling, yet still not perfect.
 
 ## Quick Start
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
 2. Install required libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary`
-3. Clone this repository, or download the [ZIP](https://github.com/Mohyoo/Gemini-Py-CLI/archive/refs/heads/main.zip) file.
-4. Unleash Gemini Py-CLI, open CMD in the cloned repository folder & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
+3. Clone this repository; or download the [ZIP](https://github.com/Mohyoo/Gemini-Py-CLI/archive/refs/heads/main.zip) file, extract it, and enter the extracted folder.
+4. Unleash Gemini Py-CLI! open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
 
 #### 2) First Launch:
-1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys)
-and paste it in **settings.py** (First few lines). <br> ***(It's free and easy to get)***
-2. You can change other settings beside the API key if you wish (e.g: The used Gemini model).
+1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys) ***(It's free and easy to get)***
+2. Type: `python settings_manager.py` and enter your API key.
 3. Run the script again: `python gemini.py`
+* ***Optionally:*** You can change other settings if you wish (e.g: The Gemini model), using either the settings manager (which is limited to the general settings only, but is user friendly) or by freely editing `settings.py`.
 
 #### 3) Usage:
-1. Press 'Ctrl-Space' to add a new line to your prompt.
-2. Press 'Ctrl-C' to clear/cancel a prompt, stop a response, or quit
+1. Press `Ctrl-Space` to add a new line to your prompt.
+2. Press `Ctrl-C` to clear/cancel a prompt, stop a response, or quit
 the program.
-3. Type 'help' for more details (It's not too long, just 1 min reading).
+3. Type `help` for more details (It's not too long, just 1 min reading).
 
-#### 4) Limitations:
+## Limitations:
 1. Tables with many columns will appear chaotic.
 2. Special characters (like the asterisk '*' for bold or italic text)
 will appear as a plain text.
 3. Some other bugs I didn't discover yet :)
 
 ---
-
 ## Notes
 This script in under development, and I'm too lazy to keep working on it. <br>
 If you want more features, or want binaries for Windows, etc. You can tell me (In the [Issues](https://github.com/Mohyoo/Gemini-Py-CLI/issues) section for example). <br>
@@ -73,7 +68,7 @@ By the way, there is a serie of commented `raise` statements in the script, igno
 ## Wiki
 Visit [Wiki](https://github.com/Mohyoo/Gemini-Py-CLI/wiki) for some valuable information.
 
-Don't worry, there is no bla bla bla... everything is summarized for you.
+Don't worry, there is no *bla bla bla...* everything is hardly summarized for you.
 
 ## To Do
 1. Handle big markdown tables so that they appear readable.

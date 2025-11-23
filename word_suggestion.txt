@@ -194,3 +194,6 @@ del-all
 quit
 exit
 restart
+remember
+open
+saved-info
