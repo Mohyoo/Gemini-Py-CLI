@@ -9,54 +9,54 @@ from random import randint, choice
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
-GEMINI_MODEL = 'gemini-2.5-flash'           # Advanced models are more expensive and have less API limits.
-MAX_HISTORY_MESSAGES = 512                  # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
-ENTER_NEW_LINE = False                      # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
-SUGGEST_FROM_WORDLIST = True                # Suggest words while typing, in a menu popup, based on a wordlist.
-SUGGEST_FROM_HISTORY = False                # Use the user's prompt history for inline word completion (SLOW).
-SAVED_INFO = True                           # If True, user input will be saved with highest priority if he starts it with 'remember'.
-USE_COLORS = True                           # Better to disable colors for old consoles.
-USE_ANSI = True                             # Like USE_COLORS, but more general, once OFF, all ANSI escape codes will be disabled (Recommended to be False for old consoles).
-NO_ERROR_DETAILS = False                    # Never ask the user to see more details about an error.
-INFORMATIVE_RPROMPT = True                  # Short informational text at top right of the prompt field.
-BOTTOM_TOOLBAR = True                       # Show a handy toolbar for a quick reference.
-RESPONSE_EFFECT = 'line'                    # Effect while displaying response, can be:
-                                                # None for no animation.
-                                                # 'line' for line-by-line animation (Recommended).
-                                                # 'word' for word-by-word animation (Satisfying).
-                                                # 'char' for an almost instant character-by-character animation (Safe, but may be unnoticeable).
-                                                # 'char slow' for a smooth character-by-character animation (Safe, but really slow).
-                                                # 'char fast' for a fast character-by-character animation; you should check if this causes a high CPU usage in your computer
-                                                # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
-                                                # * All 'char' animations can cause glitchs!
+GEMINI_MODEL = 'gemini-2.5-flash'            # Advanced models are more expensive and have less API limits.
+MAX_HISTORY_MESSAGES = 512                   # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
+ENTER_NEW_LINE = False                       # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
+SUGGEST_FROM_WORDLIST = True                 # Suggest words while typing, in a menu popup, based on a wordlist.
+SUGGEST_FROM_HISTORY = False                 # Use the user's prompt history for inline word completion (SLOW).
+SAVED_INFO = True                            # If True, user input will be saved with highest priority if he starts it with 'remember'.
+USE_COLORS = True                            # Better to disable colors for old consoles.
+USE_ANSI = True                              # Like USE_COLORS, but more general, once OFF, all ANSI escape codes will be disabled (Recommended to be False for old consoles).
+NO_ERROR_DETAILS = False                     # Never ask the user to see more details about an error.
+INFORMATIVE_RPROMPT = True                   # Short informational text at top right of the prompt field.
+BOTTOM_TOOLBAR = True                        # Show a handy toolbar for a quick reference.
+RESPONSE_EFFECT = 'line'                     # Effect while displaying response, can be:
+                                                 # None for no animation.
+                                                 # 'line' for line-by-line animation (Recommended).
+                                                 # 'word' for word-by-word animation (Satisfying).
+                                                 # 'char' for an almost instant character-by-character animation (Safe, but may be unnoticeable).
+                                                 # 'char slow' for a smooth character-by-character animation (Safe, but really slow).
+                                                 # 'char fast' for a fast character-by-character animation; you should check if this causes a high CPU usage in your computer
+                                                 # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
+                                                 # * All 'char' animations can cause glitchs!
 
 
 # Advanced Settings
-CONSOLE_WIDTH = 80                          # How many characters to print per line (Should be > Console window).
-NO_HISTORY_LIMIT = False                    # When True, chat history will never be truncated.
-SUGGESTIONS_LIMIT = 5                       # The number of suggestions to show while typing a prompt.
-SPINNER = 'line'                            # Shown while waiting, can be: dots, line, bounce, moon, star, runner... (In CMD type 'python -m rich.spinner' for more).
-INPUT_HIGHLIGHT = False                     # Syntax highlighting for the user prompt.
-INPUT_HIGHLIGHT_LANG = 'python'             # The language name used for syntax highlighting.
-STARTUP_API_CHECK = False                   # Disable for a slightly faster loading, and for the ability to enter the chat offline.
-SAVE_INPUT_ON_CLEAR = False                 # Save the prompt to history when the user clears its prompt with Ctrl-C.
-SAVE_INPUT_ON_STOP = False                  # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys.
-ERROR_LOG_ON = True                         # To log errors to a file, console output won't be affected.
-GLOBAL_LOG_ON = True                        # To log the entire console output to a file + optionally hidden debugging info,
-                                                # it gets cleared on each launch, visual console output won't be affect.
+CONSOLE_WIDTH = 80                           # How many characters to print per line (Should be > Console window).
+NO_HISTORY_LIMIT = False                     # When True, chat history will never be truncated.
+SUGGESTIONS_LIMIT = 5                        # The number of suggestions to show while typing a prompt.
+SPINNER = 'line'                             # Shown while waiting, can be: dots, line, bounce, moon, star, runner... (In CMD type 'python -m rich.spinner' for more).
+INPUT_HIGHLIGHT = False                      # Syntax highlighting for the user prompt.
+INPUT_HIGHLIGHT_LANG = 'python'              # The language name used for syntax highlighting.
+STARTUP_API_CHECK = False                    # Disable for a slightly faster loading, and for the ability to enter the chat offline.
+SAVE_INPUT_ON_CLEAR = False                  # Save the prompt to history when the user clears its prompt with Ctrl-C.
+SAVE_INPUT_ON_STOP = False                   # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys.
+ERROR_LOG_ON = True                          # To log errors to a file, console output won't be affected.
+GLOBAL_LOG_ON = True                         # To log the entire console output to a file + optionally hidden debugging info,
+                                                 # it gets cleared on each launch, visual console output won't be affect.
 
 
 # Very Advanced Settings
-SAVED_INFO_FILE = 'saved_info.txt'          # To save important informations at user request.
-LAST_RESPONSE_FILE = 'last_response.txt'    # To save last Gemini response in a text file.
-WORDLIST_FILE = 'word_suggestion.txt'       #A small wordlist used for word suggestion.
-CHAT_HISTORY_JSON = 'chat_history.json'     # To save/load chat history to/from a json file (If available).
-CHAT_HISTORY_TEXT = 'chat_history.txt'      # To save chat history as a simple text file (If available).
-PROMPT_HISTORY_FILE = 'prompt_history.txt'  # To load prompt history (If available).
-PROMPT_HISTORY_SIZE = 0.5                   # Max prompt history file size (1 = 1 MB).
+SAVED_INFO_FILE = 'saved_info.txt'           # To save important informations at user request.
+LAST_RESPONSE_FILE = 'last_response.txt'     # To save last Gemini response in a text file.
+WORDLIST_FILE = 'word_suggestion.txt'        # A small wordlist used for word suggestion.
+CHAT_HISTORY_JSON = 'chat_history.json'      # To save/load chat history to/from a json file (If available).
+CHAT_HISTORY_TEXT = 'chat_history.txt'       # To save chat history as a simple text file (If available).
+PROMPT_HISTORY_FILE = 'prompt_history.txt'   # To load prompt history (If available).
+PROMPT_HISTORY_SIZE = 0.5                    # Max prompt history file size (1 = 1 MB).
 ERROR_LOG_FILE = 'application_errors.log'                  # The file to write errors to (Level: warning, error, critical).
 GLOBAL_LOG_FILE = 'application_console_output.log'         # The file to write the entire console output to + optionally hidden debug info (Level: debug, info).
-LOG_SIZE = 0.5                              # Max size allowed for the error log file (1 = 1 MB).
+LOG_SIZE = 0.5                                             # Max size allowed for the error log file (1 = 1 MB).
 
 
 # Time Settings (In Seconds)
@@ -137,6 +137,9 @@ FAREWELLS_MESSAGES = [
     "You are breathing involuntary; but now that you knew, you have to breath voluntary :P",
     "Cleaning crime scene...\nAlright! ready to escape.",
     "Normal mode OFF, switching to Agent Six...",
+    "There'll be no mercy next time...",
+    "Let's celebrate a party just for now reason!",
+    "Don't look back, you've been warned!",
     
     # Enthusiastic
     "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
@@ -200,7 +203,7 @@ FAREWELLS_MESSAGES = [
     "a handy toolbar at the bottom of the console (It can be turned off).",
     "Hint: You can change MAX_HISTORY_MESSAGES in settings, but if chat history gets too long, Gemini will "
     "start forgetting things, and the program might need more time while loading/saving chat.",
-    "Hint: Some options may slightly affect performances, like response typing effect, word suggestion & completion, error logging, etc."
+    "Hint: Some options may slightly affect performances, like response typing effect, word suggestion & completion, application logs, etc."
     "You can turn them OFF at any time.",
     "Hint: Colors & ANSI codes may not work in old consoles, like Windows Command Prompt; either disable them, "
     "or use a better console emulator; ConEmu is a recommended very lightweight option for Windows.",
@@ -287,7 +290,7 @@ NO_QUESTIONS = False                        # Never ask the user for anything.
 
 
 # Values Correction (Ignore This Part)
-MAX_HISTORY_MESSAGES = MAX_HISTORY_MESSAGES // 2 * 2    # Keep history messages in an even number (User-AI turns).
+MAX_HISTORY_MESSAGES = 512                   # Keep history messages in an even number (User-AI turns).
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vi', 'emacs'): VIM_EMACS_MODE = None
 if not sys.stdout.isatty(): USE_ANSI = False            # Hide ANSI characters if the output is being redirected to a non-terminal location.

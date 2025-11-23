@@ -17,7 +17,6 @@ try:
     if GLOBAL_LOG_ON: from global_logger import setup_global_console_logger, in_time_log
 
 except Exception as error:
-    raise
     print(f'\nError: {error}.')
     print('Reinstall the program to restore the missing file.')
     quit(1)
@@ -226,7 +225,6 @@ class Keys():
     
     def trim_input_buffer(self, event):
         """Strips leading and trailing whitespaces."""
-        global NON_STRIPPED_INPUT
         # Get the input text & trim it.
         buffer = event.cli.current_buffer
         current_text = buffer.text
@@ -690,11 +688,13 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     
     cprint(box_string, wrap=False)
 
-def open_path(path_to_open):
+def open_path(path_to_open, clear=0, restore_prompt=''):
     """
     Opens a file or folder using the default OS application/file explorer.
+    Add a quick cleanup if requested.
     Works reliably across Windows, macOS, and Linux.
     """
+    global default_prompt
     if not os.path.exists(path_to_open):
         msg = "Requested file/folder isn't present in the current working directory."
         box(msg, title='ERROR', border_color=RED, text_color=RED)
@@ -703,7 +703,8 @@ def open_path(path_to_open):
 
     # webbrowser.open() handles both files and directories
     browser_open(path_to_open)
-    clear_lines(2)
+    if clear: clear_lines(clear)
+    if restore_prompt: default_prompt = restore_prompt
 
 def welcome_screen():
     """Display a short welcoming screen."""
@@ -1724,6 +1725,7 @@ def get_user_input():
     we only use some stripped copies of it to beautify the output.
     """
     # Set input options.
+    global default_prompt
     rprompt = None
     if INFORMATIVE_RPROMPT:
         current_time = datetime.now().strftime('%I:%M %p')
@@ -1748,6 +1750,7 @@ def get_user_input():
             key_bindings=keys,
             
             # Other options
+            default=default_prompt if default_prompt else '',
             mouse_support=MOUSE_SUPPORT,
             history=history,
             auto_suggest=auto_suggest,
@@ -1767,6 +1770,9 @@ def get_user_input():
     except Interruption:
         farewell()
         return None
+    
+    finally:
+        default_prompt = None
         
     # Return input.
     if user_input.strip():
@@ -1796,10 +1802,10 @@ def interpret_commands(user_input):
         system(CLEAR_COMMAND)
     
     elif command == 'open':
-        open_path('.')
+        open_path('.', clear=2, restore_prompt=user_input)
     
     elif command == 'saved-info':
-        open_path(SAVED_INFO_FILE)
+        open_path(SAVED_INFO_FILE, clear=2, restore_prompt=user_input)
     
     elif command.startswith('remember ') and SAVED_INFO:
         try:
@@ -2099,6 +2105,7 @@ discarding = False                              # Session discard flag.
 messages_to_remove = []                         # Store selected messages for deletion at exit.
 messages_to_remove_steps = []                   # Used to undo messages removal.
 current_response_line = 0                       # Used to clean output upon blocking a response.
+default_prompt = None                           # An initial prompt the user gets upon asking for input, mostly not used.
 
 # Define global constants.
 CONTENT_WIDTH = CONSOLE_WIDTH - 4               # The width of characters inside box(), (4) is the sum of left & right borders.
