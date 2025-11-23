@@ -213,7 +213,7 @@ class Keys():
                 original_text = buffer.text
                 if original_text:
                     if SAVE_INPUT_ON_CLEAR: self.save_history(original_text)
-                    buffer.text = ""
+                    buffer.text = ''
                     buffer.cursor_position = 0
                     buffer.save_to_undo_stack()
                 else:

@@ -2,8 +2,9 @@ import sys
 from random import randint, choice
 
 # When editing this, respect each option's possible values, otherwise prepare yourself
-# for a crash (Better to keep a backup this file).
-# If you are confused with some settings, try 'settings_manager.py' or read 'User Manual'.
+# for a crash (Better to keep a backup of this file).
+# If you are confused with some settings, try 'settings_editor.py' or visit the wiki:
+# https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Settings
 # You can always ask in my GitHub page, or even request a future change. I'll try hard to
 # keep everything easily accessible.
 
@@ -57,7 +58,7 @@ PROMPT_HISTORY_FILE = 'prompt_history.txt'   # To load prompt history (If availa
 ERROR_LOG_FILE = 'application_errors.log'                  # The file to write errors to (Level: warning, error, critical).
 GLOBAL_LOG_FILE = 'application_console_output.log'         # The file to write the entire console output to + optionally hidden debug info (Level: debug, info).
 PROMPT_HISTORY_SIZE = 0.5                    # Max prompt history file size (1 = 1 MB).
-LOG_SIZE = 0.5                                             # Max size allowed for the error log file (1 = 1 MB).
+LOG_SIZE = 0.5                               # Max error log file size (1 = 1 MB).
 
 
 # Time Settings (In Seconds)
