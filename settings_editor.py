@@ -44,7 +44,7 @@ GENERAL_SETTINGS = [
     },
     {
         'key': 'MAX_HISTORY_MESSAGES',
-        'desc': 'Maximum number of chat history messages to keep; set it low\n' + SPACE +
+        'desc': 'Maximum N° of chat history messages to keep; set it low\n' + SPACE +
                 'to save internet bandwidth & loading/saving time.\n',
         'type': 'digit'
     },
@@ -99,7 +99,7 @@ GENERAL_SETTINGS = [
     {
         'key': 'INPUT_HIGHLIGHT_LANG',
         'desc': 'Syntax highlighting language for your prompt.\n' + SPACE +
-                'These are just the most common, for more, see:\n' + SPACE +
+                'These are just the most common, for more, see\n' + SPACE +
                 "the WIKI and look for your language alias.\n",
         'type': 'select',
         'options': ['markdown', 'bash', 'diff', 'ini', 'python', 'c++', 'c#', 'java', 'yaml', 'sql', 'php', 'xml', 'html', 'javascript', 'css']
@@ -107,18 +107,18 @@ GENERAL_SETTINGS = [
     {
         'key': 'RESPONSE_EFFECT',
         'desc': "Effect while displaying AI response; it can be:\n"
-                "\t- 'None' for no animation.\n"
-                "\t- 'line' for line-by-line animation (Recommended).\n"
-                "\t- 'word' for word-by-word animation (Satisfying).\n"
-                "\t- 'char' for an almost instant character-by-character animation.\n\t"
+                "- None: for no animation.\n"
+                "- line: for line-by-line animation (Recommended).\n"
+                "- word: for word-by-word animation (Satisfying).\n"
+                "- char: for an almost instant character-by-character animation.\n"
                 "  (Safe, but may be unnoticeable)\n"
-                "\t- 'char slow' for a smooth character-by-character animation\n\t"
-                "  (Safe, but really slow)."
-                "\n\t- 'char fast' for a fast character-by-character animation; you should\n\t"
-                "  check if this causes a high CPU usage in your computer (from Task\n\t" 
-                "  Manager), if so, it is a waste of resources & energy, bad\n\t"
+                "- char slow: for a smooth character-by-character animation.\n"
+                "  (Safe, but really slow).\n"
+                "- char fast: for a fast character-by-character animation; you should\n"
+                "  check if this causes a high CPU usage in your computer (from Task\n" 
+                "  Manager), if so, it is a waste of resources & energy, bad\n"
                 "  choice for long responses, but still fine for short ones.\n"
-                "\t* All 'char' animations can cause glitchs!'\n",
+                "* All 'char' animations can cause glitchs!'\n",
         'type': 'select',
         'options': ['None', 'line', 'word', 'char', 'char slow', 'char fast']
     },
@@ -324,7 +324,7 @@ def main():
         # 1. Main screen.
         os.system('cls' if os.name == 'nt' else 'clear')
         print('=' * 79)
-        print(f"{' ' * 24} Simple Editor for {FILE_PATH}")
+        print(f"{' ' * 23} Simple Editor for '{FILE_PATH}'")
         print('=' * 79 + '\n')
 
         # 2. Show Menu
@@ -342,12 +342,15 @@ def main():
         
         # 3. Handle special options.
         if selected_key == 'README':
-            print('\n♦ You can always press (CTRL-C) to cancel anything.\n')
+            print()
+            print("♦ You can always press (CTRL-C) to cancel anything.\n")
+            print("♦ Remember, this editor is for general options.")
+            print("  For some settings, choices are limited to the most common.")
+            print("  For more control, edit 'settings.py' directly.\n")
             print('♦ For a quick reference about verbose settings, visit the WIKI:')
             print('  https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Settings\n')
             try: input("  Press Enter to continue...")
-            except: pass
-            continue
+            finally: continue
             
         if selected_key == "EXIT" or selected_key is None:
             if selected_key == "EXIT": print()
@@ -421,7 +424,7 @@ def main():
                 print(f"\n[!] Could not find variable in '{FILE_PATH}' file.")
                 
             try: input("    Press Enter to continue...")
-            except: pass
+            finally: continue
 
         except KeyboardInterrupt:
             continue
@@ -430,4 +433,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\nExiting...")
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("\nExiting Settings Editor...")

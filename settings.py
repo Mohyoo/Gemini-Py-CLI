@@ -72,7 +72,7 @@ SLEEP_INTERVAL = 0.1                        # Small chunks used as intervals wit
 # Colors
 if USE_COLORS and USE_ANSI:
     # By ANSI code (Used in print() & cprint())
-    CYN     = '\033[96m'    # Red
+    CYN     = '\033[96m'    # Cyan
     RED     = '\033[91m'    # Red
     GR      = '\033[92m'    # Green
     YLW     = '\033[93m'    # Yellow
@@ -142,6 +142,14 @@ FAREWELLS_MESSAGES = [
     "There'll be no mercy next time...",
     "Let's celebrate a party just for now reason!",
     "Don't look back, you've been warned!",
+    "Goodbye! Don't forget to miss me a little.",
+    "Goodbye! I’ll try not to miss you… too much ;-;",
+    "Farewell! Remember, the door is always open - just don’t forget to close it behind you.",
+    "Adios! May your life be as awesome as you pretend it is on social media.",
+    "Farewell! May your future be as bright as your phone screen.",
+    "Goodbye! Now you’re free to make all the bad decisions you’ve been planning.",
+    "Good luck! If the new place doesn’t work out, you can always come back and pretend you never left ;)",
+    "We have a winner! Ahhh.. I meant a dinner!",
     
     # Enthusiastic
     "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
@@ -253,6 +261,7 @@ CONTINUE_MESSAGES = [
     'Aha! wait.. what were we talking about?',
     'Exit failed successfully.',
     'This is a messing around...',
+    'Back from the dead.',
     
     # Enthusiastic
     'Yeah, this is ma boi!',
@@ -298,7 +307,7 @@ NO_QUESTIONS = False                        # Never ask the user for anything.
 
 
 # Values Correction (Ignore This Part)
-MAX_HISTORY_MESSAGES = 512                     # Keep history messages in an even number (User-AI turns).
+MAX_HISTORY_MESSAGES = 512                   # Keep history messages in an even number (User-AI turns).
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vi', 'emacs'): VIM_EMACS_MODE = None
 if not sys.stdout.isatty(): USE_ANSI = False   # Hide ANSI characters if the output is being redirected to a non-terminal location.

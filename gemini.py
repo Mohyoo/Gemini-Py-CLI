@@ -13,10 +13,10 @@ os.chdir(script_dir)
 # Import Custom Modules
 try:
     from settings import *
-    if ERROR_LOG_ON: from error_logger import *
+    if ERROR_LOG_ON: from error_logger import log_caught_exception, LOG_SEPARATOR
     if GLOBAL_LOG_ON: from global_logger import setup_global_console_logger, in_time_log
 
-except Exception as error:
+except ImportError as error:
     print(f'\nError: {error}.')
     print('Reinstall the program to restore the missing file.')
     quit(1)
@@ -74,7 +74,7 @@ try:
         from prompt_toolkit.lexers import PygmentsLexer
         from pygments.lexers import get_lexer_by_name
     
-except Exception as error:
+except ImportError as error:
     print(f'\nError: {error}.')
     print("Use 'pip' to install missing modules.")
     print("E.g: open CMD & type: pip install httpx rich")
@@ -725,7 +725,7 @@ def welcome_screen():
     system(CLEAR_COMMAND)
     separator()
     cprint(f"{GR}Welcome to {gemini_logo_string}{GR} Py-CLI! (An API-based chat)", wrap=False)
-    cprint(f"Chat Initialized (Type '{UL}help{RS}{GR}' for a quick start.){RS}\n", wrap=False)
+    cprint(f"Chat Initialized (Type '{UL}help{RS}{GR}' for a quick start){RS}\n", wrap=False)
  
 def help(short=False):
     """Print a quick cheatsheet."""
@@ -1820,13 +1820,16 @@ def interpret_commands(user_input):
     elif command.startswith('remember ') and SAVED_INFO:
         try:
             first_line_written = False
+            # Save the info by wrapping it into short lines.
             with open(SAVED_INFO_FILE, 'a', encoding='utf-8') as f:
                 for line in user_input.splitlines():
-                    if not first_line_written:
-                        f.write(f'\n- {line}\n')
-                        first_line_written = True
-                    else:
-                        f.write(f'  {line}\n')
+                    wrapped_lines = textwrap.wrap(line, width=CONSOLE_WIDTH)
+                    for line in wrapped_lines:
+                        if not first_line_written:
+                            f.write(f'\n- {line}\n')
+                            first_line_written = True
+                        else:
+                            f.write(f'  {line}\n')
                 
             msg = f"Information saved!\nYou can also manually edit your info in '{SAVED_INFO_FILE}'."
             color = GR

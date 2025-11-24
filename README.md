@@ -10,7 +10,7 @@ Used for simple conversations. <br>
 + <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
 
 ---
-<span style="color:cyan">For people who don't know Python, it's just a small command-line program. After installing it, you only run 2 commands, one to install dependencies (which took me 3 min with my 80kb/s internet), then the main command which is instant.</span>
+<span style="color:cyan"><b><i>Reminder:</i></b><br>For people who don't know Python, it's just a small command-line program. After installing it, you only run 2 commands, one to install dependencies (which took me 3 min with my 80kb/s internet), then the main command which is instant.</span>
 
 ----
 
@@ -39,36 +39,27 @@ Used for simple conversations. <br>
 
 #### 2) First Launch:
 1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys) ***(It's free and easy to get)***
-2. Type: `python settings_manager.py` and enter your API key.
+2. Type: `python settings_editor.py` and enter your API key.
 3. Run the script again: `python gemini.py`
-* ***Optionally:*** You can change other settings if you wish (e.g: The Gemini model), using either the settings manager (which is limited to the general settings only, but is user friendly) or by freely editing `settings.py`.
+* ***Optionally:*** You can change other settings if you wish (e.g: The Gemini model), using either the settings editor (which is limited but user friendly) or by freely editing `settings.py`.
 
 #### 3) Usage:
 1. Press `Ctrl-Space` to add a new line to your prompt.
 2. Press `Ctrl-C` to clear/cancel a prompt, stop a response, or quit
 the program.
-3. Type `help` for more details (It's not too long, just 1 min reading).
+3. Type `help-2` for more details (No *bla bla bla...* just 1 min reading).
+
+## Wiki
+Visit the [Wiki](https://github.com/Mohyoo/Gemini-Py-CLI/wiki) for some valuable information.
+
+Don't worry, there is no *bla bla bla...* everything is hardly summarized for you.
+
 
 ## Limitations:
 1. Tables with many columns will appear chaotic.
 2. Special characters (like the asterisk '*' for bold or italic text)
 will appear as a plain text.
 3. Some other bugs I didn't discover yet :)
-
----
-## Notes
-This script in under development, and I'm too lazy to keep working on it. <br>
-If you want more features, or want binaries for Windows, etc. You can tell me (In the [Issues](https://github.com/Mohyoo/Gemini-Py-CLI/issues) section for example). <br>
-Let's just hope google won't change its Gemini server protocols. <br>
-
-By the way, there is a serie of commented `raise` statements in the script, ignore them, they are just for testing.
-
----
-
-## Wiki
-Visit [Wiki](https://github.com/Mohyoo/Gemini-Py-CLI/wiki) for some valuable information.
-
-Don't worry, there is no *bla bla bla...* everything is hardly summarized for you.
 
 ## To Do
 1. Handle big markdown tables so that they appear readable.
@@ -77,6 +68,16 @@ Don't worry, there is no *bla bla bla...* everything is hardly summarized for yo
 5. Enhance response speed (If already possible).
 6. Handle more stupid errors.
 7. And more... I'm suffering.
+
+---
+***Useless Notes:*** <br>
+This script in under development, and I'm too lazy to keep working on it. <br>
+If you want more features, or want binaries for Windows, etc. You can tell me (In the [Issues](https://github.com/Mohyoo/Gemini-Py-CLI/issues) section for example). <br>
+Let's just hope google won't change its Gemini server protocols. <br>
+
+By the way, there is a serie of commented `raise` statements in the script, ignore them, they are just for testing.
+
+---
 
 ## Disclaimer
 This is not an official **Google** program!

@@ -3,15 +3,18 @@ import sys
 import logging
 import traceback
 from settings import ERROR_LOG_ON, ERROR_LOG_FILE
-from gemini import save_chat_history_json, cprint, separator
+# (+1) import inside log_unhandled_exception()
 
 # Logging Configuration 
 LOG_FORMAT = (
-    "%(asctime)s - %(levelname)s - %(name)s - "
-    "\nModule: %(module)s \nFunction: %(funcName)s \nLine: %(lineno)d \nMessage: %(message)s"
+    "%(asctime)s - %(levelname)s!"
+    "\nLogger Address: %(name)s \nThread: %(threadName)s"
+    "\nModule: %(module)s \nFunction: %(funcName)s \nLine: %(lineno)d"
+    "\nMessage: %(message)s"
 )
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_SEPARATOR = '-' * 100
+STACK_LEVEL = 4     # The N° of steps the logger goes back to see the origine of the error.
 
 def setup_logger():
     """Configures the logging system."""
@@ -77,13 +80,14 @@ def log_caught_exception(message=None, level='error'):
 
     # Log the detailed message at ERROR level.
     log_method = getattr(logging, level.lower())
-    log_method(log_message)
+    log_method(log_message, stacklevel=STACK_LEVEL)
 
 def log_unhandled_exception(exc_type, exc_value, exc_traceback):
     """
     Custom handler called automatically by Python for all uncaught exceptions.
     It logs the error details and then exits the program gracefully.
-    """ 
+    """
+    from gemini import save_chat_history_json, cprint, separator
     # Save the chat seesion.
     save_chat_history_json()
 
@@ -104,7 +108,7 @@ def log_unhandled_exception(exc_type, exc_value, exc_traceback):
     log_message += LOG_SEPARATOR
     
     # Log the detailed message using the root logger & Ensure the log file buffer is flushed before exit.
-    logging.critical(log_message)
+    logging.critical(log_message, stacklevel=STACK_LEVEL)
     logging.shutdown()
 
 
