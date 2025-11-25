@@ -35,7 +35,7 @@ Used for simple conversations. <br>
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
 2. Install required libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary`
 3. Clone this repository; or download the [ZIP](https://github.com/Mohyoo/Gemini-Py-CLI/archive/refs/heads/main.zip) file, extract it, and enter the extracted folder.
-4. Unleash Gemini Py-CLI! open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading.)
+4. Unleash Gemini Py-CLI! open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading)
 
 #### 2) First Launch:
 1. Get an API key from [AI-Studio](https://aistudio.google.com/app/api-keys) ***(It's free and easy to get)***
@@ -75,7 +75,7 @@ This script in under development, and I'm too lazy to keep working on it. <br>
 If you want more features, or want binaries for Windows, etc. You can tell me (In the [Issues](https://github.com/Mohyoo/Gemini-Py-CLI/issues) section for example). <br>
 Let's just hope google won't change its Gemini server protocols. <br>
 
-By the way, there is a serie of commented `raise` statements in the script, ignore them, they are just for testing.
+There is also a serie of commented `raise` statements in the script, ignore them, they are just for testing.
 
 ---
 

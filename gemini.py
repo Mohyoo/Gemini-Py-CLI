@@ -56,9 +56,13 @@ try:
     from rich.markdown import Markdown
     
     # Conditional
-    if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
+    if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
         from google.genai.types import GenerateContentConfig
-        
+    
+    if SAVED_INFO:
+        import difflib
+        import heapq
+    
     if SUGGEST_FROM_WORDLIST:
         from prompt_toolkit.completion import WordCompleter
             
@@ -104,20 +108,21 @@ if GLOBAL_LOG_ON:
 
 # 2) Part II: Classes ----------------------------------------------------------
 class Keys():
+    """Define & implement keyboard shortcuts for user prompt."""
     # Define constants at the class level.
     if ENTER_NEW_LINE:
-        SUBMIT = ('escape', 'enter')
-        NEW_LINE = ('enter', 'c-space', 's-tab', 'c-j')
+        SUBMIT = Hotkeys.SUBMIT
+        NEW_LINE = Hotkeys.NEW_LINE
     else:
-        SUBMIT = ('enter',)
-        NEW_LINE = (('escape', 'enter'), 'c-space', 's-tab', 'c-j')
+        SUBMIT = Hotkeys.SUBMIT
+        NEW_LINE = Hotkeys.NEW_LINE
 
-    TAB = 'tab'
-    INTERRUPT = ('c-c', 'c-d')
-    UNDO = 'c-z'
-    REDO = 'c-y'
+    TAB = Hotkeys.TAB
+    INTERRUPT = Hotkeys.INTERRUPT
+    UNDO = Hotkeys.UNDO
+    REDO = Hotkeys.REDO
     # SELECT_ALL = 'c-a'
-    F_KEYS = {'f1': 'show', 'f2': 'copy', 'f3': 'restart', 'f4': 'quit', 'f5': 'discard', 'f6': 'kill', 'f7': 'help'}
+    F_KEYS = Hotkeys.F_KEYS
 
     # Define variables.
     redo_fallback_stack = []
@@ -467,7 +472,7 @@ def catch_exception(error):
     log_error(f'An error occurred:\n"{error}"')
     if not NO_ERROR_DETAILS:
         try:
-            if GLOBAL_LOG_ON: in_time_log("See the details? (y/n):")
+            if GLOBAL_LOG_ON: in_time_log("See the details? (y/n): ...")
             see_error = input("See the details? (y/n): ").strip().lower()
         except Interruption:
             confirm_separator = False
@@ -495,7 +500,7 @@ def catch_fatal_exception(error):
     log_error(f'A fatal error occurred:\n"{error}"\nAnd the program has to QUIT.')
     
     if not NO_ERROR_DETAILS:
-        if GLOBAL_LOG_ON: in_time_log("See the details? (y/n):")
+        if GLOBAL_LOG_ON: in_time_log("See the details? (y/n): ...")
         see_error = input("See the details? (y/n): ").strip().lower()
         if see_error == 'y':
             cprint(RED + traceback.format_exc().strip() + RS)
@@ -522,14 +527,15 @@ def catch_keyboard_interrupt():
 
 
 # 4) Part IV: Helper Functions -------------------------------------------------
-def cprint(text='', end='\n', wrap=True, flush=True):
+def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=CONSOLE_WIDTH-1, wrap_joiner='\n'):
     """
     A custom print function that writes directly to stdout and guarantees 
     an immediate display by forcing a flush.
+    Also wraps the text with optionally a custom width and wrapped lines joiner.
     """
     # Wrap even if LENGTH = CONSOLE_WIDTH so that '\n' stays in the same line
     text = str(text)
-    if wrap and (visual_len(text) >= CONSOLE_WIDTH):
+    if wrap and (visual_len(text) > wrap_width):
         lines = text.split('\n')
         wrapped_lines = []
         
@@ -538,10 +544,10 @@ def cprint(text='', end='\n', wrap=True, flush=True):
                 wrapped_lines.append(' ')
                 continue
                 
-            new_lines = textwrap.wrap(line, width=CONSOLE_WIDTH - 1)
+            new_lines = textwrap.wrap(line, width=wrap_width)
             wrapped_lines.extend(new_lines)
-            
-        text = '\n'.join(wrapped_lines)
+        
+        text = wrap_joiner.join(wrapped_lines)
     
     # Print
     stdout_write(text + end)
@@ -618,11 +624,13 @@ def clear_lines(lines_to_erase=1):
     # \033[2K: Erase the entire current line
     for _ in range(lines_to_erase):
         cprint('\033[A\033[2K', end='')
-
+    
 def visual_len(text_with_ansi: str):
-    """Returns the visible length of a string, ignoring ANSI codes."""
-    # ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*m')
-    return len(ANSI_ESCAPE.sub('', text_with_ansi))
+    """Returns the length of the longest line, ignoring ANSI codes."""
+    if not text_with_ansi.strip(): return 0
+    lines = text_with_ansi.splitlines()
+    lines_length = [len(ANSI_ESCAPE.sub('', line)) for line in lines]
+    return max(lines_length)
 
 def separator(before='', after='', char='─', color=GRY, width=CONSOLE_WIDTH, end='\n'):
     """Display a line of hyphens."""
@@ -651,8 +659,10 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     SC = secondary_color # Only for wrapped lines.
     
     # Wrap text to fit.
+    CONTENT_WIDTH = width - 4   # (4) reserve for borders.
     message = '\n'.join(texts)
     wrapped = []
+    
     for line in message.splitlines():
         if not line.strip():
             wrapped.append(' ')
@@ -703,6 +713,7 @@ def open_path(path_to_open, clear=0, restore_prompt=''):
 
     # webbrowser.open() handles both files and directories
     browser_open(path_to_open)
+    if GLOBAL_LOG_ON: in_time_log(' ')
     if clear: clear_lines(clear)
     if restore_prompt: default_prompt = restore_prompt
 
@@ -753,6 +764,7 @@ def help(short=False):
        -'copy' to copy last AI response to clipboard.
        -'remember' at prompt start to save it with high priority.
         (Saved info are shared across all chat sessions).
+       -'forget' at prompt start to delete a saved info.
        -'saved-info' to open the saved info file for manual edit.
         (Changes take effect at next session)
        -'save-last' to save last AI response to a text file.
@@ -848,7 +860,7 @@ def farewell(confirmed=False):
         confirm_separator = True
         wrong_answer = 0
         text = f"{YLW}Are you sure you want to quit? (y/n): {RS}"
-        if GLOBAL_LOG_ON: in_time_log(text)
+        if GLOBAL_LOG_ON: in_time_log(text + '...')
         
         while True:
             try:
@@ -877,9 +889,9 @@ def farewell(confirmed=False):
     
     # Clean prompt history & Exit
     if not saved and confirmed: separator()
-    prune_history_file()
+    prune_prompt_history()
     message = choice(FAREWELLS_MESSAGES)
-    cprint(GR + message + RS)
+    cprint(GR + message + RS, wrap_width=79)     # Fix width to avoid glitchs.
     separator()
     sys_exit(0)
  
@@ -1108,7 +1120,7 @@ if ERROR_LOG_ON:
         with open(ERROR_LOG_FILE, 'w', encoding='utf-8') as f:
             f.writelines(collected_lines)
 
-if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
+if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
     def load_system_instructions():
         """
         - Load system instructions at startup; they can be either implicit orders,
@@ -1123,14 +1135,14 @@ if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
                 with open(SAVED_INFO_FILE, 'r', encoding='utf-8') as f:
                     saved_info_content = f.read().strip()
                 if saved_info_content: 
-                    system_instructions += 'User Saved Information:\n' + saved_info_content + '\n\n\n'
+                    system_instructions += '# User Saved Information:\n' + saved_info_content + '\n\n\n'
             except:
                 if ERROR_LOG_ON: log_caught_exception()
                 pass
         
         # Check implicit order.
         if IMPLICIT_INSTRUCTIONS_ON and IMPLICIT_INSTRUCTIONS.strip():
-            system_instructions += 'Your Implicit Instructions as AI:\n' + IMPLICIT_INSTRUCTIONS.strip()
+            system_instructions += '# Your Implicit Instructions as AI:\n' + IMPLICIT_INSTRUCTIONS.strip()
         
         # Create the configuration object if available.
         config = None
@@ -1139,7 +1151,269 @@ if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
                 
         return config
 
+if SAVED_INFO:
+    def manage_saved_info(user_input, command):
+        """Manage user saved info by either: forget or remember."""
+        # Check if it's worth adding/removing.
+        MIN_WORDS = 3
+        MIN_CHARS = 10
+        requested_info = user_input[len(command):].strip()
+        word_count = len(requested_info.split())  # split() uses space as default delimiter.
+        char_count = len(requested_info)
+        
+        if (word_count < MIN_WORDS) and (char_count < MIN_CHARS):
+            # Too useless to consider - no enough words & no enough characters.
+            return
+        
+        # User wants to remember something.
+        if command == 'remember':
+            try:
+                # A quick cleanup.
+                clean_file = False
+                if os.path.exists(SAVED_INFO_FILE) and os.path.getsize(SAVED_INFO_FILE) > 0:
+                    with open(SAVED_INFO_FILE, 'r+', encoding='utf-8') as f:
+                        content = f.read()
+                        if not content.endswith('\n'):
+                            f.write('\n')
+                        
+                        else:
+                            leading_new_lines = len(content) - len(content.lstrip('\n'))
+                            trailing_new_lines = len(content) - len(content.rstrip('\n'))
+                            if (trailing_new_lines > 1) or (leading_new_lines > 1):
+                                clean_file = True
 
+                if clean_file:
+                    with open(SAVED_INFO_FILE, 'w', encoding='utf-8') as f:
+                        f.truncate(0)
+                        f.write('\n' + content.strip() + '\n')
+
+                # Save the info by wrapping it into short lines.
+                first_line_written = False
+                with open(SAVED_INFO_FILE, 'a', encoding='utf-8') as f:
+                    for line in user_input.splitlines():
+                        wrapped_lines = textwrap.wrap(line, width=80)
+                        for line in wrapped_lines:
+                            if not first_line_written:
+                                f.write(f'\n- {line}\n')
+                                first_line_written = True
+                            else:
+                                f.write(f'  {line}\n')
+                    
+                msg = "Information saved!\n"
+                msg += "You can always ask Gemini to forget by starting your prompt with 'forget'. "
+                msg += f"Or by manually editing your info in '{SAVED_INFO_FILE}' by typing 'saved-info'."
+                color = GR
+            
+            except Exception as error:
+                if ERROR_LOG_ON: log_caught_exception()
+                msg = f"Couldn't save your info!\nError: {error}."
+                color = RED
+                
+            box(msg, title='SAVED INFO STATUS', border_color=color, text_color=color, secondary_color=color)
+            clear_lines()
+
+        # User wants to forget something.
+        elif command == 'forget':
+            try:
+                deleted = False     # If the info was deleted, this becomes True.
+                
+                # Get the saved info list.
+                if not os.path.exists(SAVED_INFO_FILE):
+                    msg = f"File '{SAVED_INFO_FILE}' is missing!"
+                    box(msg, title='WARNING', border_color=YLW, text_color=YLW)
+                    clear_lines()
+                    return
+                
+                try:        
+                    with open(SAVED_INFO_FILE, 'r', encoding='utf-8') as f:
+                        content = f.read().strip()
+                except Exception as error:
+                    if ERROR_LOG_ON: log_caught_exception()
+                    msg = f"Couldn't read '{SAVED_INFO_FILE}' file!\nError: {error}."
+                    box(msg, title='ERROR', border_color=RED, text_color=RED)
+                    clear_lines()
+                    return
+                
+                if not content:
+                    msg = f"File '{SAVED_INFO_FILE}' is empty!"
+                    box(msg, title='WARNING', border_color=YLW, text_color=YLW)
+                    clear_lines()
+                    return
+                
+                # Split SAVED_INFO_FILE content according to '- ' at the start of line.
+                separator(before='\n', color=YLW)
+                info_list = re.split(r'^(?:- )', content, flags=re.MULTILINE)[1:]
+                
+                if len(info_list) == 1:
+                    cprint(f"{YLW}Found only one saved info in the whole '{SAVED_INFO_FILE}' file:{GR}")
+                    info = re.sub(r'\s+', ' ', info_list[0].capitalize()).strip()
+                    cprint('- ' + info, wrap_width=79, wrap_joiner='\n  ')
+                    if GLOBAL_LOG_ON: in_time_log('\nDelete it? (y/n): ...')
+                    user_choice = input(YLW + '\nDelete it? (y/n): ' + RS).strip().lower()
+                    
+                    if user_choice == 'y':
+                        try:
+                            with open(SAVED_INFO_FILE, 'w', encoding='utf-8'): pass
+                            cprint(GR + 'Saved info permanently deleted!' + RS)
+                        except Exception as error:
+                            if ERROR_LOG_ON: log_caught_exception()
+                            cprint(f"Couldn't edit '{SAVED_INFO_FILE}' file!\nError: {error}.")
+                    else: 
+                        cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+                        
+                    separator(color=YLW)
+                    return
+                
+                # Remove whitespaces & initial 'remember' word for better comparison.
+                cleaned_infos = []
+                for entry in info_list:
+                    entry = re.sub(r'remember', ' ', entry, count=1, flags=re.IGNORECASE)
+                    entry = re.sub(r'\s+', ' ', entry).strip()
+                    cleaned_infos.append(entry)
+                    
+                # Compare & Get ordered top matches.
+                results = compare_texts(requested_info, cleaned_infos)
+                top_n = 3 if len(info_list) >= 3 else len(info_list)
+                top_results = heapq.nlargest(top_n, results.items(), key=lambda item: item[1])
+                
+                if top_n == 3:
+                    info_1, info_2, info_3 = top_results[0][0], top_results[1][0], top_results[2][0]
+                    ratio_1, ratio_2, ratio_3 = top_results[0][1], top_results[1][1], top_results[2][1]
+                
+                elif top_n == 2:
+                    info_1, info_2 = top_results[0][0], top_results[1][0]
+                    ratio_1, ratio_2 = top_results[0][1], top_results[1][1]
+                
+                # Case (1): High confidence, almost sure.
+                if (ratio_1 > 0.7) and (ratio_1 / ratio_2 > 1.25):
+                    cprint(CYN + 'Saved Info found:' + GR)
+                    cprint('- Remember ' + info_1, wrap_width=79, wrap_joiner='\n  ')
+                    question = 'Are you sure you want to delete it? (y/n): '
+                    answers = ['y']
+                        
+                # Case (2): Match is decent, but dangerously ambiguous.
+                elif (ratio_1 > 0.5) and (ratio_1 / ratio_2 <= 1.30):
+                    cprint(YLW + 'You probably meant one of these saved info:' + GR)
+                    cprint('1) Remember ' + info_1, wrap_width=79, wrap_joiner='\n   ')
+                    cprint('2) Remember ' + info_2, wrap_width=79, wrap_joiner='\n   ')
+                    question = "(If none, use 'saved-info' command for manual edit)\n"
+                    question += 'Which one you want to delete? (1, 2, cancel): '
+                    answers = ['1', '2']
+                    
+                # Case (3): Match is too poor.
+                else:   # elif ratio_1 <= 0.5:
+                    cprint(YLW + 'Perphaps you meant one of these saved info:' + GR)
+                    cprint('1) Remember ' + info_1, wrap_width=79, wrap_joiner='\n   ')
+                    cprint('2) Remember ' + info_2, wrap_width=79, wrap_joiner='\n   ')
+                    question = "(If none, use 'saved-info' command for manual edit)\n"
+                    if top_n == 3:
+                        cprint('3) Remember ' + info_3, wrap_width=79, wrap_joiner='\n   ')
+                        question += f'Which one you want to delete? (1, 2, 3, cancel): '
+                        answers = ['1', '2', '3']
+                    else:
+                        question += f'Which one you want to delete? (1, 2, cancel): '
+                        answers = ['1', '2']
+                
+                # Track the targeted saved-info back to the file content & remove it if the user said so.
+                if GLOBAL_LOG_ON: in_time_log(f'\n{question}...')
+                user_choice = input(f'\n{YLW}{question}{RS}').strip().lower()
+                if user_choice in answers:
+                    if user_choice.isdigit(): idx = cleaned_infos.index(locals()[f'info_{user_choice}'])
+                    elif user_choice == 'y': idx = cleaned_infos.index(info_1)
+                    to_remove = '- ' + info_list[idx]
+                    new_content = content.replace(to_remove, '').strip()
+                    
+                    try:
+                        with open(SAVED_INFO_FILE, 'w', encoding='utf-8') as f:
+                            f.write('\n' + new_content)
+                    except Exception as error:
+                        if ERROR_LOG_ON: log_caught_exception()
+                        msg = f"Couldn't edit '{SAVED_INFO_FILE}' file!\nError: {error}."
+                        box(msg, title='ERROR', border_color=RED, text_color=RED)
+                        clear_lines()
+                        return
+                    
+                    cprint(GR + 'Saved info permanently deleted!' + RS)
+                    deleted = True
+               
+                # User said no/cancel.
+                else:
+                    cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+
+            except Interruption:
+                cprint(f'\n{GR}{choice(CONTINUE_MESSAGES)}{RS}')
+            
+            finally:
+                separator(color=YLW)
+                if deleted: return True
+                else: return False
+
+    def simple_stem(word):
+        """
+        Reduces a word to its base stem by stripping common non-essential suffixes.
+        Used with 'forget' command.
+        """
+        word = word.lower()
+        if word.endswith('ment') and len(word) > 6:
+            return word[:-4]
+        elif word.endswith('tion') and len(word) > 6:
+            return word[:-3]
+        elif word.endswith(('ing', 'ous', 'ism')) and len(word) > 5:
+            return word[:-3]
+        elif word.endswith(('ed', 'es', 'er', 'ly', 'al')) and len(word) > 3:
+            return word[:-2]
+        elif word.endswith('s') and len(word) > 3:
+            return word[:-1]
+        return word
+
+    def compare_texts(text: str, compare_list: list):
+        """
+        Compare a string against a list of strings.
+        Return compared strings with their ratio.
+        Used with 'forget' command.
+        """    
+        # Pre-calculate tokens and stems for the given text.
+        source_word_tokens = re.findall(r'\b\w+\b', text.lower())
+        source_stem_tokens = [simple_stem(word) for word in source_word_tokens]
+        
+        # Define stop words to avoid similarity matching being diluted or dominated by them.
+        # This is positive for long strings, but negative for short ones.
+        STOP_WORDS = set([
+            'a', 'an', 'the', 'i', 'am', 'is', 'are', 'was', 'were', 'my', 'me', 'you', 
+            'your', 'about', 'that', 'this', 'it', 'its', 'of', 'for', 'in', 'on', 'at', 
+            'and', 'or', 'to', 'from', 'but', 'by', 'do', 'don', 't', 's', 'can'
+        ])
+        STOP_WORDS_THRESHOLD = 7    # Minimum N° of words allowed to remove stop words.
+        
+        # Define weighting for priority
+        WEIGHT_FULL_WORD = 0.75
+        WEIGHT_STEM = 0.25
+        
+        results = {}
+        
+        for string in compare_list:
+            # 3. Calculate both sets of tokens for the strings
+            target_word_tokens = string.lower().split()
+            target_stem_tokens = [simple_stem(word) for word in target_word_tokens]
+            
+            # 4. Remove stop words from source and target tokens.
+            if len(source_word_tokens) > STOP_WORDS_THRESHOLD:
+                source_word_tokens = [w for w in source_word_tokens if w not in STOP_WORDS]
+                source_stem_tokens = [w for w in source_stem_tokens if w not in STOP_WORDS]
+                target_word_tokens = [w for w in target_word_tokens if w not in STOP_WORDS]
+                target_stem_tokens = [w for w in target_stem_tokens if w not in STOP_WORDS]
+
+            # 5. Calculate Full-Word Similarity & Stem Similarity
+            full_word_ratio = difflib.SequenceMatcher(None, source_word_tokens, target_word_tokens).ratio()
+            stem_ratio = difflib.SequenceMatcher(None, source_stem_tokens, target_stem_tokens).ratio()
+
+            # 6. Combine & Save scores using weighted average
+            combined_ratio = (full_word_ratio * WEIGHT_FULL_WORD) + (stem_ratio * WEIGHT_STEM)
+            combined_ratio = min(combined_ratio * 1.5, 1.0)    # Just cheating, for now the match is inaccurate.
+            if not combined_ratio: combined_ratio = 0.001      # To avoid ZeroDivisionError.
+            results[string] = combined_ratio
+        
+        return results
 
 
 
@@ -1156,8 +1430,8 @@ def del_all():
     cprint()
     separator(color=YLW)
     to_remove_files = [
-        ERROR_LOG_FILE, GLOBAL_LOG_FILE, CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT,
-        LAST_RESPONSE_FILE, PROMPT_HISTORY_FILE, SAVED_INFO_FILE
+        CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT, LAST_RESPONSE_FILE,
+        PROMPT_HISTORY_FILE, SAVED_INFO_FILE, ERROR_LOG_FILE, GLOBAL_LOG_FILE
     ]
     
     cprint(f'{YLW}WARNING! The program will exit & wipe the following files:')
@@ -1166,7 +1440,7 @@ def del_all():
     
     # Confirm.
     text = f"Are you sure you want to reset everything? (y/n): {RS}"
-    if GLOBAL_LOG_ON: in_time_log(text)
+    if GLOBAL_LOG_ON: in_time_log(text + '...')
     confirm = None
     
     while True:
@@ -1225,7 +1499,7 @@ def serialize_history():
     
     return serializable_history
 
-def prune_history_file():
+def prune_prompt_history():
     """
     Checks the history file size. If > PROMPT_HISTORY_SIZE, it prunes the file
     by taking the last half and finding the next full history block (timestamp).
@@ -1551,7 +1825,7 @@ def load_chat_history():
     
     if file_exist and not empty and useful:
         question = f"{CYN}Chat history available, load it? (y/n):{RS} "
-        if GLOBAL_LOG_ON: in_time_log(question)
+        if GLOBAL_LOG_ON: in_time_log(question + '...')
         invalid_answer = False
         
         while True:
@@ -1675,44 +1949,8 @@ def setup_chat():
                     if attempts: separator(color=RED)
                     raise
             
-            # Preparation & Welcome Screen...
-            while True:
-                try:
-                    if SUGGEST_FROM_WORDLIST: load_word_completer()
-                    try: copy_file(PROMPT_HISTORY_FILE, PROMPT_HISTORY_FILE + '.bak')
-                    except: pass
-                    
-                    console.set_window_title('Gemini Py-CLI')
-                    welcome_screen()
-                    load_chat_history()
-                    
-                    if SUGGEST_FROM_WORDLIST and not word_completer:
-                        # Don't ask why I print then clean then print, I personally don't know.
-                        cprint('\033[2K')
-                        cprint(f"{YLW}Suggestions from a wordlist is ON, but '{WORDLIST_FILE}' file is missing!{RS}")
-                        separator(end='')
-                        
-                    break
-                    
-                except Interruption:
-                    farewell()
-                    continue
-            
-            # Start chat session with/out the system instructions (Implicit orders + saved info).
-            config = None
-            if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
-                config = load_system_instructions()
-            
-            chat = client.chats.create(
-                model=GEMINI_MODEL,
-                history=initial_history,
-                config=config,
-            )
-            
-            cprint()
-            restarting = False
-            return client, chat
-
+            break
+        
         except ClientError as error:
             catch_client_error_startup(error)
             help(short=True)
@@ -1727,6 +1965,47 @@ def setup_chat():
         except NetworkExceptions:
             catch_network_error()
             sys_exit(1)
+
+    # Preparation & Welcome Screen...
+    if SUGGEST_FROM_WORDLIST: load_word_completer()
+    try: copy_file(PROMPT_HISTORY_FILE, PROMPT_HISTORY_FILE + '.bak')
+    except: pass
+    console.set_window_title('Gemini Py-CLI')
+            
+    while True:
+        try:
+            welcome_screen()
+            load_chat_history()
+            
+            if SUGGEST_FROM_WORDLIST and not word_completer:
+                # Don't ask why I print then clean then print, I personally don't know.
+                cprint('\033[2K')
+                warning = f"{YLW}Suggestions from a wordlist is ON, but '{WORDLIST_FILE}' file is "
+                if os.path.exists(WORDLIST_FILE): warning += "empty!"
+                else: warning += "missing!"
+                cprint(warning + RS)
+                separator(end='')
+                
+            break
+            
+        except Interruption:
+            farewell()
+            continue
+    
+    # Start chat session with/out the system instructions (Implicit orders + saved info).
+    config = None
+    if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
+        config = load_system_instructions()
+    
+    chat = client.chats.create(
+        model=GEMINI_MODEL,
+        history=initial_history,
+        config=config,
+    )
+    
+    cprint()
+    restarting = False
+    return client, chat
 
 def get_user_input():
     """
@@ -1796,135 +2075,120 @@ def interpret_commands(user_input):
     global discarding, history
     command = user_input.strip().lower()
     
-    if command == 'quit' or command == 'exit':
-        cprint()
-        farewell(confirmed=True)
+    match command:
+        case 'quit' | 'exit':
+            cprint()
+            farewell(confirmed=True)
     
-    elif command == 'help':
-        help(short=True)
-        clear_lines()    
+        case 'help':
+            help(short=True)
+            clear_lines()    
         
-    elif command == 'help-2':
-        help()
-        clear_lines()
-        
-    elif command == 'clear':
-        system(CLEAR_COMMAND)
-    
-    elif command == 'open':
-        open_path('.', clear=2, restore_prompt=user_input)
-    
-    elif command == 'saved-info':
-        open_path(SAVED_INFO_FILE, clear=2, restore_prompt=user_input)
-    
-    elif command.startswith('remember ') and SAVED_INFO:
-        try:
-            first_line_written = False
-            # Save the info by wrapping it into short lines.
-            with open(SAVED_INFO_FILE, 'a', encoding='utf-8') as f:
-                for line in user_input.splitlines():
-                    wrapped_lines = textwrap.wrap(line, width=CONSOLE_WIDTH)
-                    for line in wrapped_lines:
-                        if not first_line_written:
-                            f.write(f'\n- {line}\n')
-                            first_line_written = True
-                        else:
-                            f.write(f'  {line}\n')
-                
-            msg = f"Information saved!\nYou can also manually edit your info in '{SAVED_INFO_FILE}'."
-            color = GR
-        
-        except Exception as error:
-            if ERROR_LOG_ON: log_caught_exception()
-            msg = f"Couldn't save your info!\nError: {error}"
-            color = RED
-            
-        box(msg, title='SAVED INFO STATUS', border_color=color, text_color=color, secondary_color=RED)
-        clear_lines()
-        return True
-    
-    elif command  in ('save-last', 'show', 'copy'):
-        get_last_response(command)
-        
-    elif command == 'save-chat':
-        save_chat_history_text()
+        case 'help-2':
+            help()
+            clear_lines()
 
-    elif command.startswith('pop-last'):
-        if len(command) > 8: n_turns = int(float(command[8:]))
-        else: n_turns = 1
-        store_last_turn_for_exclusion(n_turns)  
+        case 'clear':
+            system(CLEAR_COMMAND)
+    
+        case 'open':
+            open_path('.', clear=2, restore_prompt=user_input)
+    
+        case 'saved-info':
+            open_path(SAVED_INFO_FILE, clear=2, restore_prompt=user_input)
+    
+        case c if c.startswith('remember ') and SAVED_INFO:
+            manage_saved_info(user_input, 'remember')
+            return True
         
-    elif command.startswith('pop-all'):
-        store_last_turn_for_exclusion(remove_all=True)
+        case c if c.startswith('forget ') and SAVED_INFO:
+            deleted = manage_saved_info(user_input, 'forget')
+            # True for deletion, None for error, False for user cancellation (promot won't be sent if False).
+            if deleted in [True, None]: return True
     
-    elif command in ['restore-last', 'restore-all']:
-        restore_removed_messages(command)
+        case 'save-last' | 'show' | 'copy':
+            get_last_response(command)
+        
+        case 'save-chat':
+            save_chat_history_text()
+
+        case c if c.startswith('pop-last'):
+            if len(command) > 8: n_turns = int(float(command[8:]))
+            else: n_turns = 1
+            store_last_turn_for_exclusion(n_turns)  
+        
+        case c if c.startswith('pop-all'):
+            store_last_turn_for_exclusion(remove_all=True)
     
-    elif command == 'del-prompt':
-        try:
-            os.remove(PROMPT_HISTORY_FILE)
+        case 'restore-last' | 'restore-all':
+            restore_removed_messages(command)
+    
+        case 'del-prompt':
+            try:
+                os.remove(PROMPT_HISTORY_FILE)
+                history = FileHistory(PROMPT_HISTORY_FILE)
+                msg = f"File '{PROMPT_HISTORY_FILE}' removed successfully."
+                msg += "\nIf you ever cancel, type 'discard', else it'll be permanently lost."
+                color = GR
+            except FileNotFoundError:
+                msg = f"File '{PROMPT_HISTORY_FILE}' not found!"
+                color = YLW
+            except Exception as e:
+                if ERROR_LOG_ON: log_caught_exception()
+                msg = f"An error occurred: {e}."
+                color = RED
+            
+            box(msg, title='STATUS', border_color=color, text_color=color)
+            clear_lines()
+    
+        case 'clear-log':
+            clear_log_files()
+    
+        case 'discard':
+            discarding = True
+            try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
+            except: pass
             history = FileHistory(PROMPT_HISTORY_FILE)
-            msg = f"File '{PROMPT_HISTORY_FILE}' removed successfully."
-            msg += "\nIf you ever cancel, type 'discard', else it'll be lost permanently."
-            color = GR
-        except FileNotFoundError:
-            msg = f"File '{PROMPT_HISTORY_FILE}' not found!"
-            color = YLW
-        except Exception as e:
-            if ERROR_LOG_ON: log_caught_exception()
-            msg = f"An error occurred: {e}."
-            color = RED
+            msg = 'Discarding current session & Restarting...'
+            box(msg, title='DISCARD', border_color=YLW, text_color=YLW)
+            clear_lines()
+            raise SoftRestart
+    
+        case 'kill':
+            discarding = True
+            try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
+            except: pass
+            msg = 'Clearing recent messages & Quitting...\nManually saved content & logs are kept!'
+            box(msg, title='KILL', border_color=YLW, text_color=YLW)
+            clear_lines()
+            raise SystemExit
+    
+        case 'del-all':
+            del_all()
         
-        box(msg, title='STATUS', border_color=color, text_color=color)
-        clear_lines()
-    
-    elif command == 'clear-log':
-        clear_log_files()
-    
-    elif command == 'discard':
-        discarding = True
-        try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
-        except: pass
-        history = FileHistory(PROMPT_HISTORY_FILE)
-        box('Discarding current session...', title='DISCARD', border_color=YLW, text_color=YLW)
-        clear_lines()
-        raise SoftRestart
-    
-    elif command == 'kill':
-        discarding = True
-        try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
-        except: pass
-        msg = 'Clearing recent messages & Quitting...\nManually saved content & logs are kept!'
-        box(msg, title='DISCARD & KILL', border_color=YLW, text_color=YLW)
-        clear_lines()
-        raise SystemExit
-    
-    elif command == 'del-all':
-        del_all()
+        case 'restart':
+            raise SoftRestart
+
+        case 'license':
+            msg_1 = "Do whatever you want using 'Gemini Py-CLI', wherever you want."
+            msg_2 = "Half of it was written using Gemini itself, so I won't complain.\n"
+            msg_3 = f"But as a polite programmer request, I'll be happy if you mention my name."
+            box(msg_1, msg_2, msg_3, title='LICENSE', border_color=GR, text_color=GR)
+            clear_lines()
         
-    elif command == 'restart':
-        raise SoftRestart
-    
-    elif command == 'license':
-        msg_1 = "Do whatever you want using 'Gemini Py-CLI', wherever you want."
-        msg_2 = "Half of it was written using Gemini itself, so I won't complain.\n"
-        msg_3 = f"But as a polite programmer request, I'll be happy if you mention my name."
-        box(msg_1, msg_2, msg_3, title='LICENSE', border_color=GR, text_color=GR)
-        clear_lines()
-        
-    elif command == 'about':
-        msg_1 = "Title: Gemini Py-CLI.\nAuthor: Mohyeddine Didouna, with a major AI assistance."
-        msg_2 = f"GitHub Home: {UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}"
-        msg_3 = f"Issues Page: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}"
-        box(msg_1, msg_2, msg_3, title='ABOUT', border_color=GR, text_color=GR)
-        clear_lines()
-    
-    # This is only for testing, don't use it otherwise.
-    elif command.startswith('exec '):
-        exec(user_input[5:])
+        case 'about':
+            msg_1 = "Title: Gemini Py-CLI.\nAuthor: Mohyeddine Didouna, with a major AI assistance."
+            msg_2 = f"GitHub Home: {UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}"
+            msg_3 = f"Issues Page: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}"
+            box(msg_1, msg_2, msg_3, title='ABOUT', border_color=GR, text_color=GR)
+            clear_lines()
+   
+        # This is only for testing, don't use it otherwise.
+        case c if c.startswith('exec '):
+            exec(user_input[5:])
                 
-    else:
-        return True
+        case _:
+            return True
 
 def get_response():
     """Send the user input to AI and wait to receive the response."""
@@ -1943,7 +2207,7 @@ def get_response():
         response = None
         failed = False
         
-        # First server error will be forgiven.
+        # First server/network error will be forgiven.
         for _ in range(2):
             try:
                 # raise ClientError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
@@ -1980,7 +2244,7 @@ def get_response():
                 clear_lines()
                 break
 
-            except ServerError:
+            except (*NetworkExceptions, ServerError):
                 if failed:
                     clear_lines()
                     raise
@@ -2111,17 +2375,16 @@ def run_chat():
 # 6) Part VI: Remaining Global Objects & Starting Point ------------------------
 # Define global variables.
 confirm_separator = True                        # Before confirming to quit, print a separator only if no precedent one was already displayed.
-word_completer = None                           # Has a True value only if the PROMPT_HISTORY_FILE is present and SUGGEST_FROM_WORDLIST is True.
+word_completer = None                           # Has a True value only if the WORDLIST_FILE is present and SUGGEST_FROM_WORDLIST is True.
 chat_saved = False                              # True after the chat has been saved.
 restarting = False                              # Session restart flag.
 discarding = False                              # Session discard flag.
 messages_to_remove = []                         # Store selected messages for deletion at exit.
-messages_to_remove_steps = []                   # Used to undo messages removal.
+messages_to_remove_steps = []                   # Used to undo messages deletion.
 current_response_line = 0                       # Used to clean output upon blocking a response.
-default_prompt = None                           # An initial prompt the user gets upon asking for input, mostly not used.
+default_prompt = None                           # An initial prompt the user gets when asked for input, mostly not used.
 
 # Define global constants.
-CONTENT_WIDTH = CONSOLE_WIDTH - 4               # The width of characters inside box(), (4) is the sum of left & right borders.
 CLEAR_COMMAND = 'cls' if os.name == 'nt' else 'clear'
 ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')  # Used to clean a string from ANSI codes.
 WORD_AND_SPACE_PATTERN = re.compile(r'(\s+)')   # Used to split lines into words, for word-by-word animation.
@@ -2147,7 +2410,7 @@ console_theme = Theme({                         # Hyperlinks may not be clear, s
     "repr.url": "italic bright_magenta",
 })
 
-console = Console(                              # Our main console, though not always used.
+console = Console(                              # Our main console, used mainly for AI response displaying.
     width=CONSOLE_WIDTH,
     theme=console_theme,
     no_color=not USE_COLORS,    # 
@@ -2208,13 +2471,14 @@ if __name__ == '__main__':
             if chat: run_chat()
         
         except SoftRestart:
-            # A hidden chat save.
             if not discarding:
+                # A hidden chat save.
                 save_chat_history_json(hidden=True)
                 discarding = False
-            # Restart.
-            msg = 'Restarting chat session...'
-            box(msg, title='SESSION RESTART', border_color=CYN, text_color=CYN)
+                # Restart.
+                msg = 'Restarting chat session...'
+                box(msg, title='SESSION RESTART', border_color=CYN, text_color=CYN)
+                
             restarting = True
             continue
                 

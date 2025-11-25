@@ -11,6 +11,7 @@ from random import randint, choice
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
+GEMINI_API_KEY = 'AIzaSyAqYCeHKpI0wfU6QJSmELqJg-QJzugL2vo'
 GEMINI_MODEL = 'gemini-flash-latest'         # Advanced models are more expensive and have less API limits.
 MAX_HISTORY_MESSAGES = 512                   # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 NO_HISTORY_LIMIT = False                     # When True, chat history will never be truncated.
@@ -36,16 +37,16 @@ RESPONSE_EFFECT = 'line'                     # Effect while displaying response,
 
 
 # Moderate Settings
-CONSOLE_WIDTH = 80                           # How many characters to print per line (Should be < Console window).
+CONSOLE_WIDTH = 85                           # How many characters to print per line (Should be < Console window).
+STARTUP_API_CHECK = False                    # Disable for a slightly faster loading, and for the ability to enter the chat offline.
 INPUT_HIGHLIGHT = False                      # Syntax highlighting for the user prompt.
 INPUT_HIGHLIGHT_LANG = 'python'              # The language name used for syntax highlighting.
-STARTUP_API_CHECK = False                    # Disable for a slightly faster loading, and for the ability to enter the chat offline.
 SAVE_INPUT_ON_CLEAR = False                  # Save the prompt to history when the user clears its prompt with Ctrl-C.
 SAVE_INPUT_ON_STOP = False                   # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys.
 NO_ERROR_DETAILS = False                     # Never ask the user to see more details about an error.
 ERROR_LOG_ON = True                          # To log errors to a file, console output won't be affected.
 GLOBAL_LOG_ON = True                         # To log the entire console output to a file + optionally hidden debugging info,
-                                                 # it gets cleared on each launch, visual console output won't be affect.
+                                                 # it gets cleared on each launch; visual console output won't be affect.
 
 
 # Advanced Settings
@@ -139,7 +140,7 @@ FAREWELLS_MESSAGES = [
     "You are breathing involuntary; but now that you knew, you have to breath voluntary :P",
     "Cleaning crime scene...\nAlright! ready to escape.",
     "Normal mode OFF, switching to Agent Six...",
-    "There'll be no mercy next time...",
+    "There'll be no mercy next time, I promise...",
     "Let's celebrate a party just for now reason!",
     "Don't look back, you've been warned!",
     "Goodbye! Don't forget to miss me a little.",
@@ -149,7 +150,7 @@ FAREWELLS_MESSAGES = [
     "Farewell! May your future be as bright as your phone screen.",
     "Goodbye! Now you’re free to make all the bad decisions you’ve been planning.",
     "Good luck! If the new place doesn’t work out, you can always come back and pretend you never left ;)",
-    "We have a winner! Ahhh.. I meant a dinner!",
+    "We have a winner! Ahuh.. I meant a dinner!",
     
     # Enthusiastic
     "Keep coding and stay curious!\n(If you aren't a developer, ignore this, you owe me a coffee)",
@@ -169,13 +170,13 @@ FAREWELLS_MESSAGES = [
     "Ok enough playing, time to study.",
     
     # Mathematic 
-    f"Calculate this: ({randint(1, 100)} {choice(['+', '-', '*', '/', '**', '%'])} "
+    f"Calculate this: ({randint(1, 100)} {choice(['+', '-', '×', '÷', '^', '%'])} "
     f"{randint(1, 100)})\nC'mon quickly!",
     f"NOOOOOOOOOOOOOOOOOOOOOO...O\nTask: Calculate the partial sum of the sequence: "
     f"({(' ' + choice(['+', '*']) + ' ').join(['O₁', 'O₂', 'O₃', '...', 'On'])})\n"
     f"Given that it's {choice(['an arithmetic sequence (constant difference)', 'a geometric sequence (constant ratio)', 'a harmonic sequence', 'a fibonacci sequence'])}.\n"
     f"Other details: Difference/Ratio={randint(1, 100)}, O₁={randint(1, 500)}, n={randint(1, 999)}\n"
-    "Note: It's letter 'O' not zero '0'. Good luck :)",
+    "Note: It's letter 'O' not zero '0'; Good luck :)",
     "I have an existential crisis every time I try to calculate the square root of a negative number. "
     "I’m pretty sure the imaginary number 'i' (i = √-1, i² = -1) is just a regular number that failed its reality check. "
     "Turns out, the entire universe depends on this one number that doesn't actually exist.",
@@ -209,12 +210,12 @@ FAREWELLS_MESSAGES = [
     "Hint: If you see random characters in the console (like '\\033[96m'), then disable ANSI codes from settings.",
     "Hint: Error logging is ON by default, you may use it to send me errors. You can also turn it OFF if you wish.",
     "Hint: Both global & error logging may cause a slightly extra delay for AI response, I don't know why, but you can always turn them OFF.",
-    "Hint: Console width is best set to (80) or more, for Windows Command Prompt users, (79) is better.",
+    "Hint: Console width is best set to (80) or more; for Windows Command Prompt users, (79) is better.",
     "Hint: Forgot how to use Gemini Py-CLI? type 'help' to see a very short and friendly menu; there is also "
     "a handy toolbar at the bottom of the console (It can be turned off).",
-    "Hint: You can change MAX_HISTORY_MESSAGES in settings, but if chat history gets too long, Gemini will "
+    "Hint: You can change 'MAX_HISTORY_MESSAGES' in settings, but if chat history gets too long, Gemini will "
     "start forgetting things, and the program might need more time while loading/saving chat.",
-    "Hint: Some options may slightly affect performances, like response typing effect, word suggestion & completion, application logs, etc."
+    "Hint: Some options may slightly affect performances, like response typing effect, word suggestion & completion, application logs, etc. "
     "You can turn them OFF at any time.",
     "Hint: Colors & ANSI codes may not work in old consoles, like Windows Command Prompt; either disable them, "
     "or use a better console emulator; ConEmu is a recommended very lightweight option for Windows.",
@@ -244,7 +245,7 @@ FAREWELLS_MESSAGES = [
 ]
  
 CONTINUE_MESSAGES = [
-    # Messages displayed upon confirming exit, but the user chooses NO.
+    # Messages displayed upon confirming exit or editing sensitive stuff (saved-info...), but the user chooses NO.
     # Standard
     'Resuming chat...',
     'Cancelling, chat will continues.',
@@ -300,10 +301,31 @@ Before replying to any message, follow these mandatory formatting rules:
 # Coming Soon Settings
 SUPPRESS_CATCHED_ERRORS = False             # Never show catched errors.
 SUPPRESS_UNEXPECTED_ERRORS = False          # Never show fatal errors, let it be a sudden exit.
-NO_QUESTIONS = False                        # Never ask the user for anything.
+NO_QUESTIONS = False                        # Never ask the user for anything, and use the default option.
 
 
+# Hotkeys
+    # Hard & Confusing; For now, I honestly don't know how to explain them.
+    # The original format for combinations (i.e: pressed at once) is 'key1-key2', but since the library I use 'prompt_toolkit'
+    # doen't provide so many keys & combinations, I had to use custom lists like (key1, key2) for combinations.
+    # The problem is, the format (key1, key2) in my code can also represent (2) separated keys that can be pressed
+    # individually to do the same job.
+    # See (https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Settings) to see all available hotkeys.
+    
+class Hotkeys():
+    if ENTER_NEW_LINE:
+        SUBMIT = ('escape', 'enter')                                # Press ESCAPE-ENTER at once.
+        NEW_LINE = ('enter', 'c-space', 's-tab', 'c-j')             # Press either ENTER or CTRL-SPACE or SHIFT-TAB or CTRL-J.
+    else:
+        SUBMIT = ('enter',)                                         # Press ENTER alone, or ENTER-KEY2 if available.
+        NEW_LINE = (('escape', 'enter'), 'c-space', 's-tab', 'c-j') # Press ESCAPE-ENTER or CTRL-SPACE or SHIFT-TAB or CTRL-J.
 
+    TAB = 'tab'                     # Press TAB.
+    UNDO = 'c-z'                    # Press CTRL-Z at once.
+    REDO = 'c-y'                    # Press CTRL-Y at once.
+    INTERRUPT = ('c-c', 'c-d')      # Press CTRL-C or CTRL-D.
+    # F_KEYS here is a dictionary of 'F' key to press & its fellow 'command' (commands are listed in the help menu).
+    F_KEYS = {'f1': 'show', 'f2': 'copy', 'f3': 'restart', 'f4': 'quit', 'f5': 'discard', 'f6': 'kill', 'f7': 'help'}
 
 
 # Values Correction (Ignore This Part)

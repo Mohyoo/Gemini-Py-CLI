@@ -31,7 +31,7 @@ LINE_SEPARATOR = '-'        # If LOG_ROOT is ON, this'll add a separator if the 
 
 original_stdout = None      # Used to keep console output intact.
 console_logger = None       # An instance of the logger.
-
+log_method = None           # The method to log with, it depends on the log level.
 
 class StdoutTee:
     def __init__(self, original_stdout_stream, logger_instance, ignore_strings=None):
@@ -76,7 +76,6 @@ class StdoutTee:
                             continue
 
                         # We use rstrip() to remove trailing spaces but keep the line itself
-                        log_method = getattr(self.logger, LOG_LEVEL_NAME.lower())
                         log_method(cleaned_line.rstrip())
 
                 except Exception:
@@ -157,7 +156,7 @@ def setup_global_console_logger(log_file=GLOBAL_LOG_FILE, ignore_strings=None):
     Sets up the logger.
     ignore_strings: A list of substrings. If a line contains one, it is skipped.
     """
-    global original_stdout, console_logger
+    global original_stdout, console_logger, log_method
 
     if original_stdout is not None:
         in_time_log("Global console logger is already set up.")
@@ -178,6 +177,7 @@ def setup_global_console_logger(log_file=GLOBAL_LOG_FILE, ignore_strings=None):
     file_handler.setFormatter(formatter)
     file_handler.setLevel(LOG_LEVEL_INT)
     console_logger.addHandler(file_handler)
+    log_method = getattr(console_logger, LOG_LEVEL_NAME.lower())
     
     # Inject the logger into StdoutTee
     sys.stdout = StdoutTee(original_stdout, console_logger, ignore_strings)
@@ -188,5 +188,4 @@ def in_time_log(text: str):
     text = ANSI_ESCAPE_PATTERN.sub('', text)
     if console_logger:
         for line in text.splitlines():
-            log_method = getattr(console_logger, LOG_LEVEL_NAME.lower())
             log_method(line)
