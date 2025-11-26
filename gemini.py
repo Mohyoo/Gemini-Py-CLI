@@ -87,6 +87,9 @@ try:
     if VIM_EMACS_MODE:
         from prompt_toolkit.enums import EditingMode
     
+    if BOTTOM_TOOLBAR:
+        from prompt_toolkit.formatted_text import HTML
+    
 except ImportError as error:
     print(f'\nError: {error}.')
     print("Use 'pip' to install missing modules.")
@@ -2104,8 +2107,9 @@ def get_user_input():
     elif VIM_EMACS_MODE == 'emacs': editing_mode = EditingMode.EMACS
     else: editing_mode = None
     
-    # 3. Error handler.
+    # 3. Others.
     error_handler = lambda *args, **kwargs: print("Caught error internally!", file=sys.stderr)
+    bottom_free_space = SUGGESTIONS_LIMIT + 1 if SUGGEST_FROM_WORDLIST else False
     
     # Log.
     if GLOBAL_LOG_ON:
@@ -2148,7 +2152,7 @@ def get_user_input():
             bottom_toolbar=prompt_bottom_toolbar,
             editing_mode=editing_mode,
             enable_open_in_editor=EXTERNAL_EDITOR,
-            reserve_space_for_menu=False,
+            reserve_space_for_menu=bottom_free_space,
             search_ignore_case=True,
             lexer=lexer,
             validator=input_validator,
@@ -2541,8 +2545,9 @@ def define_global_objects():
 
     prompt_bottom_toolbar = None                           # User prompt toolbar.
     if BOTTOM_TOOLBAR:
-        prompt_bottom_toolbar = '\n[CTRL-SPACE] new line | [UP/DOWN] history | [CTRL-Z/CTRL-Y] undo/redo'
-        prompt_bottom_toolbar += '\n[F3] restart | [F4] quit | [CTRL-L] clear | [CTRL-C] cancel | [F7] help'
+        prompt_bottom_toolbar = '\n<b>[CTRL-SPACE]</b> new line | <b>[UP/DOWN]</b> history | <b>[CTRL-Z/CTRL-Y]</b> undo/redo'
+        prompt_bottom_toolbar += '\n<b>[F3]</b> restart | <b>[F4]</b> quit | <b>[CTRL-L]</b> clear | <b>[CTRL-C]</b> cancel | <b>[F7]</b> help'
+        prompt_bottom_toolbar = HTML(prompt_bottom_toolbar)
 
     lexer = None
     if INPUT_HIGHLIGHT:

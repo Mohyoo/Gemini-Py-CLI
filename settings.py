@@ -11,6 +11,7 @@ from random import randint, choice
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
+GEMINI_API_KEY = 'AIzaSyBb_CRtO0CiSVOE_uCl8_OMDmhTki3LUmA'
 GEMINI_MODEL = 'gemini-flash-latest'         # Advanced models are more expensive and have less API limits.
 MAX_HISTORY_MESSAGES = 512                   # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 NO_HISTORY_LIMIT = False                     # When True, chat history will never be truncated.
