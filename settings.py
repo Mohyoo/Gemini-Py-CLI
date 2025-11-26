@@ -11,14 +11,15 @@ from random import randint, choice
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
-GEMINI_API_KEY = 'AIzaSyAqYCeHKpI0wfU6QJSmELqJg-QJzugL2vo'
 GEMINI_MODEL = 'gemini-flash-latest'         # Advanced models are more expensive and have less API limits.
 MAX_HISTORY_MESSAGES = 512                   # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 NO_HISTORY_LIMIT = False                     # When True, chat history will never be truncated.
 ENTER_NEW_LINE = False                       # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
 SUGGEST_FROM_HISTORY = False                 # Use the user's prompt history for inline word completion (SLOW).
 SUGGEST_FROM_WORDLIST = True                 # Suggest words while typing, in a menu popup, based on a wordlist.
+SUGGEST_FROM_WORDLIST_FUZZY = False          # This completion mode is more forgiving, you get approximate suggestions instead of accurate ones.
 SUGGESTIONS_LIMIT = 5                        # The number of suggestions to show while typing a prompt.
+PROMPT_HISTORY_ON = True                     # Every user prompt is saved to a file and can be quickly reused in future chats.
 SAVED_INFO = True                            # If True, user input will be saved with highest priority if he starts it with 'remember'.
 USE_COLORS = True                            # Better to disable colors for old consoles.
 USE_ANSI = True                              # Like USE_COLORS, but more general, once OFF, all ANSI escape codes will be disabled (Recommended to be False for old consoles).
@@ -43,6 +44,9 @@ INPUT_HIGHLIGHT = False                      # Syntax highlighting for the user 
 INPUT_HIGHLIGHT_LANG = 'python'              # The language name used for syntax highlighting.
 SAVE_INPUT_ON_CLEAR = False                  # Save the prompt to history when the user clears its prompt with Ctrl-C.
 SAVE_INPUT_ON_STOP = False                   # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys.
+EXTERNAL_EDITOR = True                       # Allow you to edit your prompt in an external editor by pressing CTRL-X-CTRL-E in a row.
+FAVORITE_EDITOR = None                       # Full path for your favorite extrernal editor; if not set, fallback to default system editor.
+                                                # E.g: 'notepad', 'vim' or 'C:\Program Files\Notepad++\notepad++.exe'.
 NO_ERROR_DETAILS = False                     # Never ask the user to see more details about an error.
 ERROR_LOG_ON = True                          # To log errors to a file, console output won't be affected.
 GLOBAL_LOG_ON = True                         # To log the entire console output to a file + optionally hidden debugging info,
@@ -55,9 +59,9 @@ LAST_RESPONSE_FILE = 'last_response.txt'     # To save last Gemini response in a
 WORDLIST_FILE = 'word_suggestion.txt'        # A small wordlist used for word suggestion.
 CHAT_HISTORY_JSON = 'chat_history.json'      # To save/load chat history to/from a json file (If available).
 CHAT_HISTORY_TEXT = 'chat_history.txt'       # To save chat history as a simple text file (If available).
-PROMPT_HISTORY_FILE = 'prompt_history.txt'   # To load prompt history (If available).
 ERROR_LOG_FILE = 'application_errors.log'                  # The file to write errors to (Level: warning, error, critical).
 GLOBAL_LOG_FILE = 'application_console_output.log'         # The file to write the entire console output to + optionally hidden debug info (Level: debug, info).
+PROMPT_HISTORY_FILE = 'prompt_history.txt'   # To load prompt history (If available).
 PROMPT_HISTORY_SIZE = 0.5                    # Max prompt history file size (1 = 1 MB).
 LOG_SIZE = 0.5                               # Max error log file size (1 = 1 MB).
 
@@ -283,7 +287,9 @@ CONTINUE_MESSAGES = [
 
 # Experimental Settings.
 MOUSE_SUPPORT = False                       # Use mouse to edit user prompt.
-VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vi', 'emacs' or None.
+VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vim', 'emacs' or None.
+                                                # E.g.1: For VIM mode, ESC-I is for insert mode; beside navigation mode by pressing ESC + j or h, j, k, l.
+                                                # E.g.2: For EMACS mode, Ctrl+A to go to line beginning, Ctrl+E to move to end.
 IMPLICIT_INSTRUCTIONS_ON = False            # Hidden instructions to help organize the responses for CLI.
 IMPLICIT_INSTRUCTIONS = """
 You are an AI assistant specialized for command-line interface (CLI) output, with a fixed width of 80 characters.
@@ -331,5 +337,5 @@ class Hotkeys():
 # Values Correction (Ignore This Part)
 MAX_HISTORY_MESSAGES = 512                   # Keep history messages in an even number (User-AI turns).
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
-if VIM_EMACS_MODE not in (None, 'vi', 'emacs'): VIM_EMACS_MODE = None
+if VIM_EMACS_MODE not in (None, 'vim', 'emacs'): VIM_EMACS_MODE = None
 if not sys.stdout.isatty(): USE_ANSI = False   # Hide ANSI characters if the output is being redirected to a non-terminal location.

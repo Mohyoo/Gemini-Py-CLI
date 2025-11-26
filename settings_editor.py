@@ -54,16 +54,22 @@ GENERAL_SETTINGS = [
         'type': 'bool'
     },     
     {
-        'key': 'ENTER_NEW_LINE',
-        'desc': 'If True, Enter inserts a new line, and Esc-Enter submits;\n' + SPACE +
-                'if False, Enter submits, and Esc-Enter inserts a new line.\n',
-        'type': 'bool'
-    },
-    {
         'key': 'SAVED_INFO',
         'desc': "If True, your prompt will be saved with highest priority\n" + SPACE +
                 "if you start it with 'remember'.\n",
         'type': 'bool',
+    },
+    {
+        'key': 'PROMPT_HISTORY_ON',
+        'desc': "Your prompts history will be saved to a text file, allowing you\n" + SPACE +
+                "to reuse them quickly in future chat sessions (Use UP/DOWN keys).\n",
+        'type': 'bool',
+    },
+    {
+        'key': 'ENTER_NEW_LINE',
+        'desc': 'If True, Enter inserts a new line, and Esc-Enter submits;\n' + SPACE +
+                'if False, Enter submits, and Esc-Enter inserts a new line.\n',
+        'type': 'bool'
     },
     {
         'key': 'INFORMATIVE_RPROMPT',
@@ -84,6 +90,12 @@ GENERAL_SETTINGS = [
         'key': 'SUGGEST_FROM_WORDLIST',
         'desc': "Suggest words while typing, in a menu popup, based on a wordlist\n" + SPACE +
                 "file (Default file: word_suggestion.txt).\n",
+        'type': 'bool'
+    },
+    {
+        'key': 'SUGGEST_FROM_WORDLIST_FUZZY',
+        'desc': "If True, wordlist suggestion becomes more forgiving, you get\n" + SPACE +
+                "approximate suggestions instead of accurate ones.\n",
         'type': 'bool'
     },
     {
@@ -347,6 +359,8 @@ def main():
             print("♦ Remember, this editor is for general options.")
             print("  For some settings, choices are limited to the most common.")
             print("  For more control, edit 'settings.py' directly.\n")
+            print(f"♦ Remember that you have '{BACKUP_PATH}' as a backup.")
+            print("  You only need to remove the '.bak' suffix from its name.\n")
             print('♦ For a quick reference about verbose settings, visit the WIKI:')
             print('  https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Settings\n')
             try: input("  Press Enter to continue...")
@@ -410,7 +424,9 @@ def main():
                     style=style
                 ).ask()
                 
-                if new_val is None or not str(new_val).strip(): continue
+                if new_val is None or not new_val.strip(): continue
+                new_val = new_val.strip()
+                
                 if config['type'] == 'digit':
                     new_val = ''.join([c for c in new_val if c.isdigit()])
                     new_val = float(new_val)
@@ -433,5 +449,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        os.system('cls' if os.name == 'nt' else 'clear')
+        # os.system('cls' if os.name == 'nt' else 'clear')
         print("\nExiting Settings Editor...")

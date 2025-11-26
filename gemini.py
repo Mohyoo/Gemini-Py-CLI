@@ -1,14 +1,14 @@
 # 1) Part I: Initialization ----------------------------------------------------
-# Loading
 if __name__ == '__main__':
+    # Loading Screen.
     print('\n' + '+' + '-' * 77 + '+')
     print("| Loading libraries. Just a moment..." + ' ' * 41 + '|')
     print('+' + '-' * 77 + '+')
 
-# Change current working directory to the script's dir, to keep it portable.
-import os
-script_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(script_dir)
+    # Change current working directory to the script's dir, to keep it portable.
+    import os
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
 
 # Import Custom Modules
 try:
@@ -26,7 +26,7 @@ except (KeyboardInterrupt, EOFError):
 
 # Import Libraries
 try:
-    # Necessary
+    # Necessary (The slowest one to import here is google.genai, others are negligeable)
     import re
     import io
     import sys
@@ -45,9 +45,9 @@ try:
     from httpcore import RemoteProtocolError, ConnectError, ConnectTimeout, ReadTimeout
     from prompt_toolkit import prompt
     from prompt_toolkit.styles import Style
-    from prompt_toolkit.history import FileHistory
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.formatted_text import FormattedText
+    from prompt_toolkit.validation import Validator, ValidationError
     from google.genai import Client as GemClient
     from google.genai.types import Content, Part
     from google.genai.errors import ClientError, ServerError
@@ -63,12 +63,18 @@ try:
         import difflib
         import heapq
     
-    if SUGGEST_FROM_WORDLIST:
+    if SUGGEST_FROM_WORDLIST and SUGGEST_FROM_WORDLIST_FUZZY:
+        from prompt_toolkit.completion import FuzzyWordCompleter as WordCompleter
+        
+    elif SUGGEST_FROM_WORDLIST:
         from prompt_toolkit.completion import WordCompleter
             
     if SUGGEST_FROM_HISTORY:
         from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-
+    
+    if PROMPT_HISTORY_ON:
+        from prompt_toolkit.history import FileHistory
+        
     if RESPONSE_EFFECT:
         from rich.text import Text 
         from rich.segment import Segment
@@ -77,6 +83,9 @@ try:
     if INPUT_HIGHLIGHT:
         from prompt_toolkit.lexers import PygmentsLexer
         from pygments.lexers import get_lexer_by_name
+    
+    if VIM_EMACS_MODE:
+        from prompt_toolkit.enums import EditingMode
     
 except ImportError as error:
     print(f'\nError: {error}.')
@@ -142,12 +151,14 @@ class Keys():
             """
             original_text = event.cli.current_buffer.text
             self.trim_input_buffer(event)
+            self.wrap_input_buffer(event)
             self.save_history(original_text)
             event.cli.exit(result=original_text)
       
         @key_bindings.add(self.TAB)
         def _(event):
             """Inserts a tab (4 spaces)."""
+            a
             event.cli.current_buffer.insert_text('    ')        
         
         @key_bindings.add(self.UNDO)
@@ -179,17 +190,17 @@ class Keys():
                 restored_text = self.redo_fallback_stack.pop()
                 buffer.text = restored_text
                 buffer.cursor_position = self.first_diff_index(before_redo, restored_text) + 1
-        
+
         # @key_bindings.add(self.SELECT_ALL)
         # def _(event):
             # """Selects the entire content of the current buffer."""
             # buffer = event.cli.current_buffer
             # text = buffer.text
             # if not text : return
-            # for _ in range(len(text)): buffer.cursor_left()
+            # buffer._set_cursor_position(0)
             # buffer.start_selection()
-            # for _ in range(len(text)): buffer.cursor_right()
-        
+            # buffer._set_cursor_position(len(text))
+
         for key, command in self.F_KEYS.items():
             @key_bindings.add(key)
             def _(event, command=command, key_handler_instance=self):
@@ -233,12 +244,28 @@ class Keys():
         # Get the input text & trim it.
         buffer = event.cli.current_buffer
         current_text = buffer.text
-        stripped_text = current_text.strip() 
+        stripped_text = current_text.lstrip('\n').rstrip() 
         
         # Replace the entire text content.
         if current_text != stripped_text:
             buffer.text = stripped_text
-    
+
+    def wrap_input_buffer(self, event):
+        """Wrap the input & Break it into shorter lines."""
+        buffer = event.cli.current_buffer
+        WRAP_WIDTH = CONSOLE_WIDTH - 8
+        wrapped_segments = []
+
+        for line in buffer.text.splitlines():
+            if line.strip():
+                wrapped_line = textwrap.wrap(line, width=WRAP_WIDTH)
+                wrapped_segments.extend(wrapped_line)
+            else:
+                wrapped_segments.append(' ')
+        
+        wrapped_text = '\n'.join(wrapped_segments)
+        buffer.text = wrapped_text
+ 
     def save_history(self, prompt):
         """Save the current prompt to history, if conditions meet."""
         if not prompt.strip(): return
@@ -257,6 +284,16 @@ class Keys():
             if s1[i] != s2[i]: return i
         
         return min_len
+
+class LengthValidator(Validator):
+    """A class used to check/validate user input while typing."""
+    def validate(self, document):
+        """Warn the user if he types a very long prompt, but still allow him to submit."""
+        if len(document.text) > 4096:
+            raise ValidationError(
+                message='WARNING!  You typed more than 4000 characters!',
+                cursor_position=len(document.text) # Keep cursor at the end
+            )
 
 class GeminiWorker(Thread):
     """
@@ -641,17 +678,16 @@ def separator(before='', after='', char='─', color=GRY, width=CONSOLE_WIDTH, e
 
 def box(*texts: str, title='Message', border_color='', text_color='', secondary_color='', width=CONSOLE_WIDTH):
     """
-    Draw a box using standard ASCII characters, respecting ANSI colors inside.
-    
-    Limitations:
-    - Each passed string must have its own colors, and not depend on the
-      continuous colors from the previous line.
-    - ANSI code must not be in the wrap point, as it'll get broken and useless.
-    - Wrapped lines will lose their colors! thus 'secondary_color' is an
-      optional argument that gets applied only to the wrapped lines.
-    - ANSI reset code isn't necessary at the end of string.
-    - You have to rewrite ANSI code after '\n' inside strings.
-    - ANSI code length is considered as normal characters when wrapping a line.
+    1) Draw a box using standard ASCII characters, respecting ANSI colors inside.
+    2) Limitations:
+       - Each passed string must have its own colors, and not depend on the
+         continuous colors from the previous line.
+       - ANSI code must not be in the wrap point, as it'll get broken and useless.
+       - Wrapped lines will lose their colors! thus 'secondary_color' is an
+         optional argument that gets applied only to the wrapped lines.
+       - ANSI reset code isn't necessary at the end of string.
+       - You have to rewrite ANSI code after '\n' inside strings.
+       - ANSI code length is considered as normal characters when wrapping a line.
     """   
     # Define colors.
     BC = border_color    # For the box borders
@@ -687,7 +723,7 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     
     # Content Lines
     for line in wrapped:
-        line_visual_len = visual_len(line)
+        line_visual_len = visual_len(line) or 1
         padding = ' ' * (CONTENT_WIDTH - line_visual_len)
         line = f'{BC}│{RS} {TC}{line}{padding} {BC}│{RS}'
         box_string += line + '\n'
@@ -757,6 +793,8 @@ def help(short=False):
        -UP/DOWN arrows to navigate between input lines / history prompts,
         or to accept word suggestions.
        -CTRL-Z/CTRL-Y to undo/redo.
+       -CTRL-X-CTRL-E to call external editor - if option is ON.
+        (Once the editor is closed, changes are registered & submited)
     
     3) Special Commands (While in Prompt):
        -'clear' to clear the screen.
@@ -808,12 +846,10 @@ def help(short=False):
        -CTRL-L to clear screen.
        -CTRL-R (Reverse Search) to search backward & find the most recent
         match in prompt history, keep pressing to move, press ESC to cancel
-        or confirm.
+        or confirm; add a whitespace before submitting (just in case).
        -CTRL-S (Forward Search) used after CTRL-R to find older matches,
         keep pressing to move.
-       -Ctrl-X-Ctrl-E (Unix/Linux) to use an external editor for complex input,
-        once the editor is closed, changes are registered.
-    
+
     7) Limitations:
        -Tables with many columns will appear chaotic.
        -Special characters (Like LaTeX syntax) will appear as a plain text.
@@ -889,236 +925,10 @@ def farewell(confirmed=False):
     
     # Clean prompt history & Exit
     if not saved and confirmed: separator()
-    prune_prompt_history()
     message = choice(FAREWELLS_MESSAGES)
     cprint(GR + message + RS, wrap_width=79)     # Fix width to avoid glitchs.
     separator()
     sys_exit(0)
- 
-if RESPONSE_EFFECT:
-    def get_styled_lines(markdown: Markdown) -> list[Text]:
-        """
-        Takes raw Markdown text, renders it into rich segments, flattens the result,
-        assembles it into a single styled Text object, and returns it split into 
-        a list of styled lines. This is the shared core logic for all typewriter effects.
-        * If you didn't understand this, fine, nor did I.
-        """
-        # 1. Render the Markdown object to internal segments.
-        segments: RenderResult = list(console.render(
-            markdown,
-            console.options
-        ))
-        
-        all_segments = []
-        
-        # 2. Flatten the segments into a list of (text, style) tuples
-        for item in segments:
-            if isinstance(item, Segment):
-                # Case 1: Raw Segment object -> convert to a (text, style) tuple
-                all_segments.append((item.text, item.style))
-            elif hasattr(item, 'segments'):
-                # Case 2: Line object -> iterate over its internal segments.
-                for text, style, *rest in item.segments:
-                    all_segments.append((text, style))
-            
-        # 3. Create the full Text object from the flattened list of segments
-        full_text = Text.assemble(*all_segments)
-
-        # 4. Split the full styled Text object into a list of new styled Text objects (lines)
-        output_lines = full_text.split('\n')
-        return output_lines
-
-    def print_markdown_line(markdown: Markdown, delay_seconds: float = 0.05):
-        """
-        Take a string & Convert it to Markdown object.
-        Print fully formatted Markdown content line-by-line with a delay.
-        """
-        global current_response_line
-        output_lines = get_styled_lines(markdown)
-        console.show_cursor(False)
-        current_response_line = 0
-        
-        # Print the styled lines one by one with a delay
-        for line in output_lines:
-            console.print(line)
-            current_response_line += 1
-            sleep(delay_seconds)
-
-    def print_markdown_word(markdown: Markdown, delay_seconds: float = 0.09):
-        """
-        Prints fully formatted Markdown content word-by-word with a delay.
-        Uses slicing and regex to preserve formatting and correct spacing.
-        """
-        global current_response_line
-        output_lines = get_styled_lines(markdown)
-        console.show_cursor(False)
-        current_response_line = 0
-
-        # 3. Print the styled content word by word
-        for line in output_lines:
-            if not str(line).strip():
-                # If the line contains only whitespace or is empty, print a newline and continue
-                console.print()
-                continue
-                
-            # Use regex to split text into [word, space, word, space, ...]
-            parts = WORD_AND_SPACE_PATTERN.split(str(line))
-            current_pos = 0
-            
-            for part in parts:
-                if not part: continue
-                part_length = len(part)
-                
-                # Use slicing to get the styled segment
-                styled_part_segment = line[current_pos : current_pos + part_length]
-                
-                # Print the part (could be a word or a space block), without a final newline
-                console.print(styled_part_segment, end='')
-                if not current_pos: current_response_line += 1
-                
-                # Apply delay only if it's a word (non-whitespace)
-                if part.strip(): sleep(delay_seconds)
-                
-                current_pos += part_length
-
-            # Print a final newline after the full line's content is printed
-            console.print()
-        
-    def print_markdown_char(markdown: Markdown, delay_ms: float = 2.5):
-        """
-        Take a string & Convert it to Markdown object.
-        Print fully formatted Markdown content character-by-character with a delay.
-        """
-        global current_response_line
-        output_lines = get_styled_lines(markdown)
-        console.show_cursor(False)
-        current_response_line = 0
-        
-        if 'fast' in RESPONSE_EFFECT: wait = lambda: sleep_precise(delay_ms, math.isclose)
-        elif 'slow' in RESPONSE_EFFECT: wait = lambda: sleep(0.01)
-        else: wait = lambda: None
-
-        # 3. Print the styled content character by character
-        for line in output_lines:
-            # Iterate over the length of the styled line object
-            current_response_line += 1
-            for i in range(len(line)):
-                # Create a copy of the line and truncate it to just the current character (i to i+1)
-                char_segment = line[i:i + 1]
-                
-                # Print the single, styled character without a final newline
-                console.print(char_segment, end='')
-                wait()
-                
-            # After printing all characters in the line, print a newline
-            console.print()
-    
-    def sleep_precise(milliseconds, approximate):
-        """
-        High precision sleep function at the cost of high CPU usage.
-        Using busy-wait loop via time.perf_counter(), the CPU is constantly
-        running the loop instead of sleeping.
-        """
-        end_time = perf_counter() + (milliseconds / 1000.0)
-        while perf_counter() < end_time:
-            current_time = perf_counter()
-            # Use math.isclose() due to float inaccuracies.
-            if approximate(current_time, end_time): break
-            pass
-
-if SUGGEST_FROM_WORDLIST:
-    def load_word_completer():
-        """
-        Reads a list of words from a file, one word per line.
-        Use the words for realtime suggestions.
-        """
-        global word_completer
-        
-        try:
-            with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
-                words = [line.strip() for line in f if line.strip()][4:]
-            if words:
-                word_completer = LimitedWordCompleter(words, ignore_case=True)
-        
-        except FileNotFoundError:
-            pass
-
-if ERROR_LOG_ON and GLOBAL_LOG_ON:
-    def clear_log_files():
-        """Open log files, clear them, close."""
-        error_log = 0
-        global_log = 0
-        
-        try:
-            with open(ERROR_LOG_FILE, 'w', encoding='utf-8'): pass
-        except:
-            error_log += 1
-        
-        try:
-            with open(GLOBAL_LOG_FILE, 'w', encoding='utf-8'): pass
-        except:
-            global_log += 1
-        
-        if error_log and global_log:
-            msg = "Couldn't delete log files!"
-            color = RED
-            
-        elif error_log:
-            msg = f"File '{ERROR_LOG_FILE}' was deleted.\nBut '{GLOBAL_LOG_FILE}' wasn't!"
-            
-        elif global_log:
-            msg = f"File '{GLOBAL_LOG_FILE}' was deleted.\nBut '{ERROR_LOG_FILE}' wasn't!"
-            
-        else:
-            msg = 'Log files deleted!'
-            color = GR
-            
-        box(msg, title='LOG CLEANUP', border_color=color, text_color=color)
-        clear_lines()
-
-if ERROR_LOG_ON:
-    def shrink_log_file():
-        """Shrinks the log file to a target size by keeping the most recent lines."""
-        # Quick Check
-        MAX_SIZE = LOG_SIZE * 1024 * 1024
-        if not os.path.exists(ERROR_LOG_FILE): return
-        file_size = os.path.getsize(ERROR_LOG_FILE) * 10
-        if file_size <= (MAX_SIZE): return
-        
-        # Open the log file
-        try:
-            with open(ERROR_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
-                all_lines = f.readlines()
-        
-        except:
-            if ERROR_LOG_ON: log_caught_exception()
-            return
-            
-        # Collect lines from the end in reverse order
-        collected_lines = []
-        current_size = 0
-        
-        # Iterate over lines in reverse order (from newest to oldest)
-        for line in reversed(all_lines):
-            line_size = len(line.encode('utf-8'))
-            
-            # Check if adding the current line would exceed the target size
-            if (current_size + line_size) > MAX_SIZE:
-                break
-                
-            collected_lines.append(line)
-            current_size += line_size
-        
-        # Shrink the lines to a valid log point & Reverse them to restore chronological order.
-        while collected_lines[-1].strip() != LOG_SEPARATOR:
-            collected_lines.pop()
-            
-        collected_lines.pop()    
-        collected_lines.reverse()
-        
-        # Write the shrunk content to the new file
-        with open(ERROR_LOG_FILE, 'w', encoding='utf-8') as f:
-            f.writelines(collected_lines)
 
 if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
     def load_system_instructions():
@@ -1415,6 +1225,307 @@ if SAVED_INFO:
         
         return results
 
+if PROMPT_HISTORY_ON:
+    def prune_prompt_history():
+        """
+        Checks the history file size. If > PROMPT_HISTORY_SIZE, it prunes the file
+        by taking the last half and finding the next full history block (timestamp).
+        """
+        if not os.path.exists(PROMPT_HISTORY_FILE):
+            return
+        
+        # Check file size
+        file_size = os.path.getsize(PROMPT_HISTORY_FILE)
+        if file_size <= (PROMPT_HISTORY_SIZE * 1024 * 1024):
+            return
+        
+        # Split file
+        cprint(GR + 'Shrinking the prompt history file...' + RS)
+        while file_size > 1:
+            file_size = file_size // 2
+        
+        start_seek_position = file_size
+            
+        with open(PROMPT_HISTORY_FILE, 'rb') as f:
+            f.seek(start_seek_position)
+            content_last_half = f.read().decode(sys.getdefaultencoding(), 'ignore')
+        
+        # Discard the broken content, keep it intact, and remove unwanted characters
+        match = HISTORY_PATTERN.search(content_last_half)
+        if match:
+            start_index = match.start()
+            new_content = content_last_half[start_index:]
+            with open(PROMPT_HISTORY_FILE, 'w', encoding='utf-8') as f:
+                new_content = new_content.replace('\r\n', '\n').replace('\r', '\n')
+                f.write(new_content)
+
+        else:
+            with open(PROMPT_HISTORY_FILE, 'w', encoding='utf-8') as f:
+                content_last_half = content_last_half.replace('\r\n', '\n').replace('\r', '\n')
+                f.write(content_last_half)
+        
+        cprint(GR + 'Done!\n' + RS)
+
+if SUGGEST_FROM_WORDLIST:
+    def load_word_completer():
+        """
+        Reads a list of words from a file, one word per line.
+        Use the words for realtime suggestions.
+        """
+        global word_completer
+        
+        try:
+            with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
+                words = [line.strip() for line in f if line.strip()][4:]
+            if words:
+                if SUGGEST_FROM_WORDLIST_FUZZY:
+                    word_completer = LimitedWordCompleter(words)
+                else:
+                    word_completer = LimitedWordCompleter(words, ignore_case=True)
+        
+        except FileNotFoundError:
+            pass
+
+if RESPONSE_EFFECT:
+    def get_styled_lines(markdown: Markdown) -> list[Text]:
+        """
+        Takes raw Markdown text, renders it into rich segments, flattens the result,
+        assembles it into a single styled Text object, and returns it split into 
+        a list of styled lines. This is the shared core logic for all typewriter effects.
+        * If you didn't understand this, fine, nor did I.
+        """
+        # 1. Render the Markdown object to internal segments.
+        segments: RenderResult = list(console.render(
+            markdown,
+            console.options
+        ))
+        
+        all_segments = []
+        
+        # 2. Flatten the segments into a list of (text, style) tuples
+        for item in segments:
+            if isinstance(item, Segment):
+                # Case 1: Raw Segment object -> convert to a (text, style) tuple
+                all_segments.append((item.text, item.style))
+            elif hasattr(item, 'segments'):
+                # Case 2: Line object -> iterate over its internal segments.
+                for text, style, *rest in item.segments:
+                    all_segments.append((text, style))
+            
+        # 3. Create the full Text object from the flattened list of segments
+        full_text = Text.assemble(*all_segments)
+
+        # 4. Split the full styled Text object into a list of new styled Text objects (lines)
+        output_lines = full_text.split('\n')
+        return output_lines
+
+    def print_markdown_line(markdown: Markdown, delay_seconds: float = 0.05):
+        """
+        Take a string & Convert it to Markdown object.
+        Print fully formatted Markdown content line-by-line with a delay.
+        """
+        global current_response_line
+        output_lines = get_styled_lines(markdown)
+        console.show_cursor(False)
+        current_response_line = 0
+        
+        # Print the styled lines one by one with a delay
+        for line in output_lines:
+            console.print(line)
+            current_response_line += 1
+            sleep(delay_seconds)
+
+    def print_markdown_word(markdown: Markdown, delay_seconds: float = 0.09):
+        """
+        Prints fully formatted Markdown content word-by-word with a delay.
+        Uses slicing and regex to preserve formatting and correct spacing.
+        """
+        global current_response_line
+        output_lines = get_styled_lines(markdown)
+        console.show_cursor(False)
+        current_response_line = 0
+
+        # 3. Print the styled content word by word
+        for line in output_lines:
+            if not str(line).strip():
+                # If the line contains only whitespace or is empty, print a newline and continue
+                console.print()
+                continue
+                
+            # Use regex to split text into [word, space, word, space, ...]
+            parts = WORD_AND_SPACE_PATTERN.split(str(line))
+            current_pos = 0
+            
+            for part in parts:
+                if not part: continue
+                part_length = len(part)
+                
+                # Use slicing to get the styled segment
+                styled_part_segment = line[current_pos : current_pos + part_length]
+                
+                # Print the part (could be a word or a space block), without a final newline
+                console.print(styled_part_segment, end='')
+                if not current_pos: current_response_line += 1
+                
+                # Apply delay only if it's a word (non-whitespace)
+                if part.strip(): sleep(delay_seconds)
+                
+                current_pos += part_length
+
+            # Print a final newline after the full line's content is printed
+            console.print()
+        
+    def print_markdown_char(markdown: Markdown, delay_ms: float = 2.5):
+        """
+        Take a string & Convert it to Markdown object.
+        Print fully formatted Markdown content character-by-character with a delay.
+        """
+        global current_response_line
+        output_lines = get_styled_lines(markdown)
+        console.show_cursor(False)
+        current_response_line = 0
+        
+        if 'fast' in RESPONSE_EFFECT: wait = lambda: sleep_precise(delay_ms, math.isclose)
+        elif 'slow' in RESPONSE_EFFECT: wait = lambda: sleep(0.01)
+        else: wait = lambda: None
+
+        # 3. Print the styled content character by character
+        for line in output_lines:
+            # Iterate over the length of the styled line object
+            current_response_line += 1
+            for i in range(len(line)):
+                # Create a copy of the line and truncate it to just the current character (i to i+1)
+                char_segment = line[i:i + 1]
+                
+                # Print the single, styled character without a final newline
+                console.print(char_segment, end='')
+                wait()
+                
+            # After printing all characters in the line, print a newline
+            console.print()
+    
+    def sleep_precise(milliseconds, approximate):
+        """
+        High precision sleep function at the cost of high CPU usage.
+        Using busy-wait loop via time.perf_counter(), the CPU is constantly
+        running the loop instead of sleeping.
+        """
+        end_time = perf_counter() + (milliseconds / 1000.0)
+        while perf_counter() < end_time:
+            current_time = perf_counter()
+            # Use math.isclose() due to float inaccuracies.
+            if approximate(current_time, end_time): break
+            pass
+
+if EXTERNAL_EDITOR:
+    def manage_editor_variable(mode='change'):
+        """
+        Checks for the EDITOR environment variable in the OS.
+        Modifies it, then restores the original value at exit.
+        """
+        global editor_variable
+        # 1. Check if EDITOR is present and store the original state/value
+        editor_variable = os.environ.get('EDITOR')
+        
+        # * If there is already an EDITOR variable, and the user didnt set it in settings, then do nothing.
+        if editor_variable and not FAVORITE_EDITOR: return
+        
+        # 2. Modify the variable
+        if mode == 'change':
+            if FAVORITE_EDITOR:
+                os.environ['EDITOR'] = FAVORITE_EDITOR
+                
+            else:
+                if sys.platform.startswith('win'):
+                    os.environ['EDITOR'] = 'notepad'        # For Windows.
+                else:
+                    os.environ['EDITOR'] = 'vim'            # For MacOS/Linux.
+        
+        # 3. Restore the original value/state
+        elif mode == 'restore':
+            if editor_variable:
+                os.environ['EDITOR'] = editor_variable
+            else:
+                del os.environ['EDITOR']
+
+if ERROR_LOG_ON and GLOBAL_LOG_ON:
+    def clear_log_files():
+        """Open log files, clear them, close."""
+        error_log = 0
+        global_log = 0
+        
+        try:
+            with open(ERROR_LOG_FILE, 'w', encoding='utf-8'): pass
+        except:
+            error_log += 1
+        
+        try:
+            with open(GLOBAL_LOG_FILE, 'w', encoding='utf-8'): pass
+        except:
+            global_log += 1
+        
+        if error_log and global_log:
+            msg = "Couldn't delete log files!"
+            color = RED
+            
+        elif error_log:
+            msg = f"File '{ERROR_LOG_FILE}' was deleted.\nBut '{GLOBAL_LOG_FILE}' wasn't!"
+            
+        elif global_log:
+            msg = f"File '{GLOBAL_LOG_FILE}' was deleted.\nBut '{ERROR_LOG_FILE}' wasn't!"
+            
+        else:
+            msg = 'Log files deleted!'
+            color = GR
+            
+        box(msg, title='LOG CLEANUP', border_color=color, text_color=color)
+        clear_lines()
+
+if ERROR_LOG_ON:
+    def shrink_log_file():
+        """Shrinks the log file to a target size by keeping the most recent lines."""
+        # Quick Check
+        MAX_SIZE = LOG_SIZE * 1024 * 1024
+        if not os.path.exists(ERROR_LOG_FILE): return
+        file_size = os.path.getsize(ERROR_LOG_FILE) * 10
+        if file_size <= (MAX_SIZE): return
+        
+        # Open the log file
+        try:
+            with open(ERROR_LOG_FILE, 'r', encoding='utf-8', errors='ignore') as f:
+                all_lines = f.readlines()
+        
+        except:
+            if ERROR_LOG_ON: log_caught_exception()
+            return
+            
+        # Collect lines from the end in reverse order
+        collected_lines = []
+        current_size = 0
+        
+        # Iterate over lines in reverse order (from newest to oldest)
+        for line in reversed(all_lines):
+            line_size = len(line.encode('utf-8'))
+            
+            # Check if adding the current line would exceed the target size
+            if (current_size + line_size) > MAX_SIZE:
+                break
+                
+            collected_lines.append(line)
+            current_size += line_size
+        
+        # Shrink the lines to a valid log point & Reverse them to restore chronological order.
+        while collected_lines[-1].strip() != LOG_SEPARATOR:
+            collected_lines.pop()
+            
+        collected_lines.pop()    
+        collected_lines.reverse()
+        
+        # Write the shrunk content to the new file
+        with open(ERROR_LOG_FILE, 'w', encoding='utf-8') as f:
+            f.writelines(collected_lines)
+
+
 
 
 
@@ -1498,46 +1609,6 @@ def serialize_history():
     ]
     
     return serializable_history
-
-def prune_prompt_history():
-    """
-    Checks the history file size. If > PROMPT_HISTORY_SIZE, it prunes the file
-    by taking the last half and finding the next full history block (timestamp).
-    """
-    if not os.path.exists(PROMPT_HISTORY_FILE):
-        return
-    
-    # Check file size
-    file_size = os.path.getsize(PROMPT_HISTORY_FILE)
-    if file_size <= (PROMPT_HISTORY_SIZE * 1024 * 1024):
-        return
-    
-    # Split file
-    cprint(GR + 'Shrinking the prompt history file...' + RS)
-    while file_size > 1:
-        file_size = file_size // 2
-    
-    start_seek_position = file_size
-        
-    with open(PROMPT_HISTORY_FILE, 'rb') as f:
-        f.seek(start_seek_position)
-        content_last_half = f.read().decode(sys.getdefaultencoding(), 'ignore')
-    
-    # Discard the broken content, keep it intact, and remove unwanted characters
-    match = HISTORY_PATTERN.search(content_last_half)
-    if match:
-        start_index = match.start()
-        new_content = content_last_half[start_index:]
-        with open(PROMPT_HISTORY_FILE, 'w', encoding='utf-8') as f:
-            new_content = new_content.replace('\r\n', '\n').replace('\r', '\n')
-            f.write(new_content)
-
-    else:
-        with open(PROMPT_HISTORY_FILE, 'w', encoding='utf-8') as f:
-            content_last_half = content_last_half.replace('\r\n', '\n').replace('\r', '\n')
-            f.write(content_last_half)
-    
-    cprint(GR + 'Done!\n' + RS)
 
 def save_chat_history_json(up_separator=True, down_separator=True, hidden=False):
     """Save the chat history as a json file before quitting."""
@@ -1934,6 +2005,7 @@ def setup_chat():
             # API Validation.
             if STARTUP_API_CHECK:
                 try:
+                    # if attempts == 0: raise ServerError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
                     if attempts: cprint(GR + '◊ Sending request...' + RS)
                     client.models.list()
                     if attempts:
@@ -1948,7 +2020,11 @@ def setup_chat():
                 except:
                     if attempts: separator(color=RED)
                     raise
-            
+                    
+            elif attempts:
+                cprint(GR + 'Response received!' + RS)
+                separator(color=RED)
+                
             break
         
         except ClientError as error:
@@ -1967,10 +2043,12 @@ def setup_chat():
             sys_exit(1)
 
     # Preparation & Welcome Screen...
-    if SUGGEST_FROM_WORDLIST: load_word_completer()
-    try: copy_file(PROMPT_HISTORY_FILE, PROMPT_HISTORY_FILE + '.bak')
-    except: pass
     console.set_window_title('Gemini Py-CLI')
+    if SUGGEST_FROM_WORDLIST: load_word_completer()
+    if EXTERNAL_EDITOR: manage_editor_variable('change')
+    if PROMPT_HISTORY_ON:
+        try: copy_file(PROMPT_HISTORY_FILE, PROMPT_HISTORY_FILE + '.bak')
+        except: pass
             
     while True:
         try:
@@ -2011,23 +2089,44 @@ def get_user_input():
     """
     Handle prompt_toolkit input and catch Ctrl-C/Ctrl-D.
     NOTE: User input will never be striped or trimmed, it'll be sent as it is,
-    we only use some stripped copies of it to beautify the output.
+    we only use a stripped copy of it to beautify the output.
     """
     # Set input options.
+    # 1. RPrompt
     global default_prompt
     rprompt = None
     if INFORMATIVE_RPROMPT:
         current_time = datetime.now().strftime('%I:%M %p')
         rprompt = f"[{GEMINI_MODEL} | {current_time}]"
+        rprompt = rprompt + ' ' * (os.get_terminal_size().columns - CONSOLE_WIDTH - 1)
+        
+    # 2. Editing mode.
+    if VIM_EMACS_MODE == 'vim': editing_mode = EditingMode.VI
+    elif VIM_EMACS_MODE == 'emacs': editing_mode = EditingMode.EMACS
+    else: editing_mode = None
+    
+    # 3. Error handler.
+    error_handler = lambda *args, **kwargs: print("Caught error internally!", file=sys.stderr)
     
     # Log.
     if GLOBAL_LOG_ON:
         if rprompt: in_time_log(' ' * (CONSOLE_WIDTH - len(rprompt)) + rprompt + '\n')
         else: in_time_log(' ')
         in_time_log(' You >  ' + str(prompt_placeholder[0][1]))
-        
+
     # Stream input.
     try:
+        # Reference - Possible prompt() args:
+        # ['message', 'history', 'editing_mode', 'refresh_interval', 'vi_mode', 'lexer', 'completer'
+        # , 'complete_in_thread', 'is_password', 'key_bindings', 'bottom_toolbar', 'style', 
+        # 'color_depth', 'cursor', 'include_default_pygments_style', 'style_transformation', 
+        # 'swap_light_and_dark_colors', 'rprompt', 'multiline', 'prompt_continuation', 'wrap_lines', 
+        # 'enable_history_search', 'search_ignore_case', 'complete_while_typing', 
+        # 'validate_while_typing', 'complete_style', 'auto_suggest', 'validator', 'clipboard', 
+        # 'mouse_support', 'input_processors', 'placeholder', 'reserve_space_for_menu', 
+        # 'enable_system_prompt', 'enable_suspend', 'enable_open_in_editor', 'tempfile_suffix', 
+        # 'tempfile', 'show_frame', 'default', 'accept_default', 'pre_run', 'set_exception_handler', 
+        # 'handle_sigint', 'in_thread', 'inputhook']
         user_input = prompt(
             # Main options
             style=prompt_style,
@@ -2048,12 +2147,15 @@ def get_user_input():
             complete_in_thread=bool(word_completer),
             rprompt=rprompt,
             bottom_toolbar=prompt_bottom_toolbar,
-            editing_mode=VIM_EMACS_MODE,
+            editing_mode=editing_mode,
+            enable_open_in_editor=EXTERNAL_EDITOR,
             reserve_space_for_menu=True,
             search_ignore_case=True,
-            enable_open_in_editor=True,
             lexer=lexer,
-            set_exception_handler=lambda *args, **kwargs: None,
+            set_exception_handler=suppress_and_log_internal_exception,
+            validator=input_validator,
+            # tempfile=tempfile,
+            # pre_run=,
         )
         
     except Interruption:
@@ -2371,96 +2473,106 @@ def run_chat():
 
 
 
-
 # 6) Part VI: Remaining Global Objects & Starting Point ------------------------
-# Define global variables.
-confirm_separator = True                        # Before confirming to quit, print a separator only if no precedent one was already displayed.
-word_completer = None                           # Has a True value only if the WORDLIST_FILE is present and SUGGEST_FROM_WORDLIST is True.
-chat_saved = False                              # True after the chat has been saved.
-restarting = False                              # Session restart flag.
-discarding = False                              # Session discard flag.
-messages_to_remove = []                         # Store selected messages for deletion at exit.
-messages_to_remove_steps = []                   # Used to undo messages deletion.
-current_response_line = 0                       # Used to clean output upon blocking a response.
-default_prompt = None                           # An initial prompt the user gets when asked for input, mostly not used.
+def define_global_objects():
+    """Define local variables and copy them directly into the global namespace."""
+    # Define global variables.
+    confirm_separator = True                        # Before confirming to quit, print a separator only if no precedent one was already displayed.
+    word_completer = None                           # Has a True value only if the WORDLIST_FILE is present and SUGGEST_FROM_WORDLIST is True.
+    chat_saved = False                              # True after the chat has been saved.
+    restarting = False                              # Session restart flag.
+    discarding = False                              # Session discard flag.
+    messages_to_remove = []                         # Store selected messages for deletion at exit.
+    messages_to_remove_steps = []                   # Used to undo messages deletion.
+    default_prompt = None                           # An initial prompt the user gets when asked for input, mostly not used.
+    if RESPONSE_EFFECT: current_response_line = 0   # Used to clean output upon blocking a response.
+    if VIM_EMACS_MODE: editor_variable = None       # This will change to the current EDITOR variable in the system, if available.
 
-# Define global constants.
-CLEAR_COMMAND = 'cls' if os.name == 'nt' else 'clear'
-ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')  # Used to clean a string from ANSI codes.
-WORD_AND_SPACE_PATTERN = re.compile(r'(\s+)')   # Used to split lines into words, for word-by-word animation.
-HISTORY_PATTERN = re.compile(                   # Used to shrink PROMPT_HISTORY_FILE to a valid history step.
-    r'^#\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+$',
-    re.MULTILINE
-)
+    # Define global constants.
+    CLEAR_COMMAND = 'cls' if os.name == 'nt' else 'clear'
+    ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')  # Used to clean a string from ANSI codes.
+    WORD_AND_SPACE_PATTERN = re.compile(r'(\s+)')   # Used to split lines into words, for word-by-word animation.
+    HISTORY_PATTERN = re.compile(                   # Used to shrink PROMPT_HISTORY_FILE to a valid history step.
+        r'^#\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+$',
+        re.MULTILINE
+    )
 
-# Assign modules functions (To avoid repeated name resolution/lookup).
-system = os.system                            # Send commands to the system.
-sys_exit = sys.exit
-stdout_write = sys.stdout.write                 # Write to stdout.
-stdout_flush = sys.stdout.flush                 # Flush the stdout for immediate output displaying.
+    # Assign modules functions (To avoid repeated name resolution/lookup).
+    system = os.system                            # Send commands to the system.
+    sys_exit = sys.exit
+    stdout_write = sys.stdout.write                 # Write to stdout.
+    stdout_flush = sys.stdout.flush                 # Flush the stdout for immediate output displaying.
 
-# Create necessary instances.
-history = FileHistory(PROMPT_HISTORY_FILE)      # Prompt history file path (To cycle through history while streaming input).
-auto_suggest = None                             # Suggest words based on user prompt history.
-if SUGGEST_FROM_HISTORY: auto_suggest = AutoSuggestFromHistory()
-console_theme = Theme({                         # Hyperlinks may not be clear, so we make them brighter.
-    "markdown.link": "bold magenta", 
-    "markdown.link_url": "italic bright_magenta",
-    "link": "bold magenta",
-    "repr.url": "italic bright_magenta",
-})
+    # Create necessary instances.
+    history = None                                  # Prompt history file path (To cycle through history while streaming input).
+    if PROMPT_HISTORY_ON: history = FileHistory(PROMPT_HISTORY_FILE)
 
-console = Console(                              # Our main console, used mainly for AI response displaying.
-    width=CONSOLE_WIDTH,
-    theme=console_theme,
-    no_color=not USE_COLORS,    # 
-    highlight=USE_COLORS,
-    # color_system arg controls the overall color support, accepts "auto", "standard", "256", "truecolor", or None to disable all color output.
-)
+    auto_suggest = None                             # Suggest words based on user prompt history.
+    if SUGGEST_FROM_HISTORY: auto_suggest = AutoSuggestFromHistory()
 
-temp_console = Console(                         # A hidden console to capture uncertain output before displaying it.
-    file=io.StringIO(),
-    width=CONSOLE_WIDTH,
-    force_terminal=True,
-)
+    console_theme = Theme({                         # Hyperlinks may not be clear, so we make them brighter.
+        "markdown.link": "bold magenta", 
+        "markdown.link_url": "italic bright_magenta",
+        "link": "bold magenta",
+        "repr.url": "italic bright_magenta",
+    })
 
-prompt_message = FormattedText([                       # User prompt message.
-    (f'bg:{PROMPT_BG} fg: black', '\n You > '),
-    ('', ' '), # Unstyled part                                 
-])
+    console = Console(                              # Our main console, used mainly for AI response displaying.
+        width=CONSOLE_WIDTH,
+        theme=console_theme,
+        no_color=not USE_COLORS,    # 
+        highlight=USE_COLORS,
+        # color_system arg controls the overall color support, accepts "auto", "standard", "256", "truecolor", or None to disable all color output.
+    )
 
-prompt_placeholder = FormattedText([                   # User prompt placeholder.
-    (PROMPT_FG, 'Ask Gemini...')
-])
+    temp_console = Console(                         # A hidden console to capture uncertain output before displaying it.
+        file=io.StringIO(),
+        width=CONSOLE_WIDTH,
+        force_terminal=True,
+    )
 
-prompt_bottom_toolbar = None                           # User prompt toolbar.
-if BOTTOM_TOOLBAR:
-    prompt_bottom_toolbar = '\n(CTRL-SPACE) new line | (UP/DOWN) history | (CTRL-Z/CTRL-Y) undo/redo'
-    prompt_bottom_toolbar += '\n(F3) restart | (F4) quit | (CTRL-L) clear | (CTRL-C) cancel | (F7) help'
+    prompt_message = FormattedText([                       # User prompt message.
+        (f'bg:{PROMPT_BG} fg: black', '\n You > '),
+        ('', ' '), # Unstyled part                                 
+    ])
 
-lexer = None
-if INPUT_HIGHLIGHT:
-    lexer_instance = get_lexer_by_name(INPUT_HIGHLIGHT_LANG)
-    lexer_class = lexer_instance.__class__
-    lexer = PygmentsLexer(lexer_class)
+    prompt_placeholder = FormattedText([                   # User prompt placeholder.
+        (PROMPT_FG, 'Ask Gemini...')
+    ])
 
-prompt_style = Style.from_dict({                       # User prompt style.
-    'rprompt': PROMPT_FG, 
-    'prompt-continuation': PROMPT_FG, 
-    'bottom-toolbar': f'bg:{PROMPT_FG} fg: black', 
-}) 
+    prompt_bottom_toolbar = None                           # User prompt toolbar.
+    if BOTTOM_TOOLBAR:
+        prompt_bottom_toolbar = '\n[CTRL-SPACE] new line | [UP/DOWN] history | [CTRL-Z/CTRL-Y] undo/redo'
+        prompt_bottom_toolbar += '\n[F3] restart | [F4] quit | [CTRL-L] clear | [CTRL-C] cancel | [F7] help'
 
-keys = Keys().get_key_bindings()                       # The custom keyboard shortcuts.
-# from prompt_toolkit.key_binding import merge_key_bindings
-# from prompt_toolkit.key_binding.defaults import load_key_bindings
-# keys = merge_key_bindings([                            
-    # load_key_bindings(),
-    # Keys().get_key_bindings()]
-# )
+    lexer = None
+    if INPUT_HIGHLIGHT:
+        lexer_instance = get_lexer_by_name(INPUT_HIGHLIGHT_LANG)
+        lexer_class = lexer_instance.__class__
+        lexer = PygmentsLexer(lexer_class)
 
+    prompt_style = Style.from_dict({                       # User prompt style.
+        'rprompt': PROMPT_FG, 
+        'prompt-continuation': PROMPT_FG, 
+        'bottom-toolbar': f'bg:{PROMPT_FG} fg: black',
+        # 'completion-menu': 'bg: cyan fg: white',
+    }) 
 
+    keys = Keys().get_key_bindings()                       # The custom keyboard shortcuts.
+    input_validator = LengthValidator()                    # To check user input before submitting.
+    # from prompt_toolkit.key_binding import merge_key_bindings
+    # from prompt_toolkit.key_binding.defaults import load_key_bindings
+    # keys = merge_key_bindings([                            
+        # load_key_bindings(),
+        # Keys().get_key_bindings()]
+    # )
+    
+    
+    # The core operation: Copy locals() into globals()
+    globals().update(locals())
 
 if __name__ == '__main__':
+    define_global_objects()     # Must be called out of the loop.
     while True:
         try:
             # raise ValueError('Test' * 25)
@@ -2478,7 +2590,7 @@ if __name__ == '__main__':
                 # Restart.
                 msg = 'Restarting chat session...'
                 box(msg, title='SESSION RESTART', border_color=CYN, text_color=CYN)
-                
+            
             restarting = True
             continue
                 
@@ -2496,8 +2608,11 @@ if __name__ == '__main__':
                 sys_exit(1)
         
         finally:
-            # Save chat history & Clean log file & prompt backup.
-            if not chat_saved and not discarding: save_chat_history_json(hidden=True)
+            # Save chat history & Clean log file & prompt history.
+            if not chat_saved and not discarding: save_chat_history_json(hidden=True)  
+            if EXTERNAL_EDITOR: manage_editor_variable('restore')
             if ERROR_LOG_ON: shrink_log_file()
-            try: os.remove(PROMPT_HISTORY_FILE + '.bak')
-            except: pass
+            if PROMPT_HISTORY_ON:
+                prune_prompt_history()
+                try: os.remove(PROMPT_HISTORY_FILE + '.bak')
+                except: pass
