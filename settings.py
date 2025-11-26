@@ -1,3 +1,4 @@
+import os
 import sys
 from random import randint, choice
 
@@ -11,7 +12,6 @@ from random import randint, choice
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
-GEMINI_API_KEY = 'AIzaSyBb_CRtO0CiSVOE_uCl8_OMDmhTki3LUmA'
 GEMINI_MODEL = 'gemini-flash-latest'         # Advanced models are more expensive and have less API limits.
 MAX_HISTORY_MESSAGES = 512                   # The maximum number of chat history messages to keep; saves internet bandwidth & loading/saving time.
 NO_HISTORY_LIMIT = False                     # When True, chat history will never be truncated.
@@ -336,7 +336,8 @@ class Hotkeys():
 
 
 # Values Correction (Ignore This Part)
-MAX_HISTORY_MESSAGES = 512                   # Keep history messages in an even number (User-AI turns).
+MAX_HISTORY_MESSAGES = 512                   # Keep history messages an even number (User-AI turns).
+if CONSOLE_WIDTH >= os.get_terminal_size().columns: CONSOLE_WIDTH = os.get_terminal_size().columns - 1
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vim', 'emacs'): VIM_EMACS_MODE = None
 if not sys.stdout.isatty(): USE_ANSI = False   # Hide ANSI characters if the output is being redirected to a non-terminal location.
