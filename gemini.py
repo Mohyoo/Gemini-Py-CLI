@@ -158,7 +158,6 @@ class Keys():
         @key_bindings.add(self.TAB)
         def _(event):
             """Inserts a tab (4 spaces)."""
-            a
             event.cli.current_buffer.insert_text('    ')        
         
         @key_bindings.add(self.UNDO)
