@@ -2148,11 +2148,11 @@ def get_user_input():
             bottom_toolbar=prompt_bottom_toolbar,
             editing_mode=editing_mode,
             enable_open_in_editor=EXTERNAL_EDITOR,
-            reserve_space_for_menu=True,
+            reserve_space_for_menu=False,
             search_ignore_case=True,
             lexer=lexer,
-            set_exception_handler=suppress_and_log_internal_exception,
             validator=input_validator,
+            set_exception_handler=error_handler,
             # tempfile=tempfile,
             # pre_run=,
         )
