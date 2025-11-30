@@ -10,7 +10,7 @@ Used for simple conversations. <br>
 + <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
 
 ---
-<span style="color:cyan"><b><i>Reminder:</i></b><br>For people who don't know Python, it's just a small command-line program. After installing it, you only run 2 commands, one to install dependencies (which took me 3 min with my 80kb/s internet), then the main command which is instant.</span>
+<span style="color:cyan"><b><i>Reminder:</i></b><br>For people who don't know Python, it's just a small command-line program. After installing it, you only run 2 commands, one to install dependencies (which took me 10 min with my 80kb/s internet), then the main command which is instant.</span>
 
 ----
 
@@ -29,6 +29,11 @@ Used for simple conversations. <br>
 * Common keyboard shortcuts + Vim/Emacs shortcuts (beta) + Mouse support (beta).
 * Cross platform, binaries are not yet created, perhaps on request I'll do that (I'm too lazy).
 * Stubborn error handling, yet still not perfect.
+
+## Screenshots
+| ![Screenshot 1](Screenshot_1.png) | ![Screenshot 3](Screenshot_3.png) |
+|-----------------------------------|-----------------------------------|
+| ![Screenshot 2](Screenshot_2.png) | ![img4](Screenshot_1.png) |
 
 ## Quick Start
 #### 1) Python Setup:
