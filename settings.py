@@ -247,6 +247,9 @@ FAREWELLS_MESSAGES = [
     "while the stupid ones are full of confidence.",
     "When a man opens a car door for his wife, it's either a new car or a new wife :3",
     "The way we see the problem is the problem ;)",
+    "To see the world, things dangerous to come to...",
+    "I love the way you smile..."
+    "If you think you are too small to make a diffrence, try sleeping with a mosquito."
 ]
  
 CONTINUE_MESSAGES = [
@@ -261,6 +264,7 @@ CONTINUE_MESSAGES = [
     'Oof...',
     'Hmmm...',
     'Oops...',
+    'Interesting...',
     'I smell doubt...',
     'I can feel something bad is coming...',
     'Nevermind...',

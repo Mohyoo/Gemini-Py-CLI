@@ -1,9 +1,10 @@
 # 1) Part I: Initialization ----------------------------------------------------
 if __name__ == '__main__':
     # Loading Screen.
-    print('\n' + '+' + '-' * 77 + '+')
-    print("| Loading libraries. Just a moment..." + ' ' * 41 + '|')
-    print('+' + '-' * 77 + '+')
+    from settings import CONSOLE_WIDTH
+    print('\n' + '+' + '-' * (CONSOLE_WIDTH - 2) + '+')
+    print("| Loading libraries. Just a moment..." + ' ' * (CONSOLE_WIDTH - 38) + '|')
+    print('+' + '-' * (CONSOLE_WIDTH - 2) + '+')
 
     # Change current working directory to the script's dir, to keep it portable.
     import os
@@ -928,7 +929,7 @@ def farewell(confirmed=False):
     # Clean prompt history & Exit
     if not saved and confirmed: separator()
     message = choice(FAREWELLS_MESSAGES)
-    cprint(GR + message + RS, wrap_width=79)     # Fix width to avoid glitchs.
+    cprint(GR + message + RS, wrap_width=CONSOLE_WIDTH)     # Fix width to avoid glitchs.
     separator()
     sys_exit(0)
 
@@ -1059,7 +1060,7 @@ if SAVED_INFO:
                 if len(info_list) == 1:
                     cprint(f"{YLW}Found only one saved info in the whole '{SAVED_INFO_FILE}' file:{GR}")
                     info = re.sub(r'\s+', ' ', info_list[0].capitalize()).strip()
-                    cprint('- ' + info, wrap_width=79, wrap_joiner='\n  ')
+                    cprint('- ' + info, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n  ')
                     if GLOBAL_LOG_ON: in_time_log('\nDelete it? (y/n): ...')
                     user_choice = input(YLW + '\nDelete it? (y/n): ' + RS).strip().lower()
                     
@@ -1099,15 +1100,15 @@ if SAVED_INFO:
                 # Case (1): High confidence, almost sure.
                 if (ratio_1 > 0.7) and (ratio_1 / ratio_2 > 1.25):
                     cprint(CYN + 'Saved Info found:' + GR)
-                    cprint('- Remember ' + info_1, wrap_width=79, wrap_joiner='\n  ')
+                    cprint('- Remember ' + info_1, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n  ')
                     question = 'Are you sure you want to delete it? (y/n): '
                     answers = ['y']
                         
                 # Case (2): Match is decent, but dangerously ambiguous.
                 elif (ratio_1 > 0.5) and (ratio_1 / ratio_2 <= 1.30):
                     cprint(YLW + 'You probably meant one of these saved info:' + GR)
-                    cprint('1) Remember ' + info_1, wrap_width=79, wrap_joiner='\n   ')
-                    cprint('2) Remember ' + info_2, wrap_width=79, wrap_joiner='\n   ')
+                    cprint('1) Remember ' + info_1, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
+                    cprint('2) Remember ' + info_2, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
                     question = "(If none, use 'saved-info' command for manual edit)\n"
                     question += 'Which one you want to delete? (1, 2, cancel): '
                     answers = ['1', '2']
@@ -1115,11 +1116,11 @@ if SAVED_INFO:
                 # Case (3): Match is too poor.
                 else:   # elif ratio_1 <= 0.5:
                     cprint(YLW + 'Perphaps you meant one of these saved info:' + GR)
-                    cprint('1) Remember ' + info_1, wrap_width=79, wrap_joiner='\n   ')
-                    cprint('2) Remember ' + info_2, wrap_width=79, wrap_joiner='\n   ')
+                    cprint('1) Remember ' + info_1, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
+                    cprint('2) Remember ' + info_2, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
                     question = "(If none, use 'saved-info' command for manual edit)\n"
                     if top_n == 3:
-                        cprint('3) Remember ' + info_3, wrap_width=79, wrap_joiner='\n   ')
+                        cprint('3) Remember ' + info_3, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
                         question += f'Which one you want to delete? (1, 2, 3, cancel): '
                         answers = ['1', '2', '3']
                     else:
@@ -1979,9 +1980,9 @@ def setup_chat():
     if not restarting:
         print()
         clear_lines(4)
-        print('+' + '-' * 77 + '+')
-        print("| Loading chat..." + ' ' * 61 + '|')
-        print('+' + '-' * 77 + '+')
+        print('+' + '-' * (CONSOLE_WIDTH - 2) + '+')
+        print("| Loading chat..." + ' ' * (CONSOLE_WIDTH - 18) + '|')
+        print('+' + '-' * (CONSOLE_WIDTH - 2) + '+')
     else:
         chat_saved = False
     
@@ -2090,8 +2091,8 @@ def setup_chat():
 def get_user_input():
     """
     Handle prompt_toolkit input and catch Ctrl-C/Ctrl-D.
-    NOTE: User input will never be striped or trimmed, it'll be sent as it is,
-    we only use a stripped copy of it to beautify the output.
+    NOTE: User input will never be stripped or modified, it'll be sent as
+    it is, we only use a stripped copy of it to beautify the output.
     """
     # Set input options.
     # 1. RPrompt
@@ -2108,7 +2109,7 @@ def get_user_input():
     else: editing_mode = None
     
     # 3. Others.
-    error_handler = lambda *args, **kwargs: print("Caught error internally!", file=sys.stderr)
+    error_handler = lambda *args, **kwargs: cprint("Caught error internally!", file=sys.stderr)
     bottom_free_space = SUGGESTIONS_LIMIT + 1 if SUGGEST_FROM_WORDLIST else False
     
     # Log.
@@ -2425,7 +2426,8 @@ def print_response(response, title='Gemini'):
         
         # A quick cleanup.
         clear_lines(lines_to_remove)
-        stdout_flush()
+        if INFORMATIVE_RPROMPT: cprint()
+        else: stdout_flush()
     
     except Interruption:
         # Clear empty lines from blocked response.
@@ -2462,7 +2464,7 @@ def run_chat():
 
             # Get & Print Response
             response = get_response()
-            if not response or type(response) is type(None): continue
+            if not response or type(response) is type(None) or isinstance(response, type(None)): continue
             print_response(response)
 
         except Interruption:
@@ -2492,6 +2494,7 @@ def define_global_objects():
     if VIM_EMACS_MODE: editor_variable = None       # This will change to the current EDITOR variable in the system, if available.
 
     # Define global constants.
+    TEXT_WIDTH = min(CONSOLE_WIDTH, CONSOLE_WIDTH)             # Width used for some messages like farewell and saved info, used to avoid glitches.
     CLEAR_COMMAND = 'cls' if os.name == 'nt' else 'clear'
     ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')  # Used to clean a string from ANSI codes.
     WORD_AND_SPACE_PATTERN = re.compile(r'(\s+)')   # Used to split lines into words, for word-by-word animation.

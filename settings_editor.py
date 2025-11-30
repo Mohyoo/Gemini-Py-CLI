@@ -73,7 +73,8 @@ GENERAL_SETTINGS = [
     },
     {
         'key': 'INFORMATIVE_RPROMPT',
-        'desc': "Short informational text at top right of the prompt field.",
+        'desc': "Short informational text at top right of the prompt field.\n" + SPACE +
+                "* Might cause glitches in terminals that resize dynamically.\n",
         'type': 'bool',
     },
     {
