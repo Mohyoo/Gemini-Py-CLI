@@ -93,7 +93,7 @@ try:
     
 except ImportError as error:
     print(f'\nError: {error}.')
-    print("Use 'pip' to install missing modules.")
+    print("Use 'pip' to install the missing modules.")
     print("E.g: open CMD & type: pip install httpx rich")
     quit(1)
     
@@ -294,15 +294,15 @@ class LengthValidator(Validator):
         """Warn the user if he types a very long prompt, but still allow him to submit."""
         if len(document.text) > 4096:
             raise ValidationError(
-                message='WARNING!  You typed more than 4000 characters!',
-                cursor_position=len(document.text) # Keep cursor at the end
+                message='WARNING! You typed more than 4000 characters!',
+                # cursor_position=len(document.text) # Keep cursor at the end
             )
 
 class GeminiWorker(Thread):
     """
-    A worker thread to run & control the asynchronous (unblockable) API call.
-    Set to 'daemon' so the thread is terminated automatically on main program
-    exit or on exception (like KeyboardInterrupt).
+    - A worker thread to run & control the asynchronous (unblockable) API call.
+    - Set to 'daemon' so the thread is terminated automatically on main program
+      exit or on exception (like KeyboardInterrupt).
     """
     def __init__(self, chat_session, user_input, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -365,6 +365,7 @@ Interruption = (
 )
 
 def catch_no_api_key():
+    """Used in setup_chat() if the API key placeholder wasn't changed."""
     msg_1 = "Please replace 'YOUR_API_KEY_HERE' in 'settings.py' with your actual key."
     msg_2 = "You'll find the key placeholder at the first few lines.\n"
     msg_3 = f"{GR}For a new key, visit: {UL}https://aistudio.google.com/app/api-keys{RS}"
@@ -372,6 +373,7 @@ def catch_no_api_key():
     box(msg_1, msg_2, msg_3, msg_4, title='NO API KEY PROVIDED', border_color=RED, text_color=RED)
 
 def catch_client_error_startup(error):
+    """Used in setup_chat() if STARTUP_API_CHECK is True & the API validation encounters a client side error."""
     if ERROR_LOG_ON: log_caught_exception()
     msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}.\n"
     msg_2 = f"{RED}Check your settings, especially the API key validation or limits."
@@ -381,6 +383,7 @@ def catch_client_error_startup(error):
     box(msg_1, msg_2, msg_3, msg_4, msg_5, title='CLIENT SIDE ERROR', border_color=RED, text_color=RED, secondary_color=RED)
 
 def catch_client_error_in_chat(error):
+    """Used in get_response() upon a client side error."""
     if ERROR_LOG_ON: log_caught_exception()
     msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}\n"
     msg_2 = f"{YLW}Check your settings, especially the API key validation or limits."
@@ -389,6 +392,7 @@ def catch_client_error_in_chat(error):
     box(msg_1, msg_2, msg_3, msg_4, title='CLIENT SIDE ERROR', border_color=RED, text_color = RED, secondary_color=RED)
 
 def catch_server_error_startup(error_occurred, attempts):
+    """Used in setup_chat() if STARTUP_API_CHECK is True & the API validation encounters a google server error."""
     if ERROR_LOG_ON: log_caught_exception()
     MAX_ATTEMPTS, DELAY_1, DELAY_2 = SERVER_ERROR_ATTEMPTS, *SERVER_ERROR_DELAY
     if not error_occurred:
@@ -417,6 +421,7 @@ def catch_server_error_startup(error_occurred, attempts):
         sys_exit(1)
     
 def catch_server_error_in_chat():
+    """Used in get_response() upon a google server error."""
     global confirm_separator
     if ERROR_LOG_ON: log_caught_exception()
     MAX_ATTEMPTS, DELAY_1, DELAY_2 = SERVER_ERROR_ATTEMPTS, *SERVER_ERROR_DELAY
@@ -481,6 +486,7 @@ def catch_server_error_in_chat():
     return response
 
 def catch_network_error():
+    """Used to catch general network issues (System disconnection, DNS, timeout, etc)."""
     global user_input
     if ERROR_LOG_ON: log_caught_exception()
     if restarting: clear_lines()
@@ -506,10 +512,11 @@ def catch_network_error():
     if restarting: clear_lines()
 
 def catch_exception(error):
+    """Used to catch any generic exception that can be forgiven during a chat."""
     global confirm_separator
     if ERROR_LOG_ON: log_caught_exception()
     separator('\n', color=RED)
-    log_error(f'An error occurred:\n"{error}"')
+    print_error(f'An error occurred:\n"{error}"')
     if not NO_ERROR_DETAILS:
         try:
             if GLOBAL_LOG_ON: in_time_log("See the details? (y/n): ...")
@@ -530,6 +537,7 @@ def catch_exception(error):
     separator(color=RED, end='\n\n')
 
 def catch_fatal_exception(error):
+    """Used to catch any critical generic exception that bypassed all of the handlers."""
     if ERROR_LOG_ON: log_caught_exception(level='critical')
     separator('\n', color=RED)
     cprint(f"{GR + BD}Congratulations! You found it. It's a BUG!")
@@ -537,7 +545,7 @@ def catch_fatal_exception(error):
     cprint(f"Please let me know, I'll try to respond as soon as possible.")
     cprint(f"GitHub Issues: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}\n")
     
-    log_error(f'A fatal error occurred:\n"{error}"\nAnd the program has to QUIT.')
+    print_error(f'A fatal error occurred:\n"{error}"\nAnd the program has to QUIT.')
     
     if not NO_ERROR_DETAILS:
         if GLOBAL_LOG_ON: in_time_log("See the details? (y/n): ...")
@@ -555,6 +563,10 @@ def catch_fatal_exception(error):
     sys_exit(1)
 
 def catch_keyboard_interrupt():
+    """
+    You know.. stubborn enough to catch interruption in many code blocks,
+    show a user friendly message, and avoid accidental exit.
+    """
     msg_1 = f"Prompt cancelled, skipping..."
     msg_2 = f'Rest assured, Google has no idea about what you just sent (probably ;-;).'
     box(msg_1, msg_2, title='KEYBOARD INTERRUPTION', border_color=GR, text_color=GR, secondary_color=GR)
@@ -599,13 +611,13 @@ def print_status(action: callable, text='Waiting...', color='green'):
                         spinner=SPINNER):
         action()
 
-def log_error(text: str, style='red', offset=3):
+def print_error(text: str, style='red', offset=3):
     """
     Display a special message for errors, including time and line.
     
     1) '_stack_offset' argument tells 'Rich' to look further up the call stack
        to find the true originator of the log message. Default to (3): from this
-       log_error() -> catch_error_name() -> except statement (what we want).
+       print_error() -> catch_error_name() -> except statement (what we want).
        
     2) Using quotes inside quotes (e.g: '""') will give the internal quotes
        a special color.
@@ -656,7 +668,7 @@ def quick_sleep(delay: float):
 def clear_lines(lines_to_erase=1):
     """
     Simulates scanning and cleaning up previous empty lines by using 
-    ANSI codes to move the cursor up and erase, then prints a separator.
+    ANSI codes to move the cursor up and erase.
     """
     # Skip if not compatible with ANSI escape codes.
     if not USE_ANSI: return
@@ -673,7 +685,7 @@ def visual_len(text_with_ansi: str):
     return max(lines_length)
 
 def separator(before='', after='', char='─', color=GRY, width=CONSOLE_WIDTH, end='\n'):
-    """Display a line of hyphens."""
+    """Display a line of hyphens or any horizontal symbol."""
     # Used console.print() instead of print() and our defined cprint(), because
     # others have an issue of printing double new line after.
     console.print(color + before + char * width + after + RS,
@@ -687,10 +699,10 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
          continuous colors from the previous line.
        - ANSI code must not be in the wrap point, as it'll get broken and useless.
        - Wrapped lines will lose their colors! thus 'secondary_color' is an
-         optional argument that gets applied only to the wrapped lines.
-       - ANSI reset code isn't necessary at the end of string.
+         optional argument that is applied only to the wrapped lines.
        - You have to rewrite ANSI code after '\n' inside strings.
        - ANSI code length is considered as normal characters when wrapping a line.
+       - ANSI reset code isn't necessary at the end of string.
     """   
     # Define colors.
     BC = border_color    # For the box borders
@@ -759,22 +771,22 @@ def open_path(path_to_open, clear=0, restore_prompt=''):
 def welcome_screen():
     """Display a short welcoming screen."""
     gemini_logo_string = (
-    f"{BD}"
-    f"{BL}G"
-    f"{RED}o"
-    f"{YLW}o"
-    f"{BL}g"
-    f"{GR}l"
-    f"{RED}e"
-    f"{RS} | ♊ "
-    f"{BD}"
-    f"{BL}GEMINI"
-    f"{RS}"
+        f"{BD}"
+        f"{BL}G"
+        f"{RED}o"
+        f"{YLW}o"
+        f"{BL}g"
+        f"{GR}l"
+        f"{RED}e"
+        f"{RS} | ♊ "
+        f"{BD}"
+        f"{BL}GEMINI"
+        f"{RS}"
     )
 
     system(CLEAR_COMMAND)
     separator()
-    cprint(f"{GR}Welcome to {gemini_logo_string}{GR} Py-CLI! (An API-based chat)", wrap=False)
+    cprint(f"{GR}Welcome to {gemini_logo_string}{GR} Py-CLI! (API-based chat)", wrap=False)
     cprint(f"Chat Initialized (Type '{UL}help{RS}{GR}' for a quick start){RS}\n", wrap=False)
  
 def help(short=False):
@@ -782,7 +794,7 @@ def help(short=False):
     LONG = f"""
     1) First Thing First:
        -Get an API key from: {UL}https://aistudio.google.com/app/api-keys{RS}
-        and paste it in 'settings.py' (first few lines). Remember, it's free,
+        and run 'python settings_editor.py' to paste it. Remember, it's free,
         easy to get, and generous for the free tier (Just requires an account).
        -You can change other settings if you wish (e.g: The Gemini model).
     
@@ -791,13 +803,13 @@ def help(short=False):
        -CTRL-SPACE, SHIFT-TAB or CTRL-J to add a new line to your prompt
         (SHIFT-ENTER won't work, and it will submit your text!)
        -CTRL-C or CTRL-D to clear / cancel a prompt, stop a response, or quit.
-        (If you press it earlier upon submitting prompt, you will have a chance
-        that google won't receive it at all)
+        (If you press it earlier upon submitting a prompt, you will have a
+        chance that google won't receive it at all)
        -UP/DOWN arrows to navigate between input lines / history prompts,
         or to accept word suggestions.
        -CTRL-Z/CTRL-Y to undo/redo.
-       -CTRL-X-CTRL-E to call external editor - if option is ON.
-        (Once the editor is closed, changes are registered & submited)
+       -CTRL-X-CTRL-E to call external editor - if its option is ON.
+        (Once the editor is closed, changes are registered & submitted)
     
     3) Special Commands (While in Prompt):
        -'clear' to clear the screen.
@@ -836,12 +848,12 @@ def help(short=False):
         (May cause an extra delay at exit)
        -'restore-last' to restore last removed message(s) pair(s), you can use
         it multiple times if you deleted many times.
-       -'restore-all' to restore all of the deleted messages.
+       -'restore-all' to restore all of the deleted messages before chat end.
        -'del-prompt' to delete the whole prompt history file, and lose all
         past history, future prompts won't be affected (No cancel option!).
        -'del-all' to wipe private files: chat + prompt history + log files
         + saved info (No cancel option!)
-       -'clear-log' to clear both log files, future logging won't be affected.
+       -'del-log' to clear both log files, future logging won't be affected.
        -'about' for program information.
        -'license' for copyright.
     
@@ -887,7 +899,7 @@ def help(short=False):
 def farewell(confirmed=False):
     """
     Print a random but beautiful farewell message.
-    Also give the user the chance to go back.
+    Also give the user a chance to go back.
     """
     global FAREWELLS_MESSAGES, CONTINUE_MESSAGES, confirm_separator
 
@@ -926,7 +938,7 @@ def farewell(confirmed=False):
     saved = save_chat_history_json(up_separator=confirmed, down_separator=False)
     if saved: cprint()
     
-    # Clean prompt history & Exit
+    # Exit
     if not saved and confirmed: separator()
     message = choice(FAREWELLS_MESSAGES)
     cprint(GR + message + RS, wrap_width=CONSOLE_WIDTH)     # Fix width to avoid glitchs.
@@ -953,7 +965,7 @@ if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
                 if ERROR_LOG_ON: log_caught_exception()
                 pass
         
-        # Check implicit order.
+        # Check implicit orders.
         if IMPLICIT_INSTRUCTIONS_ON and IMPLICIT_INSTRUCTIONS.strip():
             system_instructions += '# Your Implicit Instructions as AI:\n' + IMPLICIT_INSTRUCTIONS.strip()
         
@@ -1232,7 +1244,7 @@ if PROMPT_HISTORY_ON:
     def prune_prompt_history():
         """
         Checks the history file size. If > PROMPT_HISTORY_SIZE, it prunes the file
-        by taking the last half and finding the next full history block (timestamp).
+        by taking the last half and finding the nearest history block (timestamp).
         """
         if not os.path.exists(PROMPT_HISTORY_FILE):
             return
@@ -1293,7 +1305,7 @@ if RESPONSE_EFFECT:
     def get_styled_lines(markdown: Markdown) -> list[Text]:
         """
         Takes raw Markdown text, renders it into rich segments, flattens the result,
-        assembles it into a single styled Text object, and returns it split into 
+        assembles it into a single styled Text object, and returns it splitted into 
         a list of styled lines. This is the shared core logic for all typewriter effects.
         * If you didn't understand this, fine, nor did I.
         """
@@ -1323,10 +1335,7 @@ if RESPONSE_EFFECT:
         return output_lines
 
     def print_markdown_line(markdown: Markdown, delay_seconds: float = 0.05):
-        """
-        Take a string & Convert it to Markdown object.
-        Print fully formatted Markdown content line-by-line with a delay.
-        """
+        """Print fully formatted Markdown content line-by-line with a delay."""
         global current_response_line
         output_lines = get_styled_lines(markdown)
         console.show_cursor(False)
@@ -1379,10 +1388,7 @@ if RESPONSE_EFFECT:
             console.print()
         
     def print_markdown_char(markdown: Markdown, delay_ms: float = 2.5):
-        """
-        Take a string & Convert it to Markdown object.
-        Print fully formatted Markdown content character-by-character with a delay.
-        """
+        """Print fully formatted Markdown content character-by-character with a delay."""
         global current_response_line
         output_lines = get_styled_lines(markdown)
         console.show_cursor(False)
@@ -1424,7 +1430,7 @@ if EXTERNAL_EDITOR:
     def manage_editor_variable(mode='change'):
         """
         Checks for the EDITOR environment variable in the OS.
-        Modifies it, then restores the original value at exit.
+        Modifies it if necessary, then restores the original value at exit.
         """
         global editor_variable
         # 1. Check if EDITOR is present and store the original state/value
@@ -1478,7 +1484,7 @@ if ERROR_LOG_ON and GLOBAL_LOG_ON:
             msg = f"File '{GLOBAL_LOG_FILE}' was deleted.\nBut '{ERROR_LOG_FILE}' wasn't!"
             
         else:
-            msg = 'Log files deleted!'
+            msg = 'Log files cleared!'
             color = GR
             
         box(msg, title='LOG CLEANUP', border_color=color, text_color=color)
@@ -1537,7 +1543,7 @@ if ERROR_LOG_ON:
 
 # 5) Part V: Main Functions ----------------------------------------------------
 def del_all():
-    """Nuclear option, performs a factory reset for the program data."""
+    """Nuclear option, performs a factory reset for the program data (Doesn't affect settings)."""
     global discarding
     
     # Warning.
@@ -1585,7 +1591,7 @@ def del_all():
     raise SystemExit
 
 def serialize_history():
-    """Convert active chat history into a savable json."""
+    """Convert active chat history into a save-able json."""
     global messages_to_remove
     # Get history & Exclude removed messages.
     history_list = chat.get_history()
@@ -1717,7 +1723,7 @@ def save_chat_history_text():
 def get_last_response(command):
     """
     Get the last response that the user has received from AI.
-    Either save or display it.
+    Either save, copy or display it.
     """
     last_response = None
     msg = 'Checked both active & history messages, but current conversation is empty.'
@@ -2109,7 +2115,7 @@ def get_user_input():
     else: editing_mode = None
     
     # 3. Others.
-    error_handler = lambda *args, **kwargs: cprint("Caught error internally!", file=sys.stderr)
+    error_handler = lambda *args, **kwargs: log_caught_exception() if ERROR_LOG_ON else None
     bottom_free_space = SUGGESTIONS_LIMIT + 1 if SUGGEST_FROM_WORDLIST else False
     
     # Log.
@@ -2247,7 +2253,7 @@ def interpret_commands(user_input):
             box(msg, title='STATUS', border_color=color, text_color=color)
             clear_lines()
     
-        case 'clear-log':
+        case 'del-log':
             clear_log_files()
     
         case 'discard':
@@ -2385,7 +2391,7 @@ def get_response():
     return response
 
 def print_response(response, title='Gemini'):
-    """Print the AI response."""
+    """Print the AI response with/out effects."""
     try:
         # raise EOFError
         # raise Exception
@@ -2451,7 +2457,7 @@ def print_response(response, title='Gemini'):
         catch_exception(error)
     
 def run_chat():
-    """Handles the user input and Gemini responses."""
+    """Handles the user prompts and Gemini responses."""
     global user_input, response
     while True:
         try:

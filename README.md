@@ -6,7 +6,7 @@
 ## Gemini Py-CLI
 A simple Gemini CLI program, written in Python. <br>
 Used for simple conversations. <br>
-+ Tested using Windows Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br>
++ Tested using Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br>
 + <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
 
 ---
@@ -33,7 +33,7 @@ Used for simple conversations. <br>
 ## Screenshots
 | ![Screenshot 1](Screenshot_1.png) | ![Screenshot 3](Screenshot_3.png) |
 |-----------------------------------|-----------------------------------|
-| ![Screenshot 2](Screenshot_2.png) | ![img4](Screenshot_1.png) |
+| ![Screenshot 2](Screenshot_2.png) |  |
 
 ## Quick Start
 #### 1) Python Setup:
