@@ -182,6 +182,7 @@ show
 save-last
 save-chat
 pop-last
+pop-all
 restore-last
 restore-all
 del-prompt
