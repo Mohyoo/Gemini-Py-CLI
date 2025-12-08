@@ -8,6 +8,7 @@ A simple Gemini CLI program, written in Python. <br>
 Used for simple conversations. <br>
 + Tested using Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br>
 + <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
++ **Screenshots can be seen [here](SCREENSHOTS.md).**
 
 ---
 <span style="color:cyan"><b><i>Reminder:</i></b><br>For people who don't know Python, it's just a small command-line program. After installing it, you only run 2 commands, one to install dependencies (which took me 10 min with my 80kb/s internet), then the main command which is instant.</span>
@@ -29,11 +30,6 @@ Used for simple conversations. <br>
 * Common keyboard shortcuts + Vim/Emacs shortcuts (beta) + Mouse support (beta).
 * Cross platform, binaries are not yet created, perhaps on request I'll do that (I'm too lazy).
 * Stubborn error handling, yet still not perfect.
-
-## Overview & Screenshots
-| ![Screenshot 1](Screenshot_1.png) | ![Screenshot 3](Screenshot_3.png) |
-|-----------------------------------|-----------------------------------|
-| ![Screenshot 2](Screenshot_2.png) | <video src="Overview.mp4" controls></video>|
 
 ## Quick Start
 #### 1) Python Setup:
@@ -57,7 +53,7 @@ the program.
 ## Wiki
 Visit the [Wiki](https://github.com/Mohyoo/Gemini-Py-CLI/wiki) for some valuable information.
 
-Don't worry, there is no *bla bla bla...* everything is hardly summarized for you.
+Don't worry, there is no *bla bla bla...* everything is hardly summarized :)
 
 
 ## Limitations:
