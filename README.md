@@ -6,6 +6,7 @@
 <p align="center">
   <b>LIST OF CONTENT</b><br> •
   <a href="#gemini-py-cli">Introduction</a> •
+  <a href="SCREENSHOTS.md">Screenshots</a> •
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#wiki">Wiki</a> •
