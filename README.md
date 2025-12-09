@@ -1,10 +1,10 @@
-<div style="text-align: center; padding: 20px;">
+<div align="center">
   <h3 style="margin: 0; font-family: Arial, sans-serif; color: red">Palestine Children, Women and Men are dying...</h3>
   <img src="Palestine.jpg" alt="Palestine Flag" style="width: 475px; border-radius: 3%;">
 </div>
 
 <p align="center">
-  <b>LIST OF CONTENT</b><br> •
+  <br><b>LIST OF CONTENT</b><br> •
   <a href="#gemini-py-cli">Introduction</a> •
   <a href="SCREENSHOTS.md">Screenshots</a> •
   <a href="#features">Features</a> •
