@@ -3,6 +3,15 @@
   <img src="Palestine.jpg" alt="Palestine Flag" style="width: 475px; border-radius: 3%;">
 </div>
 
+<p align="center">
+  <b>LIST OF CONTENT<b><br> •
+  <a href="#gemini-py-cli">Introduction</a> •
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#wiki">Wiki</a> •
+  <a href="#limitations">Limitations</a> •
+</p>
+
 ## Gemini Py-CLI
 A simple Gemini CLI program, written in Python. <br>
 Used for simple conversations. <br>
@@ -17,7 +26,7 @@ Used for simple conversations. <br>
 
 ## Features
 * Made primarily for low-spec or slow internet users; Worked even with a dead connection (< 15 kb/s); Yeah! but with only short messages (< 100 characters).
-* Privacy respect, the program doesn't send, hold or manipulate any personal data, your ***API key*** is only yours; even with logs (which can be turned OFF), the program removes file paths and user prompts, keeping only what is absolutely needed.
+* Privacy respect, the program doesn't send, hold or manipulate any personal data or sent-messages; your ***API key*** is only yours; even with logs (which can be turned OFF), the program removes file paths and user prompts, keeping only what is absolutely needed.
 * Content can be saved locally in many forms, even if the program crashes:
 	+ Automatically, save chat history & prompt history to a structured text file.
 	+ At request, save chat history, last AI response or saved info to a human readable text file.
