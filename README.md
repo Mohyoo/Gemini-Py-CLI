@@ -10,7 +10,7 @@
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#wiki">Wiki</a> •
-  <a href="#limitations">Limitations</a> •
+  <a href="#limitations">Limitations</a> • <br>
 </p>
 
 ## Gemini Py-CLI

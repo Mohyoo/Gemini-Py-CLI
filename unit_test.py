@@ -7,7 +7,7 @@ from io import StringIO
 
 
 # --- MOCK DEPENDENCIES AND CONSTANTS ---
-# Mock color constants
+# Mock color constants.
 RED = '\033[91m' 
 YLW = '\033[93m'
 GR = '\033[92m'
@@ -16,7 +16,7 @@ RS = '\033[0m'
 CYN = '\033[96m'
 BD = '\033[1m'
 
-# Mock settings constants
+# Mock settings constants.
 MOCK_GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
 MOCK_ERROR_LOG_ON = True
 MOCK_GLOBAL_LOG_ON = True
@@ -27,7 +27,7 @@ MOCK_HTTP_TIMEOUT = 10.0
 MOCK_WAIT_1 = "yellow"
 MOCK_SPINNER = "dots"
 
-# Mock Exceptions
+# Mock Exceptions.
 class MockClientError(Exception):
     def __init__(self, message, code=400):
         self.message = message
@@ -50,16 +50,16 @@ class MockHttpxHTTPError(Exception): pass
 class MockHttpxConnectError(Exception): pass
 class MockHttpxRemoteProtocolError(Exception): pass
 
-# Global variables used by the error handlers (must be defined for testing)
+# Global variables used by the error handlers (must be defined for testing).
 global user_input, restarting, confirm_separator, chat, console, sys_exit
 user_input = "test prompt"
 restarting = False
 confirm_separator = True
 chat = MagicMock()
 console = MagicMock()
-sys_exit = MagicMock() # Mock sys_exit to prevent the test suite from quitting
+sys_exit = MagicMock() # Mock sys_exit to prevent the test suite from quitting.
 
-# Mock utility functions
+# Mock utility functions.
 box = MagicMock()
 cprint = MagicMock()
 separator = MagicMock()
@@ -70,7 +70,7 @@ log_error = MagicMock()
 clear_lines = MagicMock()
 save_chat_history_json = MagicMock()
 
-# Define a mock for the helper function print_status
+# Define a mock for the helper function print_status.
 def print_status(action, message, color):
     action()
     cprint(f"Status: {message} ({color})") 
@@ -209,7 +209,7 @@ def catch_network_error():
     if MOCK_ERROR_LOG_ON: log_caught_exception()
     if restarting: clear_lines()
     error = sys.exc_info()[1]
-    error = str(error).lower() # Simplified traceback
+    error = str(error).lower() # Simplified traceback.
     if 'timeout' in error:
         title = 'TIMEOUT'
         msg = f"{RED}API call exceeded the hard timeout limit of ({MOCK_HTTP_TIMEOUT}) seconds.\n"
@@ -241,7 +241,7 @@ def catch_exception(error):
             cprint()
             raise
         if see_error == 'y':
-            cprint(RED + "Mock Traceback" + RS) # Mock traceback output
+            cprint(RED + "Mock Traceback" + RS) # Mock traceback output.
         else:
             cprint(f"{GR}Acting blind...{RS}")
     else:
@@ -260,7 +260,7 @@ def catch_fatal_exception(error):
         if MOCK_GLOBAL_LOG_ON: in_time_log("See the details? (y/n): ...")
         see_error = input("See the details? (y/n): ").strip().lower()
         if see_error == 'y':
-            cprint(RED + "Mock Traceback" + RS) # Mock traceback output
+            cprint(RED + "Mock Traceback" + RS) # Mock traceback output.
         else:
             cprint(f"{YLW}\nInhales.. Deep breathing.. Now out.{RS}")
     else:
@@ -271,7 +271,7 @@ def catch_fatal_exception(error):
 
 class TestErrorHandlers(unittest.TestCase):
     def setUp(self):
-        # Reset mocks before each test
+        # Reset mocks before each test.
         box.reset_mock()
         cprint.reset_mock()
         separator.reset_mock()
@@ -283,18 +283,18 @@ class TestErrorHandlers(unittest.TestCase):
         sys_exit.reset_mock()
         save_chat_history_json.reset_mock()
 
-        # Reset global state
+        # Reset global state.
         global user_input, restarting, confirm_separator
         user_input = "initial prompt"
         restarting = False
         confirm_separator = True
 
-    # Custom runner method to execute the test and print results (Kept for friendly output)
+    # Custom runner method to execute the test and print results (Kept for friendly output).
     def run(self, result=None):
         if result is None:
             result = self.defaultTestResult()
         
-        # Start of Test
+        # Start of Test.
         print(f"\n{CYN}>> Running Test: {self._testMethodName}{RS}")
         
         original_stdout = sys.stdout
@@ -310,7 +310,7 @@ class TestErrorHandlers(unittest.TestCase):
         sys.stdout = original_stdout
         sys.stderr = original_stderr
         
-        # End of Test and result reporting
+        # End of Test and result reporting.
         if result.wasSuccessful():
             print(f"{GR}   [SUCCESS] {self._testMethodName} passed.{RS}")
         else:
@@ -388,7 +388,7 @@ class TestErrorHandlers(unittest.TestCase):
 
     def test_catch_server_error_startup_fail(self):
         """Tests catch_server_error_startup: Ensures correct retry logic and final exit."""
-        # attempts = 0 (first error)
+        # attempts = 0 (first error).
         catch_server_error_startup(False, 0)
         separator.assert_called_with('\n', color=RED)
         self.assertIn('Status: Retrying in 0.01 seconds... (yellow)', [c.args[0] for c in cprint.call_args_list])
@@ -396,16 +396,16 @@ class TestErrorHandlers(unittest.TestCase):
         cprint.reset_mock()
         quick_sleep.reset_mock()
 
-        # attempts = 1 (second error)
+        # attempts = 1 (second error).
         catch_server_error_startup(True, 1)
         self.assertIn('Status: Issue persisting, retrying in 0.02 seconds... (yellow)', [c.args[0] for c in cprint.call_args_list])
         sys_exit.assert_not_called()
         cprint.reset_mock()
         quick_sleep.reset_mock()
 
-        # attempts = MAX_ATTEMPTS (final error)
+        # attempts = MAX_ATTEMPTS (final error).
         catch_server_error_startup(True, MOCK_SERVER_ERROR_ATTEMPTS)
-        # FIX: Assert on the full colorized string, which includes YLW and RS
+        # FIX: Assert on the full colorized string, which includes YLW and RS.
         expected_final_message = f'{YLW}Tried {MOCK_SERVER_ERROR_ATTEMPTS} times with no response! Please wait for sometime...{RS}'
         self.assertIn(expected_final_message, [c.args[0] for c in cprint.call_args_list])
         sys_exit.assert_called_once_with(1)

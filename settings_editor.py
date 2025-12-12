@@ -5,7 +5,7 @@ import questionary
 from typing import Any
 
 # ==========================================
-# 2. STARTUP CHECK
+# 1. STARTUP CHECK
 # ==========================================
 
 FILE_PATH = 'settings.py'
@@ -215,7 +215,7 @@ separator_2 = """
 # ==========================================
 
 def read_file_lines():
-    """Reads the file and returns a list of lines."""
+    """Read the file and return a list of lines."""
     if not os.path.exists(FILE_PATH):
         print(f"Error: {FILE_PATH} not found!")
         exit()
@@ -223,20 +223,20 @@ def read_file_lines():
         return f.readlines()
 
 def find_current_value(lines: list, key: str):
-    """Finds the current value of a variable in the file lines."""
+    """Find the current value of a variable in the file lines."""
     for line in lines:
-        # Look for line starting with "KEY =" or "KEY="
+        # Look for line starting with "KEY =" or "KEY=".
         clean_line = line.strip()
         if clean_line.startswith(f"{key}=") or clean_line.startswith(f"{key} ="):
-            # Extract value part (everything after the first =)
+            # Extract value part (everything after the first =).
             parts = clean_line.split('=', 1)
             val_part = parts[1].strip()
             
-            # Remove inline comments if they exist
+            # Remove inline comments if they exist.
             if '#' in val_part:
                 val_part = val_part.split('#')[0].strip()
                 
-            # Use ast to safely evaluate python literal (True, 123, 'string')
+            # Use ast to safely evaluate python literal (True, 123, 'string').
             try:
                 return ast.literal_eval(val_part)
             except:
@@ -249,28 +249,28 @@ def save_change(key: str, new_value: Any):
     new_lines = []
     updated = False
 
-    # Format the new value for Python (adds quotes to strings, etc.)
-    # repr() is perfect for this: True -> True, "hi" -> 'hi', 1 -> 1
+    # Format the new value for Python (adds quotes to strings, etc).
+    # repr() is perfect for this: True -> True, "hi" -> 'hi', 1 -> 1.
     formatted_value = repr(new_value)
-    if new_value == 'None': formatted_value = 'None' # Special case
+    if new_value == 'None': formatted_value = 'None' # Special case.
 
     for line in lines:
         clean_line = line.strip()
         if clean_line.startswith(f"{key}=") or clean_line.startswith(f"{key} ="):
             # We found the line.
             key_value = f'{key} = {formatted_value}'
-            # 1. Split into [Variable=Value, Comment]
+            # 1. Split into [Variable=Value, Comment].
             if '#' in line:
                 parts = line.split('#', 1)
                 space = 45 - len(key_value)
                 if space < 4: space = 60 - len(key_value)
                 if space < 4: space = 75 - len(key_value)
-                comment = ' ' * space + '#' + parts[1] # Keep the comment
+                comment = ' ' * space + '#' + parts[1] # Keep the comment.
             else:
-                comment = '\n' # Just a newline
+                comment = '\n' # Just a newline.
 
-            # 2. Reconstruct the line
-            # "KEY = " + "NEW_VALUE" + " # Comment"
+            # 2. Reconstruct the line.
+            # "KEY = " + "NEW_VALUE" + " # Comment".
             new_lines.append(f"{key_value}{comment}")
             updated = True
         else:
@@ -296,7 +296,7 @@ def load_menu(lines: list):
     # General settings.
     for item in GENERAL_SETTINGS:
         current_val = find_current_value(lines, item['key'])
-        # Format: "VARIABLE - Current Value"
+        # Format: "VARIABLE  [Current Value]".
         choices.append(questionary.Choice(
             title=f"{item['key']:<26} [{str(current_val)}]",
             value=item['key']
@@ -307,7 +307,7 @@ def load_menu(lines: list):
     # Advanced settings.
     for item in ADVANDED_SETTINGS:
         current_val = find_current_value(lines, item['key'])
-        # Format: "VARIABLE - Current Value"
+        # Format: "VARIABLE  [Current Value]".
         choices.append(questionary.Choice(
             title=f"{item['key']:<26} [{str(current_val)}]",
             value=item['key']
@@ -325,11 +325,11 @@ def main():
     
     # Style.
     style = questionary.Style([
-        ('qmark', 'fg:#00FFFF bold'),       # Question mark color/style
-        ('question', 'cyan bold'),          # Question text color/style
-        ('selected', 'fg:black bg:yellow bold'), # Selected item in lists
-        ('pointer', 'fg:cyan bold'),        # Selection pointer (e.g., the '>' symbol)
-        ('instruction', 'fg:#999999'),      # Instructions text
+        ('qmark', 'fg:#00FFFF bold'),       # Question mark color/style.
+        ('question', 'cyan bold'),          # Question text color/style.
+        ('selected', 'fg:black bg:yellow bold'), # Selected item in lists.
+        ('pointer', 'fg:cyan bold'),        # Selection pointer (e.g., the '>' symbol).
+        ('instruction', 'fg:#999999'),      # Instructions text.
     ])
     
     last_selected_key = None
@@ -340,7 +340,7 @@ def main():
         print(f"{' ' * 23} Simple Editor for '{FILE_PATH}'")
         print('=' * 79 + '\n')
 
-        # 2. Show Menu
+        # 2. Show Menu.
         lines = read_file_lines()
         choices = load_menu(lines)
         
@@ -374,7 +374,7 @@ def main():
             print("♦ Goodbye!")
             break
 
-        # 4. Find the config for selected item
+        # 4. Find the config for selected item.
         config = next(c for c in GENERAL_SETTINGS + ADVANDED_SETTINGS if c['key'] == selected_key)
         current_val = find_current_value(lines, selected_key)
         
@@ -382,7 +382,7 @@ def main():
         print(f"Description: {config['desc']}")
         print(f"Current Value: {current_val}")
         
-        # 5. Get Input based on type
+        # 5. Get Input based on type.
         new_val = None
         print()
         
@@ -434,7 +434,7 @@ def main():
                     if new_val == int(new_val): new_val = int(new_val)
                     if new_val is None: continue
                 
-            # 6. Save
+            # 6. Save.
             if save_change(selected_key, new_val):
                 print(f"\n[✓] Saved: {selected_key} = {new_val}")
             else:
@@ -450,5 +450,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        # os.system('cls' if os.name == 'nt' else 'clear')
+        # os.system('cls' if os.name == 'nt' else 'clear').
         print("\nExiting Settings Editor...")

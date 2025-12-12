@@ -37,6 +37,7 @@ food
 fun
 funny
 generate
+gemini
 give
 good
 great

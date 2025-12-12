@@ -34,7 +34,7 @@ RESPONSE_EFFECT = 'line'                     # Effect while displaying response,
                                                  # 'char' for an almost instant character-by-character animation (Safe, but may be unnoticeable).
                                                  # 'char slow' for a smooth character-by-character animation (Safe, but really slow).
                                                  # 'char fast' for a fast character-by-character animation; you should check if this causes a high CPU usage in your computer
-                                                 # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
+                                                    # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
                                                  # * All 'char' animations can cause glitchs!
 
 
@@ -77,7 +77,7 @@ SLEEP_INTERVAL = 0.1                        # Small chunks used as intervals wit
 
 # Colors
 if USE_COLORS and USE_ANSI:
-    # By ANSI code (Used in print() & cprint())
+    # By ANSI code (Used in print() & cprint()).
     CYN     = '\033[96m'    # Cyan
     RED     = '\033[91m'    # Red
     GR      = '\033[92m'    # Green
@@ -100,8 +100,7 @@ else:
 
 
 # Custom Messages
-FAREWELLS_MESSAGES = [
-    # Messages displayed upon existing.
+FAREWELLS_MESSAGES = [      # Messages displayed upon existing.
     # Standard
     "Chat session ended. Goodbye!",
     "Gemini signing off. Until next time!",
@@ -141,7 +140,7 @@ FAREWELLS_MESSAGES = [
     "I'm watching you 0-0",
     "I see you :3",
     "If a poison expires, then it becomes more poisonous or less poisonous? (o.O)",
-    "Cheese has holes.\nMore cheese = More holes.\nMore holes = Less cheese.\nMore cheese = Less cheese (O.O)",
+    "Cheese has holes.\nMore cheese = More holes.\nMore holes  = Less cheese.\nMore cheese = Less cheese (O.O)",
     "You are breathing involuntary; but now that you knew, you have to breath voluntary :P",
     "Cleaning crime scene...\nAlright! ready to escape.",
     "Normal mode OFF, switching to Agent Six...",
@@ -251,10 +250,46 @@ FAREWELLS_MESSAGES = [
     "I love the way you smile...",
     "If you think you are too small to make a diffrence, try sleeping with a mosquito.",
     "Be aware.. crazy people don't always look crazy ;)",
+    
+    # Facts
+    "Fact: People are more creative in the shower :)",
+    "Fact: The average person walks the equivalent of five times around the Earth in their lifetime.",
+    "Fact: There is a species of jellyfish that is considered immortal. It can revert back to "
+    "its juvenile (young) form after becoming an adult.",
+    "Fact: A cow gives nearly 200,000 glasses of milk in its lifetime.",
+    "Fact: A group of flamingos is called a flamboyance.",
+    "Fact: Octopuses have three hearts! Two pump blood to the gills, and one circulates it to the rest of the body.",
+    "Fact: Honey never spoils. Archaeologists have found pots of honey in ancient Egyptian "
+    "tombs that are over 3,000 years old and still perfectly good to eat.",
+    "Fact: The strongest muscle in your body is the masseter, which is the one you use to chew.",
+    "Fact: Bullfrogs do not sleep. They can rest, but they don't enter a true state of sleep like mammals do.",
+    "Real: Boanthropy is a psychological disorder where a person believes they are a cow.",
+    "Did you know that when you blush (your face turns red), your stomach lining also turns red?",
+    "Did you know? The human nose can remember 50,000 different scents.",
+    "If you keep a goldfish in a dark room, it will eventually turn white.",
+    "Fact: Fainting Goats don't actually lose consciousness; they suffer from a condition called "
+    "myotonia congenita that causes their muscles to temporarily freeze when they are startled.",
+    "Did you know? A single cloud can weigh over a million pounds! That's because "
+    "it's made up of millions of tiny water droplets.",
+    "Fact: The total weight of all the ants on Earth is roughly the same as the total weight of all the humans!",
+    "Fact: In space, astronauts cannot cry properly. The tears just clump together and stick to "
+    "their eye because of the lack of gravity.",
+    "Fact: Wombat poop is cube-shaped! No one is completely sure why, but it helps the animal mark its territory.",
+    "Real: The smell of freshly cut grass is actually a plant distress signal. The grass is SCREAMING that it's being hurt!",
+    "Real: There is a type of jellyfish called the Turritopsis Dohrnii that is considered immortal. "
+    "It can go back to its baby stage and start its life over again.",
+    "Fact: A cow can walk up the stairs but cannot walk down them. Their knees don't bend the right way!",
+    "Real: A bolt of lightning is five times hotter than the surface of the sun! That's super, super hot!",
+    "Fact: There are more trees on Earth than there are stars in the Milky Way galaxy.",
+    "Fact: The human stomach can dissolve a razor blade. It has very strong acid!",
+    "Fact: It is impossible to sneeze with your eyes open. Try to keep them open next time "
+    "(But please don't hurt yourself trying!)",
+    "Fact: In the 16th century, the King of England had a job called the 'Groom of the Stool,' "
+    "whose main duty was to assist the King with going to the bathroom.",
+    "Real: Cows have best friends! They get stressed if they are separated from their favorite pals.",
 ]
  
-CONTINUE_MESSAGES = [
-    # Messages displayed upon confirming exit or editing sensitive stuff (saved-info...), but the user chooses NO.
+CONTINUE_MESSAGES = [       # Messages displayed upon confirming exit or editing sensitive stuff (saved-info...), but the user chooses NO.
     # Standard
     'Resuming chat...',
     'Cancelling, chat will continues.',
@@ -262,9 +297,11 @@ CONTINUE_MESSAGES = [
     # Funny
     'Acting blind...',
     "Don't just mess with the keyboard next time.",
+    "Can you just stop doing that?",
     'Oof...',
     'Hmmm...',
     'Oops...',
+    'Whoopsie!',
     'Interesting...',
     'I smell doubt...',
     'I can feel something bad is coming...',
@@ -273,6 +310,7 @@ CONTINUE_MESSAGES = [
     'Exit failed successfully.',
     'This is a messing around...',
     'Back from the dead.',
+    'Yowza! nice move.',
     
     # Enthusiastic
     'Yeah, this is ma boi!',
@@ -291,10 +329,10 @@ CONTINUE_MESSAGES = [
 ]
 
 
-# Experimental Settings.
+# Experimental Settings
 MOUSE_SUPPORT = False                       # Use mouse to edit user prompt.
 VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vim', 'emacs' or None.
-                                                # E.g.1: For VIM mode, ESC-I is for insert mode; beside navigation mode by pressing ESC + j or h, j, k, l.
+                                                # E.g.1: For VIM mode, ESC-I is for insert mode; beside navigation mode by pressing ESC + j or h, k, l.
                                                 # E.g.2: For EMACS mode, Ctrl+A to go to line beginning, Ctrl+E to move to end.
 IMPLICIT_INSTRUCTIONS_ON = False            # Hidden instructions to help organize the responses for CLI.
 IMPLICIT_INSTRUCTIONS = """
@@ -341,7 +379,7 @@ class Hotkeys():
 
 
 # Values Correction (Ignore This Part)
-MAX_HISTORY_MESSAGES = 512                   # Keep history messages an even number (User-AI turns).
+MAX_HISTORY_MESSAGES = 512                     # Keep history messages an even number (User-AI turns).
 if CONSOLE_WIDTH >= os.get_terminal_size().columns: CONSOLE_WIDTH = os.get_terminal_size().columns - 1
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vim', 'emacs'): VIM_EMACS_MODE = None

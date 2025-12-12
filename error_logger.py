@@ -3,9 +3,9 @@ import sys
 import logging
 import traceback
 from settings import ERROR_LOG_ON, ERROR_LOG_FILE
-# (+1) import inside log_unhandled_exception()
+# (+1) import inside log_unhandled_exception().
 
-# Logging Configuration 
+# Logging Configuration.
 LOG_FORMAT = (
     "%(asctime)s - %(levelname)s!"
     "\nLogger Address: %(name)s \nThread: %(threadName)s"

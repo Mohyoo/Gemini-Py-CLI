@@ -2151,8 +2151,8 @@ def setup_chat():
 def get_user_input():
     """
     Handle prompt_toolkit input and catch Ctrl-C/Ctrl-D.
-    NOTE: User input will never be stripped or modified, it'll be sent as
-    it is, we only use a stripped copy of it to beautify the output.
+    NOTE: User input will never be stripped or modified, it'll be sent as-is,
+    we only use a stripped copy of it to beautify the output.
     """
     # Set input options.
     # 1. RPrompt.
