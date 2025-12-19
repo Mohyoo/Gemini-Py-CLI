@@ -1,6 +1,5 @@
 import os
 import sys
-from random import randint, choice
 
 # When editing this, respect each option's possible values, otherwise prepare yourself
 # for a crash (Better to keep a backup of this file).
@@ -39,10 +38,11 @@ RESPONSE_EFFECT = 'line'                     # Effect while displaying response,
 
 
 # Moderate Settings
-CONSOLE_WIDTH = 85                           # How many characters to print per line (Should be < Console window).
+ALWAYS_LOAD_CHAT = True                      # If True, chat history will be always loaded without asking you.
 STARTUP_API_CHECK = False                    # Disable for a slightly faster loading, and for the ability to enter the chat offline.
-INPUT_HIGHLIGHT = False                      # Syntax highlighting for the user prompt.
-INPUT_HIGHLIGHT_LANG = 'python'              # The language name used for syntax highlighting.
+MAX_CONSOLE_WIDTH = 85                       # Max N° characters to print per line, only effective if the terminal size is bigger than this fixed value, should always be < terminal width.
+DYNAMIC_CONSOLE_WIDTH = True                 # If True, console width will be automatically updated upon a terminal size change.
+INPUT_HIGHLIGHT = 'special'                  # Syntax highlighting for the user prompt; 'special' is our built-in option, but 'python' may also be a good option.
 SAVE_INPUT_ON_CLEAR = False                  # Save the prompt to history when the user clears its prompt with Ctrl-C.
 SAVE_INPUT_ON_STOP = False                   # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys.
 EXTERNAL_EDITOR = True                       # Allow you to edit your prompt in an external editor by pressing CTRL-X-CTRL-E in a row.
@@ -82,8 +82,11 @@ if USE_COLORS and USE_ANSI:
     RED     = '\033[91m'    # Red
     GR      = '\033[92m'    # Green
     YLW     = '\033[93m'    # Yellow
+    YLW2    = '\033[33m'    # Gray Yellow
     BL      = '\033[94m'    # Blue
     GRY     = '\033[90m'    # Gray
+    PURP    = '\033[35m'    # Purple
+    BRW     = '\033[31m'    # Brown
     UL      = '\033[4m'     # Underline
     BD      = '\033[1m'     # Bold
     RS      = '\033[0m'     # Reset
@@ -95,7 +98,7 @@ if USE_COLORS and USE_ANSI:
     WAIT_1 = 'green'        # Used when waiting for Gemini response.
     WAIT_2 = 'cyan'         # Used with Gemini response's 2nd attempt.
 else:
-    CYN = RED = GR = YLW = BL = GRY = UL = BD = RS = GEM_BG = ''
+    CYN = RED = GR = YLW = YLW_2 = BL = GRY = PURP = BRW = UL = BD = RS = GEM_BG = ''
     PROMPT_BG = PROMPT_FG = WAIT_1 = WAIT_2 = 'white'
 
 
@@ -120,6 +123,7 @@ FAREWELLS_MESSAGES = [      # Messages displayed upon existing.
     "¡Nos vemos, cocodrilo!\n(See you, crocodile :P)",
     "¡Hasta la vista!\n(See you around :D)",
     "Au revoir!",
+    "Bibbidi Bobbidi Boo!",
     "Ciao! I'm outta here faster than an Italian pizza disappearing at a party.",
     f"Okay okay, calm down, he only ended the chat...\nBUT AAAAARGHHH...!!!\n"
     f"{RED}System Rage Error occurred;{RS}{GR} Cya!",
@@ -139,20 +143,17 @@ FAREWELLS_MESSAGES = [      # Messages displayed upon existing.
     "Seriously man? The excitement has just started!",
     "I'm watching you 0-0",
     "I see you :3",
-    "If a poison expires, then it becomes more poisonous or less poisonous? (o.O)",
-    "Cheese has holes.\nMore cheese = More holes.\nMore holes  = Less cheese.\nMore cheese = Less cheese (O.O)",
-    "You are breathing involuntary; but now that you knew, you have to breath voluntary :P",
     "Cleaning crime scene...\nAlright! ready to escape.",
     "Normal mode OFF, switching to Agent Six...",
     "There'll be no mercy next time, I promise...",
-    "Let's celebrate a party just for now reason!",
-    "Don't look back, you've been warned!",
+    "Let's celebrate a party just for no reason!",
+    "Don't look back, you've been warned! >:)",
     "Goodbye! Don't forget to miss me a little.",
     "Goodbye! I’ll try not to miss you… too much ;-;",
     "Farewell! Remember, the door is always open - just don’t forget to close it behind you.",
     "Adios! May your life be as awesome as you pretend it is on social media.",
-    "Farewell! May your future be as bright as your phone screen.",
-    "Goodbye! Now you’re free to make all the bad decisions you’ve been planning.",
+    "Farewell! May your future be as bright as your phone screen v.v",
+    "Goodbye! Now you’re free to make all the bad decisions you’ve been planning >.>",
     "Good luck! If the new place doesn’t work out, you can always come back and pretend you never left ;)",
     "We have a winner! Ahuh.. I meant a dinner!",
     
@@ -173,28 +174,6 @@ FAREWELLS_MESSAGES = [      # Messages displayed upon existing.
     "Every step, no matter how small, moves you forward ;)",
     "Ok enough playing, time to study.",
     
-    # Mathematic 
-    f"Calculate this: ({randint(1, 100)} {choice(['+', '-', '×', '÷', '^', '%'])} "
-    f"{randint(1, 100)})\nC'mon quickly!",
-    f"NOOOOOOOOOOOOOOOOOOOOOO...O\nTask: Calculate the partial sum of the sequence: "
-    f"({(' ' + choice(['+', '*']) + ' ').join(['O₁', 'O₂', 'O₃', '...', 'On'])})\n"
-    f"Given that it's {choice(['an arithmetic sequence (constant difference)', 'a geometric sequence (constant ratio)', 'a harmonic sequence', 'a fibonacci sequence'])}.\n"
-    f"Other details: Difference/Ratio={randint(1, 100)}, O₁={randint(1, 500)}, n={randint(1, 999)}\n"
-    "Note: It's letter 'O' not zero '0'; Good luck :)",
-    "I have an existential crisis every time I try to calculate the square root of a negative number. "
-    "I’m pretty sure the imaginary number 'i' (i = √-1, i² = -1) is just a regular number that failed its reality check. "
-    "Turns out, the entire universe depends on this one number that doesn't actually exist.",
-    "The number 'pi' (π ≈ 3.14) is truly irrational because its digits never repeat or terminate, "
-    "essentially making it a decimal nomad with no fixed address in the numeric universe.",
-    "Parallel lines have a truly tragic love story: they are absolutely destined to meet at infinity, "
-    "but they spend all of eternity getting absolutely nowhere.",
-    "The concept of infinity (∞) is basically just a number that got detention "
-    "forever and will never be allowed to go home and finish its equation.",
-    "Zero (0) is the most dangerous number in the universe; it can multiply anything into oblivion "
-    "and yet it is utterly empty, a total void of mathematical consequence.",
-    "The Empty Set (ø) is the world's most exclusive club: absolutely nothing is inside, "
-    "which makes its bouncer the most tragically overpaid mathematical entity.",
-    
     # Serious
     "Remember to commit your changes!",
     "Don't forget to save your work!",
@@ -203,90 +182,6 @@ FAREWELLS_MESSAGES = [      # Messages displayed upon existing.
     f"{UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}",
     f"If you faced any issues, please let me know, I'll try to reply quickly.\n"
     f"GitHub Issues: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}",
-    
-    # Advices
-    "Bored? Ask Gemini to tell you a realistic horror story (ಠ_ಠ)",
-    "Know Python? you can edit the source code and send me your modifications as feature requests.",
-    "Know Python? You can modify & test the source code, errors can also be logged if the option is ON.",
-    "Hint: Gemini web interface too slow or laggy? have a potato computer like mine? this is why Py-CLI was created!",
-    "Hint: You can change interface colors from 'settings.py'!",
-    "Hint: You can disable colors from settings, this will switch to black/white mode.",
-    "Hint: If you see random characters in the console (like '\\033[96m'), then disable ANSI codes from settings.",
-    "Hint: Error logging is ON by default, you may use it to send me errors. You can also turn it OFF if you wish.",
-    "Hint: Both global & error logging may cause a slightly extra delay for AI response, I don't know why, but you can always turn them OFF.",
-    "Hint: Console width is best set to (80) or more; for Windows Command Prompt users, (79) is better.",
-    "Hint: Forgot how to use Gemini Py-CLI? type 'help' to see a very short and friendly menu; there is also "
-    "a handy toolbar at the bottom of the console (It can be turned off).",
-    "Hint: You can change 'MAX_HISTORY_MESSAGES' in settings, but if chat history gets too long, Gemini will "
-    "start forgetting things, and the program might need more time while loading/saving chat.",
-    "Hint: Some options may slightly affect performances, like response typing effect, word suggestion & completion, application logs, etc. "
-    "You can turn them OFF at any time.",
-    "Hint: Colors & ANSI codes may not work in old consoles, like Windows Command Prompt; either disable them, "
-    "or use a better console emulator; ConEmu is a recommended very lightweight option for Windows.",
-    "Hint: You are always encouraged to use a modern console emulator; If the console is old, the program "
-    "is still hardcoded to work, but with limited functionality, and so limited experience.",
-    "Hint: ANSI codes are the way we tell the console to show colors and some other effects, "
-    "but they're not compatible with every console.",
-    "Advice: At night, consider enabling dark mode & night light (warmth) mode to protect your eyes, "
-    "you'll get used to them over time believe me ;)",
-    
-    # Quotes
-    "If you change the way you look at things, the things you at change...",
-    "The best time to plant a tree was 20 years ago. The second best time is now.",
-    "We don't see things as they are, we see them as we are.",
-    "The eye sees only what the mind is prepared to comprehend.",
-    "To simply observe is to understand.",
-    "I used to think that the brain was the most wonderful organ in my body. Then I realized who was telling me this.",
-    "My fake plants died because I forgot to pretend to water them.",
-    "When nothing is going right, go left!",
-    "Two things are infinite: the universe and human stupidity; and I'm not sure about the universe.",
-    "Before you diagnose yourself with depression or low self-esteem, first make "
-    "sure that you are not, in fact, just surrounded by assholes.",
-    "The problem with the world is that the intelligent people are full of doubts, "
-    "while the stupid ones are full of confidence.",
-    "When a man opens a car door for his wife, it's either a new car or a new wife :3",
-    "The way we see the problem is the problem ;)",
-    "To see the world, things dangerous to come to...",
-    "I love the way you smile...",
-    "If you think you are too small to make a diffrence, try sleeping with a mosquito.",
-    "Be aware.. crazy people don't always look crazy ;)",
-    
-    # Facts
-    "Fact: People are more creative in the shower :)",
-    "Fact: The average person walks the equivalent of five times around the Earth in their lifetime.",
-    "Fact: There is a species of jellyfish that is considered immortal. It can revert back to "
-    "its juvenile (young) form after becoming an adult.",
-    "Fact: A cow gives nearly 200,000 glasses of milk in its lifetime.",
-    "Fact: A group of flamingos is called a flamboyance.",
-    "Fact: Octopuses have three hearts! Two pump blood to the gills, and one circulates it to the rest of the body.",
-    "Fact: Honey never spoils. Archaeologists have found pots of honey in ancient Egyptian "
-    "tombs that are over 3,000 years old and still perfectly good to eat.",
-    "Fact: The strongest muscle in your body is the masseter, which is the one you use to chew.",
-    "Fact: Bullfrogs do not sleep. They can rest, but they don't enter a true state of sleep like mammals do.",
-    "Real: Boanthropy is a psychological disorder where a person believes they are a cow.",
-    "Did you know that when you blush (your face turns red), your stomach lining also turns red?",
-    "Did you know? The human nose can remember 50,000 different scents.",
-    "If you keep a goldfish in a dark room, it will eventually turn white.",
-    "Fact: Fainting Goats don't actually lose consciousness; they suffer from a condition called "
-    "myotonia congenita that causes their muscles to temporarily freeze when they are startled.",
-    "Did you know? A single cloud can weigh over a million pounds! That's because "
-    "it's made up of millions of tiny water droplets.",
-    "Fact: The total weight of all the ants on Earth is roughly the same as the total weight of all the humans!",
-    "Fact: In space, astronauts cannot cry properly. The tears just clump together and stick to "
-    "their eye because of the lack of gravity.",
-    "Fact: Wombat poop is cube-shaped! No one is completely sure why, but it helps the animal mark its territory.",
-    "Real: The smell of freshly cut grass is actually a plant distress signal. The grass is SCREAMING that it's being hurt!",
-    "Real: There is a type of jellyfish called the Turritopsis Dohrnii that is considered immortal. "
-    "It can go back to its baby stage and start its life over again.",
-    "Fact: A cow can walk up the stairs but cannot walk down them. Their knees don't bend the right way!",
-    "Real: A bolt of lightning is five times hotter than the surface of the sun! That's super, super hot!",
-    "Fact: There are more trees on Earth than there are stars in the Milky Way galaxy.",
-    "Fact: The human stomach can dissolve a razor blade. It has very strong acid!",
-    "Fact: It is impossible to sneeze with your eyes open. Try to keep them open next time "
-    "(But please don't hurt yourself trying!)",
-    "Fact: In the 16th century, the King of England had a job called the 'Groom of the Stool,' "
-    "whose main duty was to assist the King with going to the bathroom.",
-    "Real: Cows have best friends! They get stressed if they are separated from their favorite pals.",
 ]
  
 CONTINUE_MESSAGES = [       # Messages displayed upon confirming exit or editing sensitive stuff (saved-info...), but the user chooses NO.
@@ -352,6 +247,7 @@ Before replying to any message, follow these mandatory formatting rules:
 SUPPRESS_CATCHED_ERRORS = False             # Never show catched errors.
 SUPPRESS_UNEXPECTED_ERRORS = False          # Never show fatal errors, let it be a sudden exit.
 NO_QUESTIONS = False                        # Never ask the user for anything, and use the default option.
+SERIOUS = False                             # No jokes, good for old people.
 
 
 # Hotkeys
@@ -379,8 +275,9 @@ class Hotkeys():
 
 
 # Values Correction (Ignore This Part)
-MAX_HISTORY_MESSAGES = 512                     # Keep history messages an even number (User-AI turns).
-if CONSOLE_WIDTH >= os.get_terminal_size().columns: CONSOLE_WIDTH = os.get_terminal_size().columns - 1
+MAX_HISTORY_MESSAGES = MAX_HISTORY_MESSAGES // 2        # Keep history messages an even number (User-AI turns).
+console_width = min(MAX_CONSOLE_WIDTH, os.get_terminal_size().columns - 1)    # The current console width must always be <= MAX_CONSOLE_WIDTH < real terminal size.
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vim', 'emacs'): VIM_EMACS_MODE = None
-if not sys.stdout.isatty(): USE_ANSI = False   # Hide ANSI characters if the output is being redirected to a non-terminal location.
+if INPUT_HIGHLIGHT == 'None': INPUT_HIGHLIGHT = None
+if not sys.stdout.isatty(): USE_ANSI = False            # Hide ANSI characters if the output is being redirected to a non-terminal location.

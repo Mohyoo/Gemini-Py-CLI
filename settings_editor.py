@@ -22,6 +22,7 @@ if not os.path.exists(FILE_PATH):
 # Define exactly what you want to be able to edit here.
 # - 'key': The variable name in settings.py
 # - 'desc': A friendly description to show in the menu
+# - 'default': The default value for that option.
 # - 'type': 'bool', 'select', 'text' or 'digit'
 # - 'options': A list of choices (only required if type is 'select')
 
@@ -32,90 +33,99 @@ GENERAL_SETTINGS = [
         'key': 'GEMINI_API_KEY',
         'desc': 'Your Google API key; you can get it easily from:\n             '
                 'https://aistudio.google.com/app/api-keys\n',
-        'type': 'text'
+        'default': 'YOUR_API_KEY_HERE (Just a placeholder)',
+        'type': 'text',
     },
     {
         'key': 'GEMINI_MODEL',
         'desc': 'The AI model to use; advanced models are more expensive and\n' + SPACE +
                 'have less API limits. These are aliases to the latest versions\n' + SPACE +
                 'For more specific models, see the WIKI.\n',
+        'default': 'gemini-flash-latest',
         'type': 'select',
-        'options': ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest']
+        'options': ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'],
     },
     {
         'key': 'MAX_HISTORY_MESSAGES',
         'desc': 'Maximum N° of chat history messages to keep; set it low\n' + SPACE +
                 'to save internet bandwidth & loading/saving time.\n',
-        'type': 'digit'
+        'default': '512',
+        'type': 'digit',
     },
     {
         'key': 'NO_HISTORY_LIMIT',
         'desc': 'When True, chat history will never be truncated.',
-        'type': 'bool'
+        'default': 'False',
+        'type': 'bool',
     },     
     {
         'key': 'SAVED_INFO',
         'desc': "If True, your prompt will be saved with highest priority\n" + SPACE +
-                "if you start it with 'remember'.\n",
+                "if you start it with 'remember' (Use 'forget' to delete it).\n",
+        'default': 'True',
         'type': 'bool',
     },
     {
         'key': 'PROMPT_HISTORY_ON',
         'desc': "Your prompts history will be saved to a text file, allowing you\n" + SPACE +
                 "to reuse them quickly in future chat sessions (Use UP/DOWN keys).\n",
+        'default': 'True',
         'type': 'bool',
     },
     {
         'key': 'ENTER_NEW_LINE',
         'desc': 'If True, Enter inserts a new line, and Esc-Enter submits;\n' + SPACE +
                 'if False, Enter submits, and Esc-Enter inserts a new line.\n',
-        'type': 'bool'
+        'default': 'False',
+        'type': 'bool',
     },
     {
         'key': 'INFORMATIVE_RPROMPT',
         'desc': "Short informational text at top right of the prompt field.\n" + SPACE +
                 "* Might cause glitches in terminals that resize dynamically.\n",
+        'default': 'True',
         'type': 'bool',
     },
     {
         'key': 'BOTTOM_TOOLBAR',
         'desc': "Show a handy bottom toolbar for a quick reference.",
+        'default': 'True',
         'type': 'bool',
     },
     {
         'key': 'SUGGEST_FROM_HISTORY',
         'desc': "Use your prompt history for inline word completion (SLOW).",
-        'type': 'bool'
+        'default': 'False',
+        'type': 'bool',
     },
     {
         'key': 'SUGGEST_FROM_WORDLIST',
         'desc': "Suggest words while typing, in a menu popup, based on a wordlist\n" + SPACE +
                 "file (Default file: word_suggestion.txt).\n",
-        'type': 'bool'
+        'default': 'True',
+        'type': 'bool',
     },
     {
         'key': 'SUGGEST_FROM_WORDLIST_FUZZY',
         'desc': "If True, wordlist suggestion becomes more forgiving, you get\n" + SPACE +
                 "approximate suggestions instead of accurate ones.\n",
-        'type': 'bool'
+        'default': 'False',
+        'type': 'bool',
     },
     {
         'key': 'SUGGESTIONS_LIMIT',
         'desc': "The number of menu suggestions to show while typing a prompt.",
-        'type': 'digit'
+        'default': '5',
+        'type': 'digit',
     },
     {
         'key': 'INPUT_HIGHLIGHT',
-        'desc': 'Syntax color highlighting for your prompt.',
-        'type': 'bool',
-    },
-    {
-        'key': 'INPUT_HIGHLIGHT_LANG',
         'desc': 'Syntax highlighting language for your prompt.\n' + SPACE +
                 'These are just the most common, for more, see\n' + SPACE +
                 "the WIKI and look for your language alias.\n",
+        'default': 'None',
         'type': 'select',
-        'options': ['markdown', 'bash', 'diff', 'ini', 'python', 'c++', 'c#', 'java', 'yaml', 'sql', 'php', 'xml', 'html', 'javascript', 'css']
+        'options': ['None', 'markdown', 'bash', 'diff', 'ini', 'python', 'c++', 'c#', 'java', 'yaml', 'sql', 'php', 'xml', 'html', 'javascript', 'css'],
     },
     {
         'key': 'RESPONSE_EFFECT',
@@ -132,69 +142,95 @@ GENERAL_SETTINGS = [
                 "  Manager), if so, it is a waste of resources & energy, bad\n"
                 "  choice for long responses, but still fine for short ones.\n"
                 "* All 'char' animations can cause glitchs!'\n",
+        'default': 'line',
         'type': 'select',
-        'options': ['None', 'line', 'word', 'char', 'char slow', 'char fast']
+        'options': ['None', 'line', 'word', 'char', 'char slow', 'char fast'],
     },
     {
         'key': 'SPINNER',
         'desc': 'Shown while waiting for AI response; these are the simplest,\n' + SPACE +
                 'for more, see the WIKI.\n',
+        'default': 'line',
         'type': 'select',
-        'options': ['line', 'dots', 'arc', 'point', 'circle', 'bounce', 'star']
+        'options': ['line', 'dots', 'arc', 'point', 'circle', 'bounce', 'star'],
     },
     {
         'key': 'USE_COLORS',
         'desc': 'Enable terminal colors; better to disable this for old consoles.',
-        'type': 'bool'
+        'default': 'True',
+        'type': 'bool',
     },
     {
         'key': 'USE_ANSI',
         'desc': 'Once False, all ANSI escape codes (including colors) will be\n' + SPACE +
                 'disabled (Recommended to be False for old consoles)\n',
-        'type': 'bool'
+        'default': 'True',
+        'type': 'bool',
     },
 ]
 
 ADVANDED_SETTINGS = [
     {
+        'key': 'ALWAYS_LOAD_CHAT',
+        'desc': "If True, chat history will be always loaded without asking you.\n",
+        'default': 'True',
+        'type': 'bool',
+    },
+    {
         'key': 'STARTUP_API_CHECK',
         'desc': "Disable for a slightly faster loading, and for the ability to\n" + SPACE +
                 "enter the chat offline.\n",
-        'type': 'bool'
+        'default': 'False',
+        'type': 'bool',
     },
     {
-        'key': 'CONSOLE_WIDTH',
-        'desc': "N° of characters to print per line (Should be < Console window).\n" + SPACE +
-                "(79) may be the best for old consoles.\n",
-        'type': 'digit'
+        'key': 'MAX_CONSOLE_WIDTH',
+        'desc': "Max N° of characters to print per line; only effective if the\n" + SPACE +
+                "terminal size is bigger than this fixed value, otherwise it'll\n" + SPACE +
+                "be automatically reduced to fit the terminal size.\n"
+                "(Should always be smaller than default terminal width)\n",
+        'default': '85',
+        'type': 'digit',
+    },
+    {
+        'key': 'DYNAMIC_CONSOLE_WIDTH',
+        'desc': "If True, console text width will be automatically updated upon\n" + SPACE +
+                "a terminal size change, to fit in it.\n",
+        'default': 'True',
+        'type': 'bool',
     },
     {
         'key': 'NO_ERROR_DETAILS',
-        'desc': "True = Never ask you to see more details about an error.",
-        'type': 'bool'
+        'desc': "If True, never ask you to see more details about an error.",
+        'default': 'False',
+        'type': 'bool',
     },
     {
         'key': 'ERROR_LOG_ON',
         'desc': "To log errors to a file, console output won't be affected.",
-        'type': 'bool'
+        'default': 'True',
+        'type': 'bool',
     },
     {
         'key': 'GLOBAL_LOG_ON',
         'desc': "To log the entire console output to a file + optionally hidden\n" + SPACE +
                 "debugging info, it gets cleared on each launch; visual console\n" + SPACE +
                 "output won't be affect.\n",
-        'type': 'bool'
+        'default': 'False',
+        'type': 'bool',
     },
     {
         'key': 'SAVE_INPUT_ON_CLEAR',
         'desc': "Save your prompt to history when you clear it with Ctrl-C.",
-        'type': 'bool'
+        'default': 'False',
+        'type': 'bool',
     },
     {
         'key': 'SAVE_INPUT_ON_STOP',
         'desc': "Save your prompt to history when you stop it with Ctrl-C\n" + SPACE +
                 "or F-Keys.\n",
-        'type': 'bool'
+        'default': 'False',
+        'type': 'bool',
     },
 ]
 
@@ -241,22 +277,25 @@ def find_current_value(lines: list, key: str):
                 return ast.literal_eval(val_part)
             except:
                 return val_part
+                
     return "Not Found"
 
 def save_change(key: str, new_value: Any):
     """Finds the line with the key and replaces the value, keeping comments."""
-    lines = read_file_lines()
-    new_lines = []
-    updated = False
-
     # Format the new value for Python (adds quotes to strings, etc).
     # repr() is perfect for this: True -> True, "hi" -> 'hi', 1 -> 1.
     formatted_value = repr(new_value)
     if new_value == 'None': formatted_value = 'None' # Special case.
-
+    
+    # Start changing 'settings.py' content.
+    lines = read_file_lines()
+    new_lines = []
+    updated = False
+    
     for line in lines:
         clean_line = line.strip()
-        if clean_line.startswith(f"{key}=") or clean_line.startswith(f"{key} ="):
+        if (not updated) and \
+           (clean_line.startswith(f"{key}=") or clean_line.startswith(f"{key} =")):
             # We found the line.
             key_value = f'{key} = {formatted_value}'
             # 1. Split into [Variable=Value, Comment].
@@ -275,7 +314,8 @@ def save_change(key: str, new_value: Any):
             updated = True
         else:
             new_lines.append(line)
-
+    
+    # Save.
     if updated:
         with open(FILE_PATH, 'w', encoding='utf-8') as f:
             f.writelines(new_lines)
@@ -298,7 +338,7 @@ def load_menu(lines: list):
         current_val = find_current_value(lines, item['key'])
         # Format: "VARIABLE  [Current Value]".
         choices.append(questionary.Choice(
-            title=f"{item['key']:<26} [{str(current_val)}]",
+            title=f"{item['key']:<27} [{str(current_val)}]",
             value=item['key']
         ))
         
@@ -307,9 +347,9 @@ def load_menu(lines: list):
     # Advanced settings.
     for item in ADVANDED_SETTINGS:
         current_val = find_current_value(lines, item['key'])
-        # Format: "VARIABLE  [Current Value]".
+        # Format: "VARIABLE [Current Value]".
         choices.append(questionary.Choice(
-            title=f"{item['key']:<26} [{str(current_val)}]",
+            title=f"{item['key']:<27} [{str(current_val)}]",
             value=item['key']
         ))
     
@@ -380,6 +420,7 @@ def main():
         
         print(f"\nEditing: {selected_key}")
         print(f"Description: {config['desc']}")
+        print(f"Default Value: {config['default']}")
         print(f"Current Value: {current_val}")
         
         # 5. Get Input based on type.

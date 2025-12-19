@@ -1,10 +1,10 @@
 # 1) Part I: Initialization ------------------------------------------------------------------------
 if __name__ == '__main__':
     # Loading Screen.
-    from settings import CONSOLE_WIDTH
-    print('\n' + '+' + '-' * (CONSOLE_WIDTH - 2) + '+')
-    print("| Loading libraries. Just a moment..." + ' ' * (CONSOLE_WIDTH - 38) + '|')
-    print('+' + '-' * (CONSOLE_WIDTH - 2) + '+')
+    from settings import console_width
+    print('\n' + '+' + '-' * (console_width - 2) + '+')
+    print("| Loading libraries. Just a moment..." + ' ' * (console_width - 38) + '|')
+    print('+' + '-' * (console_width - 2) + '+')
 
     # Change current working directory to the script's dir, to keep it portable.
     import os
@@ -36,13 +36,14 @@ try:
     import httpx
     import textwrap
     import traceback
-    from threading import Thread
+    from functools import partial
     from datetime import datetime
     from webbrowser import open as browser_open
     from random import randint, choice, uniform
     from time import sleep, perf_counter, time as now_time
     from shutil import copy as copy_file, move as move_file
     from pyperclip import PyperclipException, copy as clip_copy
+    from threading import Thread, Event as ThreadEvent, Lock as ThreadLock
     from httpcore import RemoteProtocolError, ConnectError, ConnectTimeout, ReadTimeout
     from prompt_toolkit import prompt
     from prompt_toolkit.styles import Style
@@ -81,7 +82,12 @@ try:
         from rich.segment import Segment
         from rich.console import RenderResult 
 
-    if INPUT_HIGHLIGHT:
+    if INPUT_HIGHLIGHT == 'special':
+        from prompt_toolkit.lexers import PygmentsLexer
+        from pygments.lexer import RegexLexer, words
+        from pygments.token import Comment, Operator, Keyword, String, Generic, Text as Plain
+
+    elif INPUT_HIGHLIGHT:   
         from prompt_toolkit.lexers import PygmentsLexer
         from pygments.lexers import get_lexer_by_name
     
@@ -258,7 +264,7 @@ class Keys():
     def wrap_input_buffer(self, event):
         """Wrap the input & Break it into shorter lines."""
         buffer = event.cli.current_buffer
-        WRAP_WIDTH = CONSOLE_WIDTH - 8
+        WRAP_WIDTH = console_width - 8
         wrapped_segments = []
 
         for line in buffer.text.splitlines():
@@ -324,6 +330,66 @@ class GeminiWorker(Thread):
         except Exception as error:
             self.exception = error
 
+class ConsoleWidthUpdater(Thread):
+    """
+    A separate thread class to monitor the console width variable and keep it lower
+    than MAX_CONSOLE_WIDTH, which itself is lower than the real terminal size.
+    So always assure: console_width <= MAX_CONSOLE_WIDTH < real terminal size.
+    """
+    def __init__(self):
+        """Initialize attributes."""
+        super().__init__()
+        self.daemon = True
+        self.interval = 0.1
+        self._stop_event = ThreadEvent()
+        self.lock = ThreadLock()
+        self.last_terminal_width = terminal_size().columns
+
+    def update_console_width(self):
+        """Keep updating the console width as the terminal size changes."""
+        global console_width, glitching_text_width, console, temp_console, \
+               cprint, separator, box
+        
+        # Do nothing if the terminal width didn't change.
+        current_width = terminal_size().columns
+        if (current_width == self.last_terminal_width) and \
+           (console_width <= MAX_CONSOLE_WIDTH < current_width):
+            return
+
+        # Also do nothing if terminal became wider, but our console width is already in its MAX value.
+        elif (current_width > self.last_terminal_width) and \
+             (console_width == MAX_CONSOLE_WIDTH):
+            self.last_terminal_width = current_width
+            return
+
+        # Start Updating.
+        self.last_terminal_width = current_width
+
+        # Update the console width variable and its derived variables & attributes.
+        console_width = min(MAX_CONSOLE_WIDTH, current_width - 1)
+        glitching_text_width = min(console_width, 79)
+        console.width = console_width
+        temp_console.width = console_width
+
+        # Update functions' default width parameter.
+        cprint = partial(cprint, wrap_width=console_width-1)
+        separator = partial(separator, width=console_width)
+        box = partial(box, width=console_width)
+
+    def run(self):
+        """
+        The main loop for the continuous check of the console width variable.
+        Sleep for a short duration to avoid the CPU busy-loop (spin-wait).
+        """
+        # Loop until the stop event is set or the main program exits (daemon).
+        while not self._stop_event.is_set():
+            with self.lock: self.update_console_width()
+            sleep(self.interval)
+
+    def stop(self):
+        """Method to externally signal the thread to stop."""
+        self._stop_event.set()
+
 class SoftRestart(Exception):
     """Custom exception to signal a safe restart of the chat session."""
     pass
@@ -344,6 +410,234 @@ if SUGGEST_FROM_WORDLIST:
                 if i >= SUGGESTIONS_LIMIT: break
                 yield completion
 
+if INPUT_HIGHLIGHT == 'special':
+    class CustomLexer(RegexLexer):
+        """
+        A custom syntax highlighting lexer for user prompts.
+        Accept both normal strings and regex.
+        """
+        # Define the special words first. Then other characters.
+        KEYWORDS = [
+            # Articles & Determiners.
+            'the', 'a', 'an',
+            'this', 'that', 'these', 'those',
+            'each', 'every', 'some', 'any', 'all',
+            'another', 'such', 'certain', 'particular', 'specific',
+            'none', 'many', 'few', 'more', 'most', 'less', 'least', 'much', 'enough',
+
+            # Personal Pronouns.
+            'I', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+
+            # Possessive Pronouns & Adjectives.
+            'my', 'your', 'his', 'its', 'our', 'their', 'mine', 'yours', 'hers', 'ours', 'theirs',
+
+            # Reflexive Pronouns.
+            'myself', 'yourself', 'himself', 'herself', 'itself', 'ourselves', 'themselves',
+
+            # Indefinite Pronouns.
+            'anyone', 'someone', 'everyone', 'anybody', 'everybody', 'nobody',
+            'anything', 'something', 'everything', 'nothing',
+
+            # Relative / Interrogative Pronouns.
+            'who', 'whom', 'whose', 'which', 'what', 'whoever', 'whomever', 'whichever', 'whatever',
+
+            # Prepositions.
+            'of', 'at', 'in', 'for', 'with', 'on', 'to', 'from', 'by',
+            'about', 'as', 'into', 'like', 'through', 'after', 'over',
+            'out', 'against', 'without', 'before', 'under', 'around',
+            'among', 'above', 'near', 'beyond', 'within', 'along',
+            'across', 'behind', 'below', 'beneath', 'beside', 'between',
+            'during', 'except', 'inside', 'outside', 'per',
+            'toward', 'upon', 'versus', 'via',
+            'onto', 'amid', 'amidst', 'off', 'past',
+            'throughout', 'till',
+
+            # Coordinating.
+            'and', 'but', 'or', 'so', 'yet', 'nor',
+
+            # Subordinating.
+            'although', 'because', 'since', 'unless', 'while', 'whereas', 'if', 'else', 'though',
+
+            # Correlative.
+            'either', 'neither', 'both', 'whether',
+
+            # Time Adverbs.
+            'now', 'then', 'soon', 'still', 'today', 'tomorrow', 'yesterday',
+            'once', 'until', 'already', 'almost', 'meanwhile',
+
+            # Frequency Adverbs.
+            'always', 'never', 'often', 'sometime', 'sometimes', 'rarely',
+
+            # Degree / Emphasis Adverbs.
+            'too', 'also', 'only', 'rather', 'quite', 'really', 'especially', 'very',
+
+            # Logical / Discourse Adverbs.
+            'however', 'therefore', 'thus', 'otherwise',
+
+            # Main Verb Forms.
+            'do', 'does', 'did', 'doing', 'done',
+            'have', 'has', 'had', 'having',
+            'be', 'am', 'is', 'are', 'was', 'were', 'been', 'being',
+
+            # Modal Verbs.
+            'can', 'could', 'will', 'would',
+            'shall', 'should', 'may', 'might',
+            'must', 'ought',
+            "don't", "doesn't", "didn't",
+            "can't", "couldn't",
+            "won't", "wouldn't",
+            "isn't", "aren't", "wasn't", "weren't",
+            "haven't", "hasn't", "hadn't",
+            "shouldn't", "mustn't", "ain't",
+
+            # Question / Relative Adverbs.
+            'where', 'when', 'why', 'how', 'wherever', 'whenever', 'however',
+
+            # Quantity / Order / Sequence Words.
+            'several', 'first', 'second', 'last', 'next', 'previous',
+            'moreover', 'likewise',
+
+            # Miscellaneous.
+            'maybe', 'perhaps',
+            'here', 'there',
+            'not', 'no',
+            'instead', 'than',
+        ]
+    
+        NAMES = [
+            # People.
+            'Muhammed', 'Muhammad', 'Adam', 'Eve', 'Noah', 'Abraham', 'Moses',
+            'David', 'Solomon', 'Joseph', 'Jacob', 'Isaac', 'Aaron', 'Jesus',
+            'Mary', 'Daniel', 'Ishmael', 'Gabriel', 'Michael ',
+
+            # Animals.
+            'cat', 'dog', 'horse', 'cow', 'sheep', 'goat', 'chicken', 'duck', 'pig',
+            'rabbit', 'mouse', 'rat', 'lion', 'tiger', 'elephant', 'bear', 'wolf', 'fox',
+            'monkey', 'deer', 'camel', 'donkey', 'buffalo', 'zebra', 'giraffe', 'kangaroo',
+            'panda', 'leopard', 'cheetah', 'eagle', 'hawk', 'owl', 'parrot', 'pigeon',
+            'sparrow', 'fish', 'shark', 'whale', 'dolphin', 'turtle', 'snake', 'lizard',
+            'frog', 'bee', 'butterfly', 'ant', 'spider',
+
+            # Things.
+            'earth', 'sun', 'moon', 'sky', 'star', 'world', 'land', 'sea', 'ocean', 'water',
+            'river', 'mountain', 'stone', 'rock', 'fire', 'light', 'dark', 'time', 'day',
+            'night', 'life', 'death', 'wind', 'rain', 'tree', 'forest', 'leaf', 'root',
+            'seed', 'flower', 'fruit', 'food', 'home', 'house', 'family', 'mother',
+            'father', 'friend', 'heart', 'mind', 'soul', 'body', 'book', 'story', 'path',
+            'road', 'hand', 'eye', 'face', 'blood', 'gold', 'silver', 'iron',
+
+            # Plural Animals.
+            'cats', 'dogs', 'horses', 'cows', 'sheep', 'goats', 'chickens', 'ducks', 'pigs',
+            'rabbits', 'mice', 'rats', 'lions', 'tigers', 'elephants', 'bears', 'wolves', 'foxes',
+            'monkeys', 'deer', 'camels', 'donkeys', 'buffaloes', 'zebras', 'giraffes', 'kangaroos',
+            'pandas', 'leopards', 'cheetahs', 'eagles', 'hawks', 'owls', 'parrots', 'pigeons',
+            'sparrows', 'fish', 'sharks', 'whales', 'dolphins', 'turtles', 'snakes', 'lizards',
+            'frogs', 'bees', 'butterflies', 'ants', 'spiders',
+
+            # Plural Things.
+            'earths', 'suns', 'moons', 'skies', 'stars', 'worlds', 'lands', 'seas', 'oceans', 'waters',
+            'rivers', 'mountains', 'stones', 'rocks', 'fires', 'lights', 'darks', 'times', 'days',
+            'nights', 'lives', 'deaths', 'winds', 'rains', 'trees', 'forests', 'leaves', 'roots',
+            'seeds', 'flowers', 'fruits', 'foods', 'homes', 'houses', 'families', 'mothers',
+            'fathers', 'friends', 'hearts', 'minds', 'souls', 'bodies', 'books', 'stories', 'paths',
+            'roads', 'hands', 'eyes', 'faces', 'bloods', 'golds', 'silvers', 'irons',
+        ]
+        
+        HEAVY_WORDS = [
+            # 🚨 Urgency / Danger.
+            'warning', 'alert', 'critical', 'danger', 'hazard', 'threat', 'risk',
+            'emergency', 'fatal', 'catastrophic', 'lethal', 'deadly', 'unsafe',
+
+            # ❌ Failure / Consequences.
+            'error', 'mistake', 'failure', 'fault', 'violation', 'breach',
+            'breakdown', 'collapse', 'malfunction', 'flaw', 'defect',
+
+            # 🔒 Authority / Severity.
+            'strict', 'mandatory', 'required', 'forbidden', 'prohibited',
+            'enforced', 'force',
+
+            # 📌 Importance.
+            'important', 'essential', 'necessary', 'vital', 'crucial', 'key',
+            'core', 'fundamental', 'central', 'primary',
+
+            # ⚠️ Intensity / Extremes.
+            'extreme', 'intense', 'severe', 'drastic', 'brutal', 'overwhelming',
+            'relentless', 'immense', 'massive', 'colossal',
+
+            # ⭐ Success / Achievement.
+            'success', 'victory', 'breakthrough', 'triumph', 'achievement',
+            'accomplishment', 'milestone',
+
+            # 🌟 Impact / Praise (attention-grabbing positives).
+            'special', 'exceptional', 'remarkable', 'extraordinary',
+            'outstanding', 'phenomenal', 'legendary', 'iconic',
+
+            # 🎯 Precision / Certainty.
+            'exact', 'exactly', 'precise', 'definitive', 'conclusive',
+            'undeniable', 'absolute', 'certain', 'final',
+
+            # 🔴 Serious Thought / Weight.
+            'consequence', 'implication', 'responsible', 'responsibility',
+            'accountability', 'commitment', 'decision', 'judgment', 'priority',
+
+            # 🚀 Awe / Power Words.
+            'amazing', 'awesome', 'fantastic', 'incredible', 'mindblowing',
+            'jawdropping', 'unstoppable', 'dominant','great', 'brilliant',
+            'beautiful', 'wonderful',
+            
+            # Plural Form of Previous Words.
+            'warnings', 'alerts', 'dangers', 'hazards', 'threats', 'risks', 'emergencies',
+            
+            'errors', 'mistakes', 'failures', 'faults', 'violations', 'breaches',
+            'breakdowns', 'collapses', 'malfunctions', 'flaws', 'defects',
+
+            'forces', 'keys', 'cores', 'fundamentals', 'centrals', 'primaries',
+
+            'successes', 'victories', 'breakthroughs', 'triumphs', 'achievements',
+            'accomplishments', 'milestones',
+
+            'consequences', 'implications', 'responsibilities', 'accountabilities',
+            'commitments', 'decisions', 'judgments', 'priorities',
+        ]
+        
+        PUNCTUATION = r'.,;،؛:!?…'
+        PARENTHESES = r'\[\]\(\)\{\}'
+        SYMBOLS = r'\-+*/%=×÷<>^&|~@$_\\'
+
+        # Define colors (In fact, these aren't colors but tokens that work under a specific style/theme, I'm just simplifying it).
+        WHITE = Plain
+        RED  = String
+        PURPLE = Generic.Subheading
+        BLUE = Operator.Word
+        CYAN = Keyword
+        GRAY_BLUE = Comment
+        GRAY = Operator
+        
+        # Set the tokenization system.
+        tokenize = lambda wordlist: words(set(wordlist), prefix=r'\b', suffix=r'\b')  # We use prefix & suffix to add boundaries.
+        flags = re.IGNORECASE 
+        tokens = {
+                'root': [
+                    # Wordlists.
+                    (tokenize(HEAVY_WORDS), RED),
+                    (tokenize(KEYWORDS), PURPLE),
+                    (tokenize(NAMES), CYAN),
+                    # Digits & Quotes.
+                    (r'\d+', GRAY_BLUE),
+                    (r'([\"`])(.*?)\1', BLUE),  # "" or ``
+                    (fr"(?:(?<=^)|(?<=[\s{PUNCTUATION}{PARENTHESES}{SYMBOLS}#\d]))'(.*?)'(?:(?=$)|(?=[\s{PUNCTUATION}{PARENTHESES}{SYMBOLS}#\d+]))", BLUE), # ''
+                    (fr"(?:(?<=^)|(?<=[\s{PUNCTUATION}{PARENTHESES}{SYMBOLS}#\d]))‘(.*?)’(?:(?=$)|(?=[\s{PUNCTUATION}{PARENTHESES}{SYMBOLS}#\d+]))", BLUE), # ‘’
+                    (r'“([^”]*)”', BLUE), # “”
+                    # Punctuation • Parentheses • Other Symbols • Hashtags.
+                    (fr'[{PUNCTUATION}]+', GRAY),
+                    (fr'[{PARENTHESES}]+', GRAY),
+                    (fr'[{SYMBOLS}]+', GRAY),
+                    (r'#\s*(\w+)', GRAY),
+                    # Match everything else as standard text.
+                    (r'\s+', WHITE),
+                    (r'.', WHITE),
+                ]
+            }
 
 
 
@@ -547,7 +841,7 @@ def catch_exception(error):
     else:
         clear_lines()
         
-    separator(color=RED, end='\n\n')
+    separator(color=RED, end='\n')
 
 def catch_fatal_exception(error):
     """Used to catch any critical generic exception that bypassed all of the handlers."""
@@ -595,13 +889,13 @@ def catch_keyboard_interrupt():
 
 
 # 4) Part IV: Helper Functions ---------------------------------------------------------------------
-def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=CONSOLE_WIDTH-1, wrap_joiner='\n'):
+def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=console_width-1, wrap_joiner='\n'):
     """
     - A custom print function that writes directly to stdout and guarantees an
       immediate display by forcing a flush.
     - Also wraps the text with optionally a custom width and wrapped lines joiner.
     """
-    # Wrap even if LENGTH = CONSOLE_WIDTH so that '\n' stays in the same line.
+    # Wrap even if (length = console_width) so that '\n' stays in the same line.
     text = str(text)
     if wrap and (visual_len(text) > wrap_width):
         lines = text.split('\n')
@@ -612,7 +906,7 @@ def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=CONSOLE_WIDTH-1,
                 wrapped_lines.append(' ')
                 continue
                 
-            new_lines = textwrap.wrap(line, width=wrap_width)
+            new_lines = textwrap.wrap(line, width=wrap_width)   # Only wrap if length >= width.
             wrapped_lines.extend(new_lines)
         
         text = wrap_joiner.join(wrapped_lines)
@@ -675,8 +969,7 @@ def copy_to_clipboard(text: str):
         msg += f"Details: {error}."
         color = RED
 
-    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
-    clear_lines()
+    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color, clear_line=1)
     
 def quick_sleep(delay: float):
     """
@@ -707,14 +1000,14 @@ def visual_len(text_with_ansi: str):
     lines_length = [len(ANSI_ESCAPE.sub('', line)) for line in lines]
     return max(lines_length)
 
-def separator(before='', after='', char='─', color=GRY, width=CONSOLE_WIDTH, end='\n'):
+def separator(before='', after='', char='─', color=GRY, width=console_width, end='\n'):
     """Display a line of hyphens or any horizontal symbol."""
     # Used console.print() instead of print() and our defined cprint(), because
     # others have an issue of printing double new line after.
     console.print(color + before + char * width + after + RS,
                   end=end, no_wrap=True, soft_wrap=True, overflow='ignore')
 
-def box(*texts: str, title='Message', border_color='', text_color='', secondary_color='', width=CONSOLE_WIDTH):
+def box(*texts: str, title='Message', border_color='', text_color='', secondary_color='', width=console_width, clear_line=0, new_line=True):
     """
     1) Draw a box using standard ASCII characters, respecting ANSI colors inside.
     2) Limitations:
@@ -747,7 +1040,6 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
         for index, line in enumerate(wrapped_lines):
             if index == 0: continue
             wrapped_lines[index] = SC + line
-            
         wrapped.extend(wrapped_lines)
     
     # Prepare the box.
@@ -773,6 +1065,11 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     # Show the box.
     cprint(box_string, wrap=False)
 
+    # Sometimes our function adds an extra blank line, especially if the console width is high.
+    # Also if the console width is low we have to manually add a blank line, Idk why.
+    if clear_line and console_width > 79: clear_lines(clear_line)
+    elif new_line and console_width <= 79: cprint()
+
 def open_path(path_to_open, clear=0, restore_prompt=''):
     """
     - Open a file or folder using the default OS application/file explorer.
@@ -784,8 +1081,7 @@ def open_path(path_to_open, clear=0, restore_prompt=''):
     # Check if the file/folder exists.
     if not os.path.exists(path_to_open):
         msg = "Requested file/folder isn't present in the current working directory."
-        box(msg, title='ERROR', border_color=RED, text_color=RED)
-        clear_lines()
+        box(msg, title='ERROR', border_color=RED, text_color=RED, clear_line=1)
         return
 
     # webbrowser.open() handles both files and directories.
@@ -793,6 +1089,67 @@ def open_path(path_to_open, clear=0, restore_prompt=''):
     if GLOBAL_LOG_ON: in_time_log(' ')
     if clear: clear_lines(clear)
     if restore_prompt: default_prompt = restore_prompt
+
+def control_cursor(command: str):
+    """A custom function to show or hide the terminal cursor."""
+    if not USE_ANSI: return
+    
+    if command == 'show':
+        cprint('\033[?25h', end='')
+        
+    elif command == 'hide':
+        cprint('\033[?25l', end='')
+
+def del_all():
+    """
+    Nuclear option, perform a factory reset for the program data (Doesn't affect settings).
+    Used with 'del-all' command.
+    """
+    global discarding
+    
+    # Warn the user.
+    cprint()
+    separator(color=YLW)
+    to_remove_files = [
+        CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT, LAST_RESPONSE_FILE,
+        PROMPT_HISTORY_FILE, SAVED_INFO_FILE, ERROR_LOG_FILE, GLOBAL_LOG_FILE
+    ]
+    
+    cprint(f'{YLW}WARNING! The program will exit & wipe the following files:')
+    for file in to_remove_files: cprint('- ' + file)
+    cprint('')
+    
+    # Confirm.
+    text = f"Are you sure you want to reset everything? (y/n): {RS}"
+    if GLOBAL_LOG_ON: in_time_log(text + '...')
+    confirm = None
+    
+    while True:
+        try:
+            confirm = input(text).lower().strip()
+            break
+        except Interruption:
+            cprint()
+            break
+    
+    # Cancel.
+    if confirm != 'y':
+        cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+        separator(color=YLW)
+        return
+    
+    # Do it.
+    cprint(GR + 'Clearing everything & Quitting...')
+    separator(color=YLW)
+    discarding = True
+    for file in to_remove_files:
+        try:
+            with open(file, 'w', encoding='utf-8'): pass
+        except:
+            if ERROR_LOG_ON: log_caught_exception()
+            pass
+    
+    raise SystemExit
 
 def welcome_screen():
     """Display a short welcoming screen."""
@@ -881,6 +1238,7 @@ def help(short=False):
        -'del-all' to wipe private files: chat + prompt history + log files
         + saved info (No cancel option!)
        -'del-log' to clear both log files, future logging won't be affected.
+       -'stats' to show total N° of message in current chat.
        -'about' for program information.
        -'license' for copyright.
     
@@ -966,11 +1324,13 @@ def farewell(confirmed=False):
     # Save chat.
     saved = save_chat_history_json(up_separator=confirmed, down_separator=False)
     if saved: cprint()
+    elif not saved and confirmed: separator()
     
     # Exit.
-    if not saved and confirmed: separator()
-    message = choice(FAREWELLS_MESSAGES)
-    cprint(GR + message + RS, wrap_width=CONSOLE_WIDTH)     # Fixed width to avoid glitchs on wide consoles.
+    from useless import QUOTES, FACTS, JOKES, ADVICES, MATH
+    message = choice(FAREWELLS_MESSAGES + QUOTES + FACTS + JOKES + ADVICES + MATH)
+    if (not saved) and (not confirmed) and len(message) <= glitching_text_width: clear_lines()
+    cprint(GR + message + RS, wrap_width=glitching_text_width)     # Fixed width to avoid glitchs on wide consoles.
     separator()
     sys_exit(0)
 
@@ -1063,8 +1423,7 @@ if SAVED_INFO:
                 msg = f"Couldn't save your info!\nError: {error}."
                 color = RED
                 
-            box(msg, title='SAVED INFO STATUS', border_color=color, text_color=color, secondary_color=color)
-            clear_lines()
+            box(msg, title='SAVED INFO STATUS', border_color=color, text_color=color, secondary_color=color, clear_line=1)
 
         # User wants to forget something.
         elif command == 'forget':
@@ -1074,8 +1433,7 @@ if SAVED_INFO:
                 # Get the saved info list.
                 if not os.path.exists(SAVED_INFO_FILE):
                     msg = f"There is no '{SAVED_INFO_FILE}' file!"
-                    box(msg, title='WARNING', border_color=YLW, text_color=YLW)
-                    clear_lines()
+                    box(msg, title='WARNING', border_color=YLW, text_color=YLW, clear_line=1)
                     return
                 
                 try:        
@@ -1084,14 +1442,12 @@ if SAVED_INFO:
                 except Exception as error:
                     if ERROR_LOG_ON: log_caught_exception()
                     msg = f"Couldn't read '{SAVED_INFO_FILE}' file!\nError: {error}."
-                    box(msg, title='ERROR', border_color=RED, text_color=RED)
-                    clear_lines()
+                    box(msg, title='ERROR', border_color=RED, text_color=RED, clear_line=1)
                     return
                 
                 if not content:
                     msg = f"File '{SAVED_INFO_FILE}' is empty!"
-                    box(msg, title='WARNING', border_color=YLW, text_color=YLW)
-                    clear_lines()
+                    box(msg, title='WARNING', border_color=YLW, text_color=YLW, clear_line=1)
                     return
                 
                 # Split SAVED_INFO_FILE content according to '- ' at the start of line.
@@ -1102,7 +1458,7 @@ if SAVED_INFO:
                     # If there is only one saved info, avoid the remaining complex code.
                     cprint(f"{YLW}Found only one saved info in the whole '{SAVED_INFO_FILE}' file:{GR}")
                     info = re.sub(r'\s+', ' ', info_list[0].capitalize()).strip()
-                    cprint('- ' + info, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n  ')
+                    cprint('- ' + info, wrap_width=console_width, wrap_joiner='\n  ')
                     if GLOBAL_LOG_ON: in_time_log('\nDelete it? (y/n): ...')
                     user_choice = input(YLW + '\nDelete it? (y/n): ' + RS).strip().lower()
                     
@@ -1142,15 +1498,15 @@ if SAVED_INFO:
                 # Case (1): High confidence, almost sure.
                 if (ratio_1 > 0.7) and (ratio_1 / ratio_2 > 1.25):
                     cprint(CYN + 'Saved Info found:' + GR)
-                    cprint('- Remember ' + info_1, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n  ')
+                    cprint('- Remember ' + info_1, wrap_width=console_width, wrap_joiner='\n  ')
                     question = 'Are you sure you want to delete it? (y/n): '
                     answers = ['y']
                         
                 # Case (2): Match is decent, but dangerously ambiguous.
                 elif (ratio_1 > 0.5) and (ratio_1 / ratio_2 <= 1.30):
                     cprint(YLW + 'You probably meant one of these saved info:' + GR)
-                    cprint('1) Remember ' + info_1, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
-                    cprint('2) Remember ' + info_2, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
+                    cprint('1) Remember ' + info_1, wrap_width=console_width, wrap_joiner='\n   ')
+                    cprint('2) Remember ' + info_2, wrap_width=console_width, wrap_joiner='\n   ')
                     question = "(If none, use 'saved-info' command for manual edit)\n"
                     question += 'Which one you want to delete? (1, 2, cancel): '
                     answers = ['1', '2']
@@ -1158,11 +1514,11 @@ if SAVED_INFO:
                 # Case (3): Match is too poor.
                 else:   # elif ratio_1 <= 0.5:
                     cprint(YLW + 'Perphaps you meant one of these saved info:' + GR)
-                    cprint('1) Remember ' + info_1, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
-                    cprint('2) Remember ' + info_2, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
+                    cprint('1) Remember ' + info_1, wrap_width=console_width, wrap_joiner='\n   ')
+                    cprint('2) Remember ' + info_2, wrap_width=console_width, wrap_joiner='\n   ')
                     question = "(If none, use 'saved-info' command for manual edit)\n"
                     if top_n == 3:
-                        cprint('3) Remember ' + info_3, wrap_width=CONSOLE_WIDTH, wrap_joiner='\n   ')
+                        cprint('3) Remember ' + info_3, wrap_width=console_width, wrap_joiner='\n   ')
                         question += f'Which one you want to delete? (1, 2, 3, cancel): '
                         answers = ['1', '2', '3']
                     else:
@@ -1184,8 +1540,7 @@ if SAVED_INFO:
                     except Exception as error:
                         if ERROR_LOG_ON: log_caught_exception()
                         msg = f"Couldn't edit '{SAVED_INFO_FILE}' file!\nError: {error}."
-                        box(msg, title='ERROR', border_color=RED, text_color=RED)
-                        clear_lines()
+                        box(msg, title='ERROR', border_color=RED, text_color=RED, clear_line=1)
                         return
                     
                     cprint(GR + 'Saved info permanently deleted!' + RS)
@@ -1533,8 +1888,7 @@ if ERROR_LOG_ON and GLOBAL_LOG_ON:
             msg = 'Log files cleared!'
             color = GR
             
-        box(msg, title='LOG CLEANUP', border_color=color, text_color=color)
-        clear_lines()
+        box(msg, title='LOG CLEANUP', border_color=color, text_color=color, clear_line=1)
 
 if ERROR_LOG_ON:
     def shrink_log_file():
@@ -1588,57 +1942,6 @@ if ERROR_LOG_ON:
 
 
 # 5) Part V: Main Functions ------------------------------------------------------------------------
-def del_all():
-    """
-    Nuclear option, perform a factory reset for the program data (Doesn't affect settings).
-    Used with 'del-all' command.
-    """
-    global discarding
-    
-    # Warn the user.
-    cprint()
-    separator(color=YLW)
-    to_remove_files = [
-        CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT, LAST_RESPONSE_FILE,
-        PROMPT_HISTORY_FILE, SAVED_INFO_FILE, ERROR_LOG_FILE, GLOBAL_LOG_FILE
-    ]
-    
-    cprint(f'{YLW}WARNING! The program will exit & wipe the following files:')
-    for file in to_remove_files: cprint('- ' + file)
-    cprint('')
-    
-    # Confirm.
-    text = f"Are you sure you want to reset everything? (y/n): {RS}"
-    if GLOBAL_LOG_ON: in_time_log(text + '...')
-    confirm = None
-    
-    while True:
-        try:
-            confirm = input(text).lower().strip()
-            break
-        except Interruption:
-            cprint()
-            break
-    
-    # Cancel.
-    if confirm != 'y':
-        cprint(GR + choice(CONTINUE_MESSAGES) + RS)
-        separator(color=YLW)
-        return
-    
-    # Do it.
-    cprint(GR + 'Clearing everything & Quitting...')
-    separator(color=YLW)
-    discarding = True
-    for file in to_remove_files:
-        try:
-            with open(file, 'w', encoding='utf-8'): pass
-        except:
-            if ERROR_LOG_ON: log_caught_exception()
-            pass
-    
-    raise SystemExit
-
 def serialize_history():
     """Convert active chat history into json format to save it later."""
     global messages_to_remove
@@ -1772,8 +2075,7 @@ def save_chat_history_text():
         msg = "Current conversation is empty!"
         color = YLW
     
-    box(msg, title='STATUS', border_color=color, text_color=color)
-    clear_lines()
+    box(msg, title='STATUS', border_color=color, text_color=color, clear_line=1)
 
 def get_last_response(command):
     """
@@ -1824,8 +2126,7 @@ def get_last_response(command):
         copy_to_clipboard(last_response)
         return
     
-    box(msg, title='STATUS', border_color=color, text_color=color)
-    clear_lines()
+    box(msg, title='STATUS', border_color=color, text_color=color, clear_line=1)
 
 def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
     """
@@ -1906,8 +2207,7 @@ def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
     
         msg += "\nChanges will take effect at next session, you can type 'restart' for a quick refresh."
         
-    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
-    clear_lines()
+    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color, clear_line=1)
 
 def restore_removed_messages(command):
     """
@@ -1943,8 +2243,7 @@ def restore_removed_messages(command):
         msg = "You didn't remove any message in current session."
         color = YLW
         
-    box(msg, title='STATUS', border_color=color, text_color=color)
-    clear_lines()
+    box(msg, title='STATUS', border_color=color, text_color=color, clear_line=1)
     
 def load_chat_history():
     """Load chat history, if it meets the conditions."""
@@ -1970,7 +2269,8 @@ def load_chat_history():
         
         while True:
             try:
-                load_history = input(question).lower().strip()
+                if ALWAYS_LOAD_CHAT: load_history = 'y'
+                else: load_history = input(question).lower().strip()
                 
             except:
                 cprint()
@@ -2050,9 +2350,9 @@ def setup_chat():
     if not restarting:
         print()
         clear_lines(4)
-        print('+' + '-' * (CONSOLE_WIDTH - 2) + '+')
-        print("| Loading chat..." + ' ' * (CONSOLE_WIDTH - 18) + '|')
-        print('+' + '-' * (CONSOLE_WIDTH - 2) + '+')
+        print('+' + '-' * (console_width - 2) + '+')
+        print("| Loading chat..." + ' ' * (console_width - 18) + '|')
+        print('+' + '-' * (console_width - 2) + '+')
     else:
         chat_saved = False
     
@@ -2064,7 +2364,7 @@ def setup_chat():
             # if attempts == 0: raise ServerError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
             # raise ClientError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
             # raise httpx.RemoteProtocolError(message='Test')
-            
+
             # Client Initialization.
             http_options = {
                 "timeout": HTTP_TIMEOUT * 1000, 
@@ -2160,8 +2460,8 @@ def get_user_input():
     rprompt = None
     if INFORMATIVE_RPROMPT:
         current_time = datetime.now().strftime('%I:%M %p')
-        rprompt = f"[{GEMINI_MODEL} | {current_time}]"
-        rprompt = rprompt + ' ' * (os.get_terminal_size().columns - CONSOLE_WIDTH - 1)
+        margin = ' ' * (terminal_size().columns - console_width - 1)
+        rprompt = f"[{GEMINI_MODEL} | {current_time}]{margin}"
         
     # 2. Hotkeys editing mode.
     if VIM_EMACS_MODE == 'vim': editing_mode = EditingMode.VI
@@ -2174,7 +2474,7 @@ def get_user_input():
     
     # Log.
     if GLOBAL_LOG_ON:
-        if rprompt: in_time_log(' ' * (CONSOLE_WIDTH - len(rprompt)) + rprompt + '\n')
+        if rprompt: in_time_log(' ' * (console_width - len(rprompt)) + rprompt + '\n')
         else: in_time_log(' ')
         in_time_log(' You >  ' + str(prompt_placeholder[0][1]))
 
@@ -2305,8 +2605,7 @@ def interpret_commands(user_input):
                 msg = f"An error occurred: {e}."
                 color = RED
             
-            box(msg, title='STATUS', border_color=color, text_color=color)
-            clear_lines()
+            box(msg, title='STATUS', border_color=color, text_color=color, clear_line=1)
     
         case 'del-log':
             clear_log_files()
@@ -2317,8 +2616,7 @@ def interpret_commands(user_input):
             except: pass
             history = FileHistory(PROMPT_HISTORY_FILE)
             msg = 'Discarding current session & Restarting...'
-            box(msg, title='DISCARD', border_color=YLW, text_color=YLW)
-            clear_lines()
+            box(msg, title='DISCARD', border_color=YLW, text_color=YLW, clear_line=1)
             raise SoftRestart
     
         case 'kill':
@@ -2326,8 +2624,7 @@ def interpret_commands(user_input):
             try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
             except: pass
             msg = 'Clearing recent messages & Quitting...\nManually saved content & logs are kept!'
-            box(msg, title='KILL', border_color=YLW, text_color=YLW)
-            clear_lines()
+            box(msg, title='KILL', border_color=YLW, text_color=YLW, clear_line=1)
             raise SystemExit
     
         case 'del-all':
@@ -2335,25 +2632,121 @@ def interpret_commands(user_input):
         
         case 'restart':
             raise SoftRestart
+        
+        case 'stats':
+            length = len(chat.get_history())
+            half = length // 2
+            msg = f'Total N° of message in this chat: ({length}).\n'
+            msg += f'({half}) from your side, and ({half}) from AI.'
+            if half * 2 != length:
+                rest = length - half * 2
+                msg += f"\n{YLW}Seems like there are ({rest}) extra non-structured messages in "
+                msg += f"current chat, but they won't cause any trouble. Sorry, it's a bug."
+                
+            box(msg, title='STATISTICS', border_color=GR, text_color=GR, secondary_color=YLW, clear_line=1)
 
         case 'license':
             msg_1 = "Do whatever you want using 'Gemini Py-CLI', wherever you want."
             msg_2 = "Half of it was written using Gemini itself, so I won't complain.\n"
             msg_3 = f"But as a polite programmer request, I'll be happy if you mention my name."
-            box(msg_1, msg_2, msg_3, title='LICENSE', border_color=GR, text_color=GR)
-            clear_lines()
+            box(msg_1, msg_2, msg_3, title='LICENSE', border_color=GR, text_color=GR, clear_line=1)
         
         case 'about':
             msg_1 = "Title: Gemini Py-CLI.\nAuthor: Mohyeddine Didouna, with a major AI assistance."
             msg_2 = f"GitHub Home: {UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}"
             msg_3 = f"Issues Page: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}"
-            box(msg_1, msg_2, msg_3, title='ABOUT', border_color=GR, text_color=GR)
-            clear_lines()
+            box(msg_1, msg_2, msg_3, title='ABOUT', border_color=GR, text_color=GR, clear_line=1)     
+            
+        case 'version':
+            msg = "Gemini Py-CLI, Version 1.0"
+            box(msg, title='VERSION', border_color=GR, text_color=GR, clear_line=1)
    
         # This is only for testing, don't use it otherwise.
-        case c if c.startswith('exec '):
+        case c if c.startswith(('exec ', 'exec\n')):
             exec(user_input[5:])
-                
+            if not 'print' in user_input: clear_lines(2 + user_input.count('\n'))
+        
+        case c if c.startswith('eval '):
+            value = eval(user_input[5:])
+            cprint(value)
+
+        case c if c.startswith('echo '):
+            cprint(user_input[5:])
+        
+        # CONGRATULATIONS! You found a secret: Extra useless commands :P
+        case 'mohyoo' | 'mohyeddine' | 'didouna' | 'mohyeddine didouna' | 'didouna mohyeddine':
+            msg = "Data classified.\nYou didn't think it would be that easy, did you?"
+            box(msg, title='CLASSIFIED', border_color=CYN, text_color=CYN, clear_line=1)
+            
+        case 'banana' | 'bananas':
+            from useless import draw_ascii_image
+            draw_ascii_image('BANANAS', 'BANANAS', YLW, console_width, visual_len, box)
+
+        case 'dog':
+            from useless import draw_ascii_image
+            draw_ascii_image('DOG', 'SAY HI!', YLW2, console_width, visual_len, box)
+        
+        case 'cat':
+            from useless import draw_ascii_animation
+            title = "Shhhh, Mimicha is sleeping...\nPress CTRL-C to wake him up!\n"
+            draw_ascii_animation('CAT', title, CYN, 0.2, 3, control_cursor, clear_lines)
+
+        case 'horse':
+            from useless import draw_ascii_animation
+            title = "Must... achieve... maximum... wind... through... mane!\nPress CTRL-C to take a break!\n"
+            draw_ascii_animation('HORSE', title, BRW, 0.08, 2, control_cursor, clear_lines)
+
+        case c if c == 'time-travel' or c.startswith('time-travel '):
+            from useless import time_travel
+            time_travel(command, box)
+
+        case 'quote':
+            from useless import QUOTES
+            quote = choice(QUOTES)
+            box(quote, title='QUOTE', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)      
+        
+        case 'fact':
+            from useless import FACTS
+            fact = choice(FACTS).replace('Fact: ', '')
+            box(fact, title='FACT', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)
+
+        case 'joke':
+            from useless import JOKES
+            joke = choice(JOKES)
+            box(joke, title='SMILE :P', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)
+
+        case 'nothing':
+            from useless import NOTHING
+            msg = choice(NOTHING)
+            box(msg, title="NOTHING", border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
+
+        case 'advice' | 'hint':
+            from useless import ADVICES
+            advice = choice(ADVICES).replace('Fact: ', '')
+            box(advice, title='ADVICE', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)
+
+        case 'math' | 'headache':
+            from useless import mathematics
+            mathematics(box)
+
+        case 'scan' | 'clean':
+            from useless import fake_scan
+            fake_scan(console.status, separator)
+
+        case 'overthink' | 'overthinking':
+            from useless import overthink
+            overthink(box)
+
+        case 'achieve' | 'achievement':
+            from useless import ACHIEVEMENTS
+            msg = "Achievement Unlocked: " + choice(ACHIEVEMENTS)
+            box(msg, title='ACHIEVEMENT', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
+        
+        case c if c.startswith(('false-echo', 'f-echo')):
+            from useless import false_echo
+            false_echo(user_input, box)
+        
+        # No command. Return True as a flag to send a normal message to AI.
         case _:
             return True
 
@@ -2472,17 +2865,23 @@ def print_response(response, title='Gemini'):
         
         # Display the response according to the effect.
         if RESPONSE_EFFECT:
-            if RESPONSE_EFFECT == 'line':
-                print_markdown_line(formatted_response)
-            
-            elif RESPONSE_EFFECT == 'word':
-                print_markdown_word(formatted_response)
-            
-            elif 'char' in RESPONSE_EFFECT:
-                print_markdown_char(formatted_response)
+            try:
+                if RESPONSE_EFFECT == 'line':
+                    print_markdown_line(formatted_response)
+                
+                elif RESPONSE_EFFECT == 'word':
+                    print_markdown_word(formatted_response)
+                
+                elif 'char' in RESPONSE_EFFECT:
+                    print_markdown_char(formatted_response)
+
+            except:
+                # Fallback to no effect.
+                if ERROR_LOG_ON: log_caught_exception()
+                console.print(formatted_response)
         
         # Print response without animation.
-        else:           
+        else:    
             console.print(formatted_response)
         
         # A quick cleanup.
@@ -2501,12 +2900,8 @@ def print_response(response, title='Gemini'):
                 else: break
         
         # Inform.
-        box(
-            f'{GR}Response blocked (but saved!), skipping the rest of it...',
-            title='KEYBOARD INTERRUPTION',
-            border_color=GR,
-        )
-        clear_lines()
+        msg = f'{GR}Response blocked (but saved!), skipping the rest of it...'
+        box(msg, title='KEYBOARD INTERRUPTION', border_color=GR, clear_line=1)
 
     except Exception as error:
         catch_exception(error)
@@ -2543,6 +2938,7 @@ def run_chat():
 def define_global_objects():
     """Define local variables and copy them directly into the global namespace."""
     # Define global variables.
+    glitching_text_width = min(console_width, 79)   # Width used for some messages like farewell and saved info, used to avoid glitches.
     confirm_separator = True                        # Before confirming to quit, print a separator only if no precedent one was already displayed.
     word_completer = None                           # Has a True value only if the WORDLIST_FILE is present and SUGGEST_FROM_WORDLIST is True.
     chat_saved = False                              # True after the chat has been saved.
@@ -2555,7 +2951,6 @@ def define_global_objects():
     if VIM_EMACS_MODE: editor_variable = None       # This will change to the current EDITOR variable in the system, if available.
 
     # Define global constants.
-    TEXT_WIDTH = min(CONSOLE_WIDTH, CONSOLE_WIDTH)  # Width used for some messages like farewell and saved info, used to avoid glitches.
     CLEAR_COMMAND = 'cls' if os.name == 'nt' else 'clear'
     ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')  # Used to clean a string from ANSI codes.
     WORD_AND_SPACE_PATTERN = re.compile(r'(\s+)')   # Used to split lines into words, for word-by-word animation.
@@ -2566,11 +2961,12 @@ def define_global_objects():
 
     # Assign modules functions (To avoid repeated name resolution/lookup).
     system = os.system                              # Send commands to the system.
+    terminal_size = os.get_terminal_size            # Return terminal width & height.
     sys_exit = sys.exit
     stdout_write = sys.stdout.write                 # Write to stdout.
     stdout_flush = sys.stdout.flush                 # Flush the stdout for immediate output displaying.
 
-    # Create necessary instances.
+    # Create necessary instances.    
     history = None                                  # Prompt history file path (To cycle through history while streaming input).
     if PROMPT_HISTORY_ON: history = FileHistory(PROMPT_HISTORY_FILE)
 
@@ -2585,7 +2981,7 @@ def define_global_objects():
     })
 
     console = Console(                              # Our main console, used mainly to display AI responses or line separators.
-        width=CONSOLE_WIDTH,
+        width=console_width,
         theme=console_theme,
         no_color=not USE_COLORS,
         highlight=USE_COLORS,
@@ -2594,7 +2990,7 @@ def define_global_objects():
 
     temp_console = Console(                         # A hidden console to capture uncertain output before displaying it.
         file=io.StringIO(),
-        width=CONSOLE_WIDTH,
+        width=console_width,
         force_terminal=True,
     )
 
@@ -2614,8 +3010,11 @@ def define_global_objects():
         prompt_bottom_toolbar = HTML(prompt_bottom_toolbar)
 
     lexer = None
-    if INPUT_HIGHLIGHT:
-        lexer_instance = get_lexer_by_name(INPUT_HIGHLIGHT_LANG)
+    if INPUT_HIGHLIGHT == 'special':
+        lexer = PygmentsLexer(CustomLexer)
+
+    elif INPUT_HIGHLIGHT:
+        lexer_instance = get_lexer_by_name(INPUT_HIGHLIGHT)
         lexer_class = lexer_instance.__class__
         lexer = PygmentsLexer(lexer_class)
 
@@ -2625,9 +3024,9 @@ def define_global_objects():
         'bottom-toolbar': f'bg:{PROMPT_FG} fg: black',
         # 'completion-menu': 'bg: cyan fg: white',
     }) 
-
-    keys = Keys().get_key_bindings()                       # The custom keyboard shortcuts.
+    
     input_validator = LengthValidator()                    # To check user input before submitting.
+    keys = Keys().get_key_bindings()                       # The custom keyboard shortcuts.
     # from prompt_toolkit.key_binding import merge_key_bindings
     # from prompt_toolkit.key_binding.defaults import load_key_bindings
     # keys = merge_key_bindings([                            
@@ -2640,7 +3039,12 @@ def define_global_objects():
     globals().update(locals())
 
 if __name__ == '__main__':
-    define_global_objects()     # Must be called out of the loop.
+    # Define global variables & Start console width updater.
+    define_global_objects()   # Must be called out of the loop.
+    if DYNAMIC_CONSOLE_WIDTH:
+        width_updater = ConsoleWidthUpdater()
+        width_updater.start()
+    
     while True:
         try:
             # raise ValueError('Test' * 25)

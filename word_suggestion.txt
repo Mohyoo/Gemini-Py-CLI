@@ -200,3 +200,4 @@ remember
 forget
 open
 saved-info
+stats
