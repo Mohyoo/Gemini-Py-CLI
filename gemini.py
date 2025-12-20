@@ -863,7 +863,7 @@ def catch_fatal_exception(error):
         if see_error == 'y':
             cprint(RED + traceback.format_exc().strip() + RS)
         else:
-            cprint(f"{YLW}\nInhales.. Deep breathing.. Now out.{RS}")
+            cprint(f"{YLW}Inhales.. Deep breathing.. Now out.{RS}")
     
     else:
         clear_lines()
@@ -889,6 +889,22 @@ def catch_keyboard_interrupt():
 
 
 # 4) Part IV: Helper Functions ---------------------------------------------------------------------
+def wrapper(text: str, width=console_width-1, joiner='\n'):
+    """Wrap a given text to a given line width."""
+    lines = text.split('\n')
+    wrapped_lines = []
+    
+    for line in lines:
+        if not line.strip():
+            wrapped_lines.append(' ')
+            continue
+            
+        new_lines = textwrap.wrap(line, width=width)   # Only wrap if length >= width.
+        wrapped_lines.extend(new_lines)
+    
+    text = joiner.join(wrapped_lines)
+    return text
+    
 def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=console_width-1, wrap_joiner='\n'):
     """
     - A custom print function that writes directly to stdout and guarantees an
@@ -898,18 +914,7 @@ def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=console_width-1,
     # Wrap even if (length = console_width) so that '\n' stays in the same line.
     text = str(text)
     if wrap and (visual_len(text) > wrap_width):
-        lines = text.split('\n')
-        wrapped_lines = []
-        
-        for line in lines:
-            if not line.strip():
-                wrapped_lines.append(' ')
-                continue
-                
-            new_lines = textwrap.wrap(line, width=wrap_width)   # Only wrap if length >= width.
-            wrapped_lines.extend(new_lines)
-        
-        text = wrap_joiner.join(wrapped_lines)
+        text = wrapper(text, width=wrap_width, joiner=wrap_joiner)
     
     # Print.
     stdout_write(text + end)
@@ -1070,14 +1075,15 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     if clear_line and console_width > 79: clear_lines(clear_line)
     elif new_line and console_width <= 79: cprint()
 
-def open_path(path_to_open, clear=0, restore_prompt=''):
+def open_path(path_to_open, clear=0, restore_prompt='', set_placeholder=''):
     """
     - Open a file or folder using the default OS application/file explorer.
     - Used with 'open' or 'saved-info' commands.
     - Add a quick cleanup if requested.
     - Work reliably across Windows, macOS, and Linux.
     """
-    global default_prompt
+    global default_prompt, prompt_placeholder
+    
     # Check if the file/folder exists.
     if not os.path.exists(path_to_open):
         msg = "Requested file/folder isn't present in the current working directory."
@@ -1089,6 +1095,7 @@ def open_path(path_to_open, clear=0, restore_prompt=''):
     if GLOBAL_LOG_ON: in_time_log(' ')
     if clear: clear_lines(clear)
     if restore_prompt: default_prompt = restore_prompt
+    elif set_placeholder: prompt_placeholder = FormattedText([(PROMPT_FG, set_placeholder)])
 
 def control_cursor(command: str):
     """A custom function to show or hide the terminal cursor."""
@@ -1329,7 +1336,7 @@ def farewell(confirmed=False):
     # Exit.
     from useless import QUOTES, FACTS, JOKES, ADVICES, MATH
     message = choice(FAREWELLS_MESSAGES + QUOTES + FACTS + JOKES + ADVICES + MATH)
-    if (not saved) and (not confirmed) and len(message) <= glitching_text_width: clear_lines()
+    if (not saved) and (not confirmed) and message.count('\n') == 0 and len(message) <= glitching_text_width: clear_lines()
     cprint(GR + message + RS, wrap_width=glitching_text_width)     # Fixed width to avoid glitchs on wide consoles.
     separator()
     sys_exit(0)
@@ -2454,9 +2461,10 @@ def get_user_input():
     NOTE: User input will never be stripped or modified, it'll be sent as-is,
     we only use a stripped copy of it to beautify the output.
     """
+    global default_prompt, prompt_placeholder
+    
     # Set input options.
     # 1. RPrompt.
-    global default_prompt
     rprompt = None
     if INFORMATIVE_RPROMPT:
         current_time = datetime.now().strftime('%I:%M %p')
@@ -2528,7 +2536,9 @@ def get_user_input():
         return None
     
     finally:
-        default_prompt = None
+        # If prompt options changed (because of open_path() function), restore them.
+        if default_prompt: default_prompt = None
+        if 'Ask Gemini...' not in repr(prompt_placeholder): prompt_placeholder = FormattedText([(PROMPT_FG, 'Ask Gemini...')])
         
     # Return input.
     if user_input.strip():
@@ -2539,7 +2549,7 @@ def get_user_input():
 
 def interpret_commands(user_input):
     """If the user input is a special command, execute it."""
-    global discarding, history
+    global discarding, history, default_prompt
     command = user_input.strip().lower()
     
     match command:
@@ -2559,10 +2569,10 @@ def interpret_commands(user_input):
             system(CLEAR_COMMAND)
     
         case 'open':
-            open_path('.', clear=2, restore_prompt=user_input)
+            open_path('.', clear=2, set_placeholder=user_input)
     
         case 'saved-info':
-            open_path(SAVED_INFO_FILE, clear=2, restore_prompt=user_input)
+            open_path(SAVED_INFO_FILE, clear=2, set_placeholder=user_input)
     
         case c if c.startswith('remember ') and SAVED_INFO:
             manage_saved_info(user_input, 'remember')
@@ -2704,7 +2714,16 @@ def interpret_commands(user_input):
             from useless import QUOTES
             quote = choice(QUOTES)
             box(quote, title='QUOTE', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)      
-        
+
+        case 'lang' | 'language':
+            from useless import language
+            language(box)
+
+        case 'riddle' | 'puzzle' | 'mystery' | 'r-answer' | 'riddle-answer':
+            from useless import riddle
+            show_soluion = True if command in ['r-answer', 'riddle-answer'] else False
+            riddle(box, wrapper, open_path, show_soluion, user_input)
+
         case 'fact':
             from useless import FACTS
             fact = choice(FACTS).replace('Fact: ', '')
@@ -2718,7 +2737,13 @@ def interpret_commands(user_input):
         case 'nothing':
             from useless import NOTHING
             msg = choice(NOTHING)
-            box(msg, title="NOTHING", border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
+            box(msg, title="NOTHING", border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)        
+
+        case 'nonsense':
+            from useless import NONSENSE
+            title = choice(NONSENSE[0])
+            msg = choice(NONSENSE[1:])
+            box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
 
         case 'advice' | 'hint':
             from useless import ADVICES
@@ -2745,6 +2770,15 @@ def interpret_commands(user_input):
         case c if c.startswith(('false-echo', 'f-echo')):
             from useless import false_echo
             false_echo(user_input, box)
+        
+        case 'random':
+            random_cmd = choice([
+                'banana', 'dog', 'cat', 'horse', 'time-travel', 'quote','fact', 'joke', 'riddle', 'lang',
+                'nothing', 'nonsense', 'hint', 'math', 'scan', 'overthink', 'achieve', 'f-echo random', 'mohyoo'
+            ])
+            
+            interpret_commands(random_cmd)
+            default_prompt = f"Last random command: '{random_cmd}'"
         
         # No command. Return True as a flag to send a normal message to AI.
         case _:

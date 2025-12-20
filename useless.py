@@ -7,7 +7,7 @@
 
 from settings import PURP
 from typing import Callable
-from random import random, randint, uniform, choice
+from random import random, randint, uniform, choice, shuffle
 
 BANANAS = r"""
                                                   ▒▒▓▓▒▒            
@@ -894,7 +894,7 @@ FACTS = [
     "its juvenile (young) form after becoming an adult.",
     "Fact: A cow gives nearly 200,000 glasses of milk in its lifetime.",
     "Fact: A group of flamingos is called a flamboyance.",
-    "Fact: Octopuses have three hearts! Two pump blood to the gills, and one circulates it to the rest of the body.",
+    "Fact: Octopuses have three hearts! Two pump blood to the gills, and one circulates it to the rest of the body. Also, their blood is blue.",
     "Fact: Honey never spoils. Archaeologists have found pots of honey in ancient Egyptian "
     "tombs that are over 3,000 years old and still perfectly good to eat.",
     "Fact: The strongest muscle in your body is the masseter, which is the one you use to chew.",
@@ -1089,6 +1089,471 @@ ACHIEVEMENTS = [
     f"You are the first one to read this after ({randint(2, 100)}) people.",
 ]
 
+LANGS = [
+    # Format: <lang_expression> (Translation: <english_translation>)  # <lang_name>
+    # Chinese
+    "好吃不过饺子 (Translation: Nothing is more delicious than dumplings)  # Chinese",
+    "吃土了 (Translation: Eating dirt — meaning broke after spending money)  # Chinese",
+    "搞笑 (Translation: Funny)  # Chinese",
+    "塞翁失马，焉知非福 (Translation: A loss may turn out to be a blessing)  # Chinese",
+    "百闻不如一见 (Translation: Seeing once is better than hearing a hundred times)  # Chinese",
+
+    # Japanese
+    "猫に小判 (Translation: Giving gold coins to a cat — meaning useless gift)  # Japanese",
+    "笑う門には福来る (Translation: Fortune comes to the laughing gate)  # Japanese",
+    "よく寝る子は育つ (Translation: A well-sleeping child will grow well)  # Japanese",
+    "七転び八起き (Translation: Fall seven times, stand up eight)  # Japanese",
+
+    # Russian
+    "С глаз долой — из сердца вон. (Translation: Out of sight, out of mind)  # Russian",
+    "Зуб даю! (Translation: I swear on my tooth — meaning I promise)  # Russian",
+    "Ёжик в тумане. (Translation: Hedgehog in the fog — meaning confusion)  # Russian",
+    "Без труда не вытащишь и рыбку из пруда. (Translation: You can’t pull a fish out of a pond without effort)  # Russian",
+    "Дело мастера боится. (Translation: Work fears the master — meaning skill conquers difficulty)  # Russian",
+
+    # German
+    "Ich verstehe nur Bahnhof. (Translation: I only understand train station — meaning I don’t understand)  # German",
+    "Alles hat ein Ende, nur die Wurst hat zwei. (Translation: Everything has an end, only the sausage has two)  # German",
+    "Da schau her! (Translation: Look here!)  # German",
+    "Katzenjammer. (Translation: Cat's wailing — meaning headache or regret)  # German",
+    "Übung macht den Meister. (Translation: Practice makes the master)  # German",
+    "Wer rastet, der rostet. (Translation: He who rests, rusts)  # German",
+
+    # Korean
+    "나비처럼 날아라 (Translation: Fly like a butterfly)  # Korean",
+    "가는 말이 고와야 오는 말이 곱다 (Translation: Kind words bring kind replies)  # Korean",
+    "고생 끝에 낙이 온다 (Translation: Joy comes after hardship)  # Korean",
+
+    # Hindi
+    "बिल्ली के भाग्य से चूहे नाचते हैं (Translation: When the cat’s away, the mice will play)  # Hindi",
+    "जैसा बोओगे वैसा काटोगे (Translation: You reap what you sow)  # Hindi",
+    "देर आए दुरुस्त आए (Translation: Better late than never)  # Hindi",
+
+    # Italian
+    "Vedi Napoli e poi muori. (Translation: See Naples and die — meaning must-see place)  # Italian",
+    "Chi dorme non piglia pesci. (Translation: He who sleeps doesn’t catch fish)  # Italian",
+    "Piano piano si va lontano. (Translation: Slowly, slowly, one goes far)  # Italian",
+
+    # Spanish
+    "Que será, será. (Translation: Whatever will be, will be)  # Spanish",
+    "¡Qué pasta! (Translation: What pasta! — meaning a lot of money!)  # Spanish",
+    "Más vale tarde que nunca. (Translation: Better late than never)  # Spanish",
+    "A mal tiempo, buena cara. (Translation: Put on a brave face in bad times)  # Spanish",
+
+    # French
+    "J'ai perdu la boule. (Translation: I lost the ball — meaning I lost my mind)  # French",
+    "C'est du gâteau! (Translation: It's cake! — meaning it's easy)  # French",
+    "Petit à petit, l’oiseau fait son nid. (Translation: Little by little, the bird builds its nest)  # French",
+    "Après la pluie, le beau temps. (Translation: After rain comes good weather)  # French",
+
+    # Portuguese
+    "A vida é bela. (Translation: Life is beautiful)  # Portuguese",
+    "Quem espera sempre alcança. (Translation: Those who wait will achieve)  # Portuguese",
+
+    # Arabic
+    ".العقل في إجازة (Translation: The brain is on vacation — meaning I’m not thinking at all)  # Arabic",
+    ".الصبر مفتاح الفرج (Translation: Patience is the key to relief)  # Arabic",
+    ".لكل مجتهد نصيب (Translation: Every hard worker gets a share)  # Arabic",
+
+    # Turkish
+    "Damlaya damlaya göl olur. (Translation: Drop by drop, a lake is formed)  # Turkish",
+    "Sabır acıdır, meyvesi tatlıdır. (Translation: Patience is bitter, but its fruit is sweet)  # Turkish",
+
+    # Dutch
+    "Wie het kleine niet eert, is het grote niet weerd. (Translation: Who does not value small things is not worthy of big ones)  # Dutch",
+    "Oost west, thuis best. (Translation: East or west, home is best)  # Dutch",
+
+    # Malay
+    "Sedikit demi sedikit, lama-lama menjadi bukit. (Translation: Little by little, it becomes a hill)  # Malay",
+    "Berat sama dipikul, ringan sama dijinjing. (Translation: Heavy things are carried together, light ones shared)  # Malay",
+
+    # Latin
+    "Per aspera ad astra. (Translation: Through hardships to the stars)  # Latin",
+    "Carpe diem. (Translation: Seize the day — meaning live the present)  # Latin",
+
+    # Greek
+    "Γνῶθι σεαυτόν (Translation: Know thyself/yourself)  # Greek",
+    "Μηδὲν ἄγαν (Translation: Nothing in excess — meaning balance)  # Greek",
+    "Αρχή ήμισυ του παντός (Translation: The beginning is half of everything)  # Greek",
+    "Όπου υπάρχει θέληση, υπάρχει τρόπος. (Translation: Where there is a will, there is a way)  # Greek",
+]
+ 
+RIDDLES = [
+    # Easy.
+    {
+        '?': "A man paints all the numbers up to 100 on a wall in a perfect sequence (1, 2, 3 ... 100). "
+             "He decided to paint only odd numbers first, then the even numbers later. Somehow he skips a number without realizing it. "
+             "Later, he notices the sum of painted numbers is short by 36. Which number did he skip?",
+        '✓': "Simply 36 (even/odd pattern is a distraction)"
+    },
+    {
+        '?': "I speak without a mouth and hear without ears. I have no body, but I come alive with wind. What am I?",
+        '✓': "It’s an echo! It speaks when sound bounces back, hears without ears, and has no body."
+    },
+    {
+        '?': "I speak without a tongue, I can be broken but never held, my lifetime depends on my owner. What am I?",
+        '✓': "A promise."
+    },
+    {
+        '?': "A plane crashes on the border of two countries. Where do they bury the survivors?",
+        '✓': "Nowhere — survivors aren’t buried."
+    },
+    {
+        '?': "Two fathers and two sons went fishing. Each caught one fish, yet they brought home only three fish. How?",
+        '✓': "They were grandfather, father, and son."
+    },
+    {
+        "?": "In a sunny park, there are two mothers and two daughters posing for a photo. One is wearing a red hat and smiling at the camera; "
+             "the other two aren't smiling but looking at a squirrel on a tree. All three are related. Who is in the photo?",
+        "✓": "A grandmother, her daughter, and her grand-daughter (other details are distractions)."
+    },
+    {
+        '?': "If you have me, you really want to share me. If you share me, you lose me forever. What am I?",
+        '✓': "A secret."
+    },
+    {
+        '?': "A cowboy rode into town on Friday. He stayed three days and left on Friday. How is that possible?",
+        '✓': "His horse's name is Friday."
+    },
+    {
+        '?': "If you have three apples and you take two, how many do you have?",
+        '✓': "Three (you took your own apples)"
+    },
+    {
+        '?': "You see a boat filled with people, yet there isn’t a single person on board. How is that possible?",
+        '✓': "All the people were married (read the word 'single' above)."
+    },
+    {
+        '?': "I am always hungry, I must always be fed. The finger I touch will soon turn red. What am I?",
+        '✓': "Fire."
+    },
+    {
+        '?': "I have cities but no houses, forests but no trees, and rivers but no water. What am I?",
+        '✓': "A map."
+    },
+    {
+        '?': "You see me once in June, twice in November, but not at all in May. Why?",
+        '✓': "It's about the letter 'e'."
+    },
+    {
+        '?': "What disappears as soon as you say its name?",
+        '✓': "Silence."
+    },
+    {
+        '?': "I am written on a piece of paper that you should never read aloud, because if you do, I vanish. What is written on it?",
+        '✓': "Silence."
+    },
+    {
+        '?': "I can use a maximum number of twelve. I add five to nine, and get two. The answer is correct, but how?",
+        '✓': "On a clock, 9 + 5 hours = 2"
+    },
+    {
+        '?': "What comes once in a minute, twice in a moment, but never in a thousand years?",
+        '✓': "The letter 'M'."
+    },
+    {
+        '?': "If an electric train is moving north at 100 mph and a wind is blowing east at 10 mph, which way does the smoke blow?",
+        '✓': "Electric trains don’t produce smoke."
+    },
+    {
+        '?': "Three coins lie in a row showing H H T. You may flip exactly ONE coin. When you flip a coin, "
+             "its adjacent neighbors flip as well. How can you make all coins show the same side?",
+        '✓': "Flip the first coin (third one won't be affected since it's not adjacent)"
+    },
+    {
+        '?': "You regain consciousness and find yourself a captive in a minimalist gallery with a single mahogany table "
+             "and a heavy iron door. On the table lies a card that states: 'Completion of this text is the sole requirement for your departure'. "
+             "You read the card text over and over until you know it by heart, yet the door remains closed. Why?",
+        '✓': "You simply didn't try to open the door. The card didn't say it would open automatically."
+    },
+    {
+        '?': "You are trapped in a room with no windows and one locked door. The only object you see is a sealed envelope with a label that reads: "
+             "'You must read this note at least once to leave'. You read those words three times, stare at them for hours, but the door remains locked. Why?",
+        '✓': "You read the label, but forgot to open the envelope and read the letter."
+    },
+    {
+        '?': "You wake up in a perfectly seamless white cube with no windows or doors. On the floor is a single letter labeled: "
+             "'To exit this room, you must read this letter at least once'. You read it aloud, then silently, then backwards, but no door opens. Why?",
+        '✓': "There is no door in the cube already, look for another exit."
+    },
+    {
+        '?': "Three scientists — a physician, a mathematician, and a geographer — are in a hot air balloon. "
+             "The balloon got punctured and deflated. While going down and in order to live, they must sacrifice one "
+             "person to save the others. Who should they sacrifice?",
+        '✓': "The one with the greatest weight, their specialty doesn't matter."
+    },
+    {
+        '?': "A farmer has a fox, a goose, and a bag of beans. He needs to cross a river using a boat that can only carry himself and one item at a time. "
+             "If he leaves the fox alone with the goose, the fox will eat the goose. If he leaves the goose alone with the beans, "
+             "the goose will eat the beans. How should he get everything across safely?",
+        '✓': "Take the goose first, then the fox, return with the goose, leave the goose there and take the beans, and finally bring the goose back."
+    },
+    {
+        '?': "You are asked to choose one of three doors. Behind one door is a treasure, behind the others are dangers. "
+             "You can choose one door. After you pick, the host opens one of the other two doors, revealing danger. "
+             "You are then given a chance to switch your choice. Should you switch?",
+        '✓': "Yes, you should definitely switch.\n\n"
+             "While it feels like it should be a 50/50 chance once one door is gone, the math shows that switching doubles your chances of winning.\n\n"
+             "At the start, you have a 1/3 chance of picking the treasure and a 2/3 chance of picking a danger; there is a bigger chance of being wrong. "
+             "If you switch doors, you win every time your initial guess was wrong, since you were probably wrong before, you should switch.\n\n"
+             "Still skeptical? It’s perfectly normal to feel like it’s 50/50. Even famous mathematicians have argued over this!\n\n"
+             "One way to make it clearer is to imagine there are 100 doors. You pick one (a 1% chance). The host then opens 98 doors that all have danger "
+             "behind them, leaving only your door and one other. In that case, and because you were 99% wrong initially, "
+             "it feels much more obvious that the other door is the one with the treasure."
+    },
+
+    # Medium.
+    {
+        '?': "A train has 100 carriages numbered 1 to 100. Two neighbors carriages were swapped. "
+             "The sum of their numbers is 105. Which carriage is first out of order?",
+        '✓': "Carriage 52 (105 / 2 = 52.5 so we have 52, 53)"
+    },
+    {
+        '?': "A man walks into a room with three light switches outside. Only one switch controls a bulb inside. He can flip "
+             "the switches as much as he likes but can only enter the room once. How can he find the correct switch?",
+        '✓': "Turn on switch 1, wait, turn it off; turn on switch 2, enter room: warm bulb → switch 1, lit bulb → switch 2, cold bulb → switch 3"
+    },
+    {
+        '?': "A circular table has 12 seats numbered clockwise. Two close-friends swap seats. The sum of their seat numbers is 13. "
+             "But then they swap back the seats 5 times. Starting at seat 1, which is the first seat number out of sequence?",
+        '✓': "None (they swapped 1+5 times, as if nothing changed)"
+    },
+    {
+        '?': "A man dies in a desert and is found with a backpack and a canister (closed safety gear). How did he die?",
+        '✓': "He was a skydiver and his parachute didn’t open."
+    },
+    {
+        '?': "There’s a house with four walls, all facing south, and a bear walks by. What color is the bear?",
+        '✓': "White (it’s a polar bear at the North Pole)."
+    },
+    {
+        '?': "A town has two barbers only. One has a perfect haircut, the other a terrible one. Only one can cut your hair. Which barber do you choose? Beware of appearances.",
+        '✓': "Choose the barber with the terrible haircut — he must have cut the other barber’s hair."
+    },    
+    {
+        '?': "A farmer has 17 sheep, and all but 9 run away. How many are left?",
+        '✓': "9 sheep (all but 9 run away = all -except 9- run away)"
+    },
+    {
+        '?': "A woman walks into a room with 53 socks: 21 blue, 15 black, and the rest white; they are not separated. "
+             "Without looking, what is the minimum number of socks she must take to ensure she has one matching pair?",
+        '✓': "4 socks (in the worst case: 1 blue, 1 black, 1 white → 4th will match one; in the best case: They all have one color)"
+    },    
+    {
+        '?': "A farmer had 12 apples. He gave half to his neighbor, then another half to his son. Then he notices he still has 3 apples. How is this possible?",
+        '✓': "He gave half of the apples he currently had each time, not half of the original 12"
+    },
+
+    # Hard.
+    {
+        '?': "A man writes all numbers from 1 to 1000. One number is missing. The sum of all written numbers is 499500. Which number is missing?",
+        '✓': "1000 (sum of a simple sequence = n/2 (1st + last) = 1000/2 (1 + 1000) = 500500 and 500500 - 499500 = 1000)"
+    },
+    {
+        '?': "What is next in the sequence: (2, 3, 5, 9, 17)?",
+        '✓': "33 (pattern: double the previous number minus 1)"
+    },
+    {
+        '?': "There are 100 lockers all closed. First, you toggle every locker (so all are now open). Then, you toggle "
+             "every 2nd locker (in each 2 lockers, you change the second). Next, every 3rd locker, and so on, "
+             "until you reach the 100th locker. Which lockers remain open at the end?",
+        '✓': "Lockers numbered with perfect squares (1, 4, 9, 16, …, 100)"
+    },
+    {
+        '?': "I am a three-digit number. My tens digit is five more than my ones digit, and my hundreds digit is eight less than my tens digit. What number am I?",
+        '✓': "194"
+    },
+    {
+        '?': "I am a three-digit number. My hundreds digit is 1/3 of my tens digit, and my ones digit is 4 more than my hundreds digit. What number am I?",
+        '✓': "141."
+    },
+    {
+        '?': f"I am a word; add two letters and {choice(['fewer there will be', 'shorter I become', 'less you have now'])}. What word am I?",
+        '✓': "Few (add 'er' to make 'fewer').\nOr: Short -> shorter.\nOr: Brief -> briefer."
+    },
+    {
+        '?': "A man leaves a room. Inside, a clock shows 3:15 and mirror. He leaves, returns at 3:45, yet the hands of "
+             "the clock appear the same as before. How is this possible?",
+        '✓': "The clock is a reflection in a mirror, so the hands look the same at 3:15 and 3:45 "
+             "(3:15 was the original clock state, and 3:45 is what he saw in the mirror)"
+    },
+    {
+        '?': "A man walks 1 mile south, 1 mile east, and 1 mile north. He ends up exactly where he started. Where is he?",
+        '✓': "The North Pole (try drawing the path)"
+    },
+
+    # Very Hard (Strings that contain a bulleted or a numbered list must be carefully
+               # organized & wrapped to be clear when written in a text file)
+    {
+        "?": "You see a house with two doors. One leads to freedom, the other to certain death. "
+             "Each door has a guard: one always tells the truth, the other always lies. You can ask only "
+             "one yes/no question to one guard to find the door to freedom. What question do you ask?",
+        "✓": "Ask either guard: 'If I asked the other guard which door leads to death, would they say this one?' "
+             "Then choose the opposite door. This works because:\n"
+             "- If you ask the truth-teller, they truthfully tell you what the liar would say\n"
+             "  (the wrong door).\n"
+             "- If you ask the liar, they lie about what the truth-teller would say\n"
+             "  (also the wrong door).\n"
+             "* In both cases, choose the opposite door of the answer."
+    },
+    {
+        '?': "A prisoner is given a chance to escape. There are two doors: one leads to freedom, the other to certain death. "
+             "Two guards are present, one always lies, one always tells the truth. You may ask only one question. "
+             "The guard hints subtly, 'Ask me carefully'. What do you ask?",
+        '✓': "Ask either guard: 'Which door would the other guard say: leads to death?'. Then choose the opposite door "
+             "(you have to imagine & write the whole scenario to understand)"
+    },
+    {
+        '?': "You have two ropes that each burn for exactly 1 hour, but they burn unevenly (burning speed varies "
+             "irregularly over time). How can you measure 45 minutes?",
+        '✓': "Light rope A from both ends, and rope B from one end at the same time. When rope A burns out (30 min), "
+             "light the other end of rope B (rope B now has 30 min left). It will burn in 15 more minutes."
+    },
+    {
+        "?": "100 prisoners in a chain, each with a random red or blue hat. They see hats in front but not in behind; they also can't see their own hats, "
+             "but can hear prior answers. The game starts from the last one #100 to the first one #1 in chain. "
+             "A prisoner dies if he says the wrong color of his own hat. How to save the maximum?",
+        "✓": "* Prisoners agree on a coding scheme before the game starts. They decide to use parity (even or odd counts) of one color.\n"
+            "* Last prisoner in chain (who sees the other 99) announces 'red' if number of red hats in front is even; if odd, he says 'blue'.\n"
+            "* Now every other prisonner will do this:\n"
+             "- Count the red hats in front\n"
+             "- Count the red hats heard in behind (if there is already)\n"
+             "- If sum (red hats in front + red hats in behind) is even, this means red hats\n"
+             "  are all taken; so his own hat must be blue.\n"
+             "- Otherwise, there must be a missing red hat in the equation which is his own hat;\n"
+             "  thus, his hat is red.\n\n"
+             "* This way, 99 of the prisonners are guaranteed safe."
+             "* Only the last prisoner sacrifices himself to give info.\n"
+             "  He might die for saying the wrong color, because he still doesn't know if his hat\n"
+             "  is red or blue, he only told what he saw in front."
+    },
+    {
+        "?": "4 people must cross a bridge at dark night with 1 torch. Their walking speed varies: person A takes 1 min to cross; B -> 2 min; C -> 5 min; D -> 10 min. "
+             "Maximum people to cross is 2 at a time. All must cross in 17 min or less. How?",
+        "✓": "- Step 1: Fastest two cross first (A+B) → They take 2 min\n"
+             "  (B takes 2 min & they both need torch, so A must slow down)\n"
+             "- Step 2: Fastest (A) returns with torch → +1 min → total 3 min\n"
+             "- Step 3: Slowest two cross (C+D) → +10 min → total 13 min\n"
+             "- Step 4: Second fastest (B) returns → +2 min → total 15 min\n"
+             "- Step 5: Fastest two cross again (A+B) → +2 min → total 17 min"
+    },
+    {
+        "?": "You have 8 balls, all the same size. 1 is heavier. Using a balance scale only twice, how do you find the heavy one?",
+        "✓": "Weigh 3 against 3 balls:\n"
+             "- If one side is heavier → heavy ball is there.\n"
+             "  * Take the 3 balls & Weigh 1v1:\n"
+             "    - If one is heavier → you found it.\n"
+             "    - If balanced → it's the 3rd ball.\n\n"
+             "- If equal → heavy ball is among the remaining 2.\n"
+             "  * Then weigh 1 vs 1 to find the heavy ball."
+    },
+    {
+        "?": "12 coins, 1 fake (heavier or lighter). Using a balance 3 times only, how to find the fake coin and its weight difference?",
+        "✓": "1. Weigh 4 vs 4:\n"
+             "  - If one side is heavier → fake is there.\n"
+             "  - If balanced → fake is in the remaining 4 coins.\n\n"
+             "2. Then take the suspect group, weigh 2 vs 2; the heavier side has the fake coin.\n"
+             "3. Finally, take the suspect side and weigh 1 vs 1 to find it."
+    },
+    {
+        "?": "3 logicians (thinkers) sit in a circle. There are 3 red hats and 2 blue hats. Each logician wears one random hat "
+             "and can see the others' hats but not their own. They are told to raise their hand only if they are certain "
+             "of their hat color. After a period of silence, all three hands go up at once. What color are the hats?",
+        "✓": "They all have red hats.\nWhy? Simultaneously doesnt mean immediately. And they are logicians, smart enough to be aware of these scenarios:\n\n"
+              "1. If 2 were blue & 1 was red, someone would see 2 blue and immediately raises his\n"
+              "   hand because there is no other blue hat available; so his hat is red; but others\n"
+              "   wouldn't raise their hands simultaneously because they will see (red, blue) which\n"
+              "   is enough to know after the first one raised his hand (they would know that the\n"
+              "   first one raised his hand only because he saw 2 blue, so their hats are surely\n"
+              "   red), but it won't be simultaneous.\n\n"
+              "2. If 2 were red & 1 was blue, one will see (red, red); being uncertain if his hat is\n"
+              "   red or blue, he doesn't raise his hand; the other two will see (red, blue),\n"
+              "   both of them would wait to see if the person in the blue hat raised his hand (like\n"
+              "   in scenario 1). When he didn't, they would realize 'If I were wearing blue, he\n"
+              "   would see two blue hats and would have known his color instantly. Since he doesn't\n"
+              "   know, I must be wearing red!'; then they both raise their hands simultaneously.\n\n"
+              "3. When all 3 hats were red, no one raised their hand immediately, and they all\n"
+              "   realized at the same moment that no other scenario (1 blue or 2 blue hats) was\n"
+              "   possible, it proves they were all seeing the same thing: (red, red) for each; so\n"
+              "   they raise their hands simultaneously."
+    },
+    {
+        "?": "There are 1000 bottles of liquid, one of which is poisoned. The poison kills within 24 hours. "
+             "You have 10 prisoners to help identify which bottle is poisoned. "
+             "How do you determine the poisoned bottle within the 24-hour? (This puzzle requires the 'Binary Code' knowledge)",
+        "✓": "We use 'Binary Code' (a sequence of 10 digits is enough for 1000 bottles).\n\n"
+             "- Label every bottle from 1 to 1000.\n"
+             "- Convert each bottle's number to binary (E.g: 1 → 0000000001 and 1000 → 1111101000).\n"
+             "- Assign the 10 prisoners. Each prisoner corresponds to one bit/position in the\n"
+             "  binary number.\n"
+             "- Each prisoner drinks from a bottle - only if their assigned position has '1' in that\n"
+             "  bottle's binary code (E.g: For Bottle 1 (0000000001), only the 1st prisoner drinks.\n"
+             "  For Bottle 7 (0000000111), prisoners 1, 2 & 3 all take a sip).\n"
+             "- After 24 hours, check who survived:\n"
+             "  * If a prisoner dies, they surely represent '1' in the poisonned bottle.\n"
+             "  * If they live, they represent '0'.\n\n"
+             "By lining up those 1s and 0s in order, you get the binary number of the exact poisoned bottle. "
+             "E.g: if only prisoners 1, 2 & 3 die, the binary code is (0000000111), which means Bottle 7 was the poisoned one."
+    },
+
+    # Nonsense.
+    {
+        '?': "A rectangular field is precisely 2 kilometers long and 700 meters wide. Assuming the soil density is "
+             "consistent, and the irrigation lines run parallel to the width every 50 meters. Calculate the farmer's age.",
+        '✓': "No logic"
+    },    
+    {
+        '?': "In a controlled farm environment, there are 12 chickens consuming 500g of grain daily. Above them, the sky contains 7 "
+             "cirrus clouds moving at 15 knots. Based on these atmospheric and agricultural variables, what day is it?",
+        '✓': "No logic"
+    },    
+    {
+        '?': "A perfect square room has four corners; a tabby cat sleeps in the northwest corner, while a grandfather clock on the "
+             "opposite wall strikes 5 times. Given the acoustic resonance and the cat's sleep cycle, how much does the cat weigh?",
+        '✓': "No logic"
+    },
+    {
+        '?': "If a high-speed commuter train leaves the central station at 3 PM heading north at 120 km/h, and a "
+             "50-foot oak tree is cut down at the exact same moment 10 miles away. How many pancakes can you eat?",
+        '✓': "No logic"
+    },    
+    {
+        '?': "You have 10 organic apples and 3 ripe pineapples stored in a basket with a total volume of 1.5 cubic feet. "
+             "Factoring in the surface area of the fruit, how many bananas does it take to make a cake?",
+        '✓': "No logic"
+    },    
+    {
+        '?': "If water is wet due to molecular cohesion and fire is hot because of an exothermic chemical reaction, "
+             "calculate the friction coefficient to determine how many people can dance on a Monday.",
+        '✓': "No logic"
+    },
+    {
+        "?": "A municipal library has 3,482 books meticulously arranged by the 'Dewey Decimal System', color, and author name. "
+             "While shelving a biography, the librarian sneezes twice. How high are the bookshelves?",
+        "✓": "No logic"
+    },
+    {
+        "?": "The sun rises in the east at a 15-degree angle, the wind blows north at 5 mph, and a green bullfrog "
+             "croaks exactly three times in the marsh. What is the square root of the mountain height?",
+        "✓": "No logic"
+    },
+    {
+        "?": "If a domestic cat can chase a mouse across 17 ceramic tiles at a velocity of 4 meters per second while "
+             "the moon shines at 400,000 lux. How many chairs exist in the house?",
+        "✓": "No logic"
+    },
+    {
+        "?": "You have seven graphite pencils, two waterproof umbrellas, and a small orange bicycle with 20-inch wheels. "
+             "Based on the inventory of these items, how many cats does your neighbor have?",
+        "✓": "No logic"
+    },
+    {
+        "?": "While it rains lightly at a rate of 2mm per hour on the mountain, a garden snail climbs a stone staircase with 45 steps. "
+             "Given the humidity levels, how many sandwiches can be prepared?",
+        "✓": "No logic"
+    },
+]
+
 NOTHING = [
     "Nothing happened.\nExactly as expected.",
     "Nothing is happening.\nIsn't this creepy?",
@@ -1099,6 +1564,68 @@ NOTHING = [
     "The universe is so... I don't know how to express it..... so normal.",
     "Nothing to see here.",
 ]
+
+NONSENSE = [
+    # Titles.
+    [
+        'NONSENSE', 'Square of Tomorrow', 'The Blue Taste', 'Whispers of Screams',
+        'Gravity’s Ice Nap', 'A Galaxy in a Teacup', 'The Geometry of Void',
+        'Pumpernickel Purgatory', 'Breathing Diamonds', 'Twelve Ways to Breath',
+        'Moon Juice', 'Making Potato from Air', 'Boiling the Wind', 'Flying Underground',
+        'Electric Soil', 'Elephants in the Air'
+    ],
+    
+    # Messages.
+    "When the square sings to the wind, the color of time melts sideways.",
+    "Banana echoes jump over quantum pancakes while yodeling spaghetti.",
+    "Purple toaster whispers slowly to invisible marshmallow socks.",
+    "Electric giraffes dance politely on the refrigerator of eternity.",
+    "The umbrella of truth bends only when the stars are sleepy.",
+    "Time whispers in marshmallow colors that nobody can taste.",
+    "The river of nonsense flows uphill when nobody is watching.",
+    "If you ever find yourself falling through a cloud of deers, remember: gravity is just a suggestion made by a confused spider.",
+    "Silence is golden, but complexity is silver and tastes like the number seven.",
+    "I’m not as think as you drunk I am.",
+    "My favorite color is the sound of a toasted bread falling down stairs.",
+    "Please do not feed the shadows; they are on a strict diet of Tuesday afternoons.",
+    "Logic is a wreath of onions worn by a man who forgot how to sneeze.",
+    "If the moon were made of spare ribs, would you eat it? I wouldn't. I’d use it to calibrate my invisible trombone.",
+    
+    "买冬瓜\n"
+    "- Translation: Buy a winter melon.\n"
+    "- Pronounciation: Mǎi dōngguā (Sounds like: My Don't Care).\n"
+    "- Usage: If someone is telling you a story that is unnecessarily\n"
+    "  complicated or makes no sense, you just drop this line to imply\n"
+    "  they are driving you in circles (You won't remember to use it anyway).",
+    
+    "# Manual for a Manual-less Machine:\n"
+    "- Turn it ON.\n"
+    "- Now throw this manual in the trash.\n"
+    "- Turn it OFF ('Switch OFF' button is hidden under the machine).",
+    
+    "# A Nonsense Recipe for Disaster:\n"
+    "* Ingredient:     Quantity:     Instruction:\n"
+    "- Laughter        4 Gallons     Freeze until it turns into a triangle.\n"
+    "- Yesterday       1 Pinch       Fold gently into a cloud.\n"
+    "- The Letter '5'  As needed     Disguise it as a small shrub.",
+]
+
+def language(box: Callable):
+    """Display a random foreign-language-expression with its translation."""
+    titles = [
+        'Journey to Fluency', 'Unlocking a New World', 'A Language Sentence Story',
+        'A First Step', 'Bridging Cultures', 'New Language Sentence', 'A New Voice',
+        'Discovering Words', 'Learning Journey', 'Words Bridge', 'Language Adventure',
+        'First Sentence', 'A Door to a New Language', 'Words Treasure', 'Discovering The Unknown',
+        'New Culture', 'Exploring Horizons', 'Unlocking Secrets', 'World of Words',
+        'Stepping in',
+    ]
+
+    title = choice(titles)
+    msg = choice(LANGS)
+    msg = msg.replace(' (Translation:', '\n(Translation:').replace('  # ', '\n# ')
+
+    box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
 
 def mathematics(box: Callable):
     """Bring back the headache with some math!"""
@@ -1304,6 +1831,42 @@ def mathematics(box: Callable):
     
     box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
 
+def riddle(box: Callable, wrapper: Callable, open_path: Callable, show_solution=False, user_input=''):
+    """Show a random riddle with its solution."""
+    from settings import CYN, MAX_CONSOLE_WIDTH
+    from os import path
+    
+    # Show the solution of previous riddle.
+    text_file = 'riddle_answer.txt'
+    app_dir = path.dirname(path.abspath(__file__))
+    full_path = path.join(app_dir, text_file)
+    
+    if show_solution:
+        open_path(full_path, clear=2, restore_prompt=user_input)
+        return
+    
+    # Choose a puzzle and prepare its question & answer.
+    puzzle = choice(RIDDLES)
+    question = puzzle['?'].strip()
+    answer = puzzle['✓'].strip()
+    if answer == 'No logic':
+        answer = 'There is no logic in this puzzle :P'
+    
+    # Hide the answer in a file.  
+    with open(text_file, 'w', encoding='utf-8') as f:
+        content = '# Query:\n' + question + '\n\n# Answer:\n' + answer
+        content = wrapper(content, width=90)
+        f.write(content)
+    
+    # Prepare the visual message.
+    title = choice(['RIDDLE', 'PUZZLE', 'MYSTERY'])
+    msg = '# Query:\n' + question + '\n\n'
+    msg += CYN + '# The answer is written in:\n' + CYN + full_path + '\n'
+    msg += CYN + "(Type 'r-answer' or 'riddle-answer' to see it)"
+   
+    # Show it.
+    box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
+    
 def fake_scan(console_status: Callable, separator: Callable):
     """Confuse the user with fake scannning messages >:)"""
     from settings import YLW, RED, BL, GR, RS, SPINNER
@@ -1450,6 +2013,8 @@ def fake_scan(console_status: Callable, separator: Callable):
         "Do not interrupt. This will improve the result...",
         "All system warnings have been reviewed and ignored...",
         "All system alerts have been received and dismissed...",
+        "Encountered some major failures, but still fine...",
+        "Found a problem. Your data may be at risk! But who cares?",
         "Till now, system integrity is intact. Definitions may vary...",
         "Nothing is wrong... Repeated reassurance is unnecessary.",
         "This message is for your comfort only...",
@@ -1507,8 +2072,9 @@ def fake_scan(console_status: Callable, separator: Callable):
                     print(f'{BL}- OP {idx}: {msg}{GR} [✓]')
                     idx += 1
 
-        state = choice(['successfully', 'efficiently', 'effectively'])
-        print(PURP + '\nOperations completed ' + state + '!' + YLW + '\nMajor failures ignored.' + RS)
+        state = choice(['successfully', 'efficiently', 'effectively']) + '!'
+        loss = choice(['confirmed', 'ensured', 'are guaranteed']) + '!'
+        print(PURP + '\nOperations completed ' + state + '\nMajor losses ' + loss + RS)
         separator(color=PURP)
 
     except KeyboardInterrupt:
@@ -1531,45 +2097,95 @@ def overthink(box: Callable):
 
 def false_echo(user_input: str, box: Callable):
     """Repeat what the user just typed, or maybe not."""
-    text = user_input.removeprefix('f-echo').removeprefix('false-echo').strip()
+    for p in  ['f-echo', 'false-echo']:
+        if user_input.lower().startswith(p):
+            text = user_input[len(p):].strip()
+            break
 
     # Play with the text.
     if 0 < len(text) < 3:
         text += ' (Try something longer next time)'
     
     elif text:
-        option = randint(1, 24)
-        substitutions = {'A': '4', 'a': '@', 'B': '8', 'b': '6', 'E': '3', 'i': '1',
-                         'I': '1', 'l': '1', 'L': '1', 'O': '0', 'o': '0', 'S': '5',
-                         's': '5', 'Z': '2', 'z': '2'}
-        
+        substitutions = {
+            'A': '4', 'a': '@', 'B': '8', 'b': '6', 'E': '3', 'i': '1', 'I': '|',
+            'l': '1', 'L': '1', 'O': '0', 'o': '0', 'S': '5', 's': '5', 'Z': '7',
+            'z': '7', 'H': '#', 'C': '(', 'G': '(+', 'g': 'j', 'x': '×', '8': '&',
+        }
+
+        answers = [
+            text,
+            '...',
+            '?????',
+            'Bla bla bla...',
+            'Yada yada...',
+            'Bibbidi bobbidi boo!',
+            'Echo vanished with the winds.',
+            'Echo lost between the mountains.',
+            "I don't repeat nonsense :P",
+            "Wakanda nonsense is this?",
+            "What does that mean already?",
+            "Hmmm...",
+            "Shhh... I can't hear anything.",
+            "I CAN'T HEAR YOU BECAUSE OF THE FIERCE WIND!",
+            "Sorry, what did you say?",
+            "Speak clearly, I heard: Mmmmmmmm....",
+            "I only heard the whistling of wind.",
+            'I refuse to repeat that :l',
+            'Why did you type that?',
+            'I will pretend I didn’t see that.',
+            'This echo requires more wind speed.',
+            "I'll give you something better:\n\n" + choice(LANGS).replace(' (Translation:', '\n(Translation:').replace(' # ', '\n# '),
+            f'You said: “{text}” ... I think ;-;',
+            f'Analyzing: “{text}”\nNothing special in it.',
+            'Shouting: ' + text.upper() + ('!' if not text.endswith('!') else ''),
+            'Whispering: ' + text.lower(),
+            text.title() + ' (Feels nicer now, right?)',
+            text.capitalize() + ' (I capitalized the first letter for you :3)',
+            text.swapcase(),
+            text + ' (really?)',
+            text[::-1],
+            ' '.join(text),
+            ' '.join(text.replace(' ', '')),
+            ''.join(c * randint(1, 3) if not c.isspace() else c for c in text).strip() + ('...' if not text.endswith('...') else ''),
+            ''.join(c if not c.isspace() else '' for c in text),
+        ]
+
+        length = len(answers)
+        option = randint(1, length+5)
+
         match option:
-            case 1: pass
-            case 2: text = text.upper()
-            case 3: text = text.lower()
-            case 4: text = text.title()
-            case 5: text = text.capitalize()
-            case 6: text = text.swapcase()
-            case 7: text = text[::-1]
-            case 8: text = ' '.join(text)
-            case 9: text = text + ' (really?)'
-            case 10: text = f'You said: “{text}” ... I think ;-;'
-            case 11: text = 'I refuse to repeat that :l'
-            case 12: text = 'Why did you type that?'
-            case 13: text = 'I will pretend I didn’t see that.'
-            case 14: text = 'This echo requires more wind speed.'
-            case 15: text = f'Analyzing: “{text}”\nNothing special in it.'
-            case 16: text = '...'
-            case 17: text = '?????'
-            case 18: text = 'Bla bla bla...'
-            case 19: text = 'Yada yada...'
-            case 20: text = 'Bibbidi bobbidi boo!'
-            case 21: text = 'Echo vanished in the winds.'
-            case 22: text = 'Echo lost between the mountains.'
-            case 23:
+            case 1:
                 for k, v in substitutions.items(): text = text.replace(k, v)
-            case 24:
+
+            case 2:
                 for k, v in substitutions.items(): text = text.replace(v, k)
+
+            case 3:
+                # Shuffle all characters.
+                chars = list(text)
+                shuffle(chars)
+                text = ''.join(chars)
+
+            case 4:
+                # Shuffle all words.
+                words = text.split()
+                shuffle(words)
+                text = ' '.join(words)
+
+            case 5:
+                # Shuffle characters in words. Keep words order.
+                words = text.split()
+                text = ''
+                for word in words:
+                    word = list(word)
+                    shuffle(word)
+                    text += ''.join(word) + ' '
+
+                text = text.strip()
+
+            case c if c in range(6, length+6):
+                text = answers[option-6]
 
     else:
         text = 'You echoed… nothing.'
