@@ -1,5 +1,5 @@
 *) The secret
-This is just a quick puzzle to solve and get the password to open the
+This is just an entertaining puzzle to solve, and get the password to open the
 'Secret.zip' file.
 
 The secret isn't really worth the headache, but you know.. just for fun.
