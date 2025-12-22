@@ -3,9 +3,10 @@
 
 # Somebody told me:
 # My honest opinion, your project feels like:
-# “A CLI written by someone who enjoys messing with users — in a good way.”
+# “A CLI written by someone who enjoys messing with others — in a good way.”
 
-from settings import PURP
+from settings import *
+from time import sleep
 from typing import Callable
 from random import random, randint, uniform, choice, shuffle
 
@@ -881,10 +882,11 @@ QUOTES = [
     "To live is the rarest thing in the world most people exist.",
     "Sometimes I wish I was an octopus, so I could slap eight people at once.",
     "You have a brain. Use it.",
-    "Available to everyone, unremarkable.",
+    "Available to everyone... Unremarkable.",
     "As you get older three things happen. The first is your memory goes, and I can’t remember the other two.",
     "The answer is obvious once you stop asking.",
-    "Sometimes the bug is the feature.",
+    "Sometimes the issue is the feature.",
+    "A good thought will eventually expire while waiting to be used.", 
 ]
 
 FACTS = [
@@ -969,7 +971,7 @@ JOKES = [
     "I just finished writing a book about reverse psychology. Do not buy it.",
     "Being a functional adult is mostly just aggressively guessing what to do next.",
     "My therapist says I have a preoccupation with vengeance. We'll see about that.",
-    "After a year of going to therapy, my therapist and I are now both looking for a therapist.",
+    "After a year of going to psychotherapy, my therapist and I are now both looking for a therapist, because he was convinced by my perspective on life...",
     "If a poison expires, then it becomes more poisonous or less poisonous? (o.O)",
     "Cheese has holes.\nMore cheese = More holes.\nMore holes  = Less cheese.\nMore cheese = Less cheese (O.O)",
     "You are breathing involuntary; but now that you knew, you have to breath voluntary :P",
@@ -985,9 +987,35 @@ JOKES = [
     "Cheese has holes.\nMore cheese = More holes.\nMore holes  = Less cheese.\nMore cheese = Less cheese (O.O)",
     "You are breathing involuntary; but now that you knew, you have to breath voluntary :P",
     "I bought medicine for forgetfulness, but I don't remember where I put it.",
+    "My brain has two modes:\n“Let’s do this” and “Let’s lie down”.",
+    "I put my phone down to focus. Five minutes later I was focused on where my phone went.",
+    "I started the day with good intentions. They didn’t survive the afternoon.",
+    "I have a very healthy relationship with sleep. I miss it constantly.",
+    "I followed the laws until they began following me back.",
+    "My brain opened a new tab and forgot the original purpose.",
+    "The crazy idea waved confidently, then missed the exit.",
+    "I organized my chaos and now it’s just... disappointed.",
+    "My friend told me to stop impersonating a flamingo. I had to put my foot down.",
+    "Customer service must end. It is time for customer sacrifice!",
+    "I pick my eggs randomly to surprise them; they don't ever know who is next.",
+    "Hate when older people say 'you are too young to be tired'. Alright margaret you're too old to be alive, but here we are.",
+    
+
+    
+    "Inventor of fish sticks: but what to call them?\nGuy who named the meatball: what shape are they?",
+    "People at night: *chat and exchange love.*\nMe at night: *wondering whether to urinate now or leave it for morning.*",
+    "Morning people: *jump out of bed energized.*\nMe & Night owls: *question life choices at 2 AM.*",
+    "Cat: *chooses the keyboard over the bed.*\nMe: *tries to type.*\nCat: *decides my hands are better.*",
+    "Philosopher: *contemplates existence.*\nMe at 3 AM: *why did I start this Netflix series?*",
+    "Me: *steals the heart of a cute girl.*\nEveryone else in the surgery room: ;-;",
+    "Doctor: Oh! Who is this beautiful girl without a husband?\nThe girl: My husband was under your supervision in the surgery room!\nThe doctor: Oh yeah! That's it.",
+    
+    "I was out with my dog when a woman passed by and asked: 'Are you teaching him betrayal, or is he teaching you loyalty?' "
+    "I looked at her and unclipped the leash to teach her a lesson on running.",
 ]
 
 ADVICES = [
+    "Special commands like /quit or /show must always be prefixed with a backslash (/).",
     "Bored? Ask Gemini to tell you a realistic horror story (ಠ_ಠ)",
     "Feeling Bored? Play a text adventure with Gemini ^.^",
     "Boredom begun? Play 20-Questions game with Gemini!",
@@ -1327,7 +1355,7 @@ RIDDLES = [
         '✓': "White (it’s a polar bear at the North Pole)."
     },
     {
-        '?': "A town has two barbers only. One has a perfect haircut, the other a terrible one. Only one can cut your hair. Which barber do you choose? Beware of appearances.",
+        '?': "A town has two barbers only. One has a perfect haircut, the other a terrible one. Only one can cut your hair. Which barber do you choose? (Beware of appearances)",
         '✓': "Choose the barber with the terrible haircut — he must have cut the other barber’s hair."
     },    
     {
@@ -1572,7 +1600,13 @@ NONSENSE = [
         'Gravity’s Ice Nap', 'A Galaxy in a Teacup', 'The Geometry of Void',
         'Pumpernickel Purgatory', 'Breathing Diamonds', 'Twelve Ways to Breath',
         'Moon Juice', 'Making Potato from Air', 'Boiling the Wind', 'Flying Underground',
-        'Electric Soil', 'Elephants in the Air'
+        'Electric Soil', 'Elephants in the Air', 'Department of Maybe',
+        'Instructions for the Invisible', 'Square Root of a Sandwich',
+        'The Sound of Yellow', 'Horizontal Thunder', 'A Brief History of Tomorrow',
+        'The Committee of Unused Thoughts', 'Quantum Laundry', 'A Chair That Remembers',
+        'Polite Screaming', 'How to Fold a Shadow', 'The Library of Lost Pauses',
+        'Weather Forecast for Inside Your Head', 'Professional Daydreamer',
+        'The Alphabet After Z', 'A Pocket Full of Gravity',
     ],
     
     # Messages.
@@ -1590,6 +1624,16 @@ NONSENSE = [
     "Please do not feed the shadows; they are on a strict diet of Tuesday afternoons.",
     "Logic is a wreath of onions worn by a man who forgot how to sneeze.",
     "If the moon were made of spare ribs, would you eat it? I wouldn't. I’d use it to calibrate my invisible trombone.",
+    "The clock forgot what time it was and decided to become furniture.",
+    "Bananas are not afraid of the dark; they simply refuse to acknowledge it.",
+    "Somewhere, a triangle is pretending to be a bed to avoid responsibility.",
+    "A whisper shouted quietly in lowercase numbers.",
+    "Logic put on a hat and forgot why it entered the kitchen.",
+    "The floor creaked in a language only dust understands.",
+    "The chair looked at me with a borken hair.",
+    "Somewhere between blinking and breathing, a deer is flying inside a tree.",
+    "A reasonable thought was deeply considered, then dismissed.",
+    "The moment passed, tripped, and blamed the furniture."
     
     "买冬瓜\n"
     "- Translation: Buy a winter melon.\n"
@@ -1608,6 +1652,69 @@ NONSENSE = [
     "- Laughter        4 Gallons     Freeze until it turns into a triangle.\n"
     "- Yesterday       1 Pinch       Fold gently into a cloud.\n"
     "- The Letter '5'  As needed     Disguise it as a small shrub.",
+
+    "# Emergency Guide for Unexpected Thoughts:\n"
+    "- Do not panic.\n"
+    "- Panic anyway.\n"
+    "- Blame the chair nearest to you.\n"
+    "- Sit on the floor to establish dominance.",
+
+    "# Dictionary Entry (Official Source):\n"
+    "Flerm (masculine adverb):\n"
+    "The feeling you get when you open the fridge for no reason\n"
+    "and hope something new spawned out of respect for your unforgettable journey.",
+
+    "# User Manual for a Brain Thought:\n"
+    "1. Think it.\n"
+    "2. Forget it immediately.\n"
+    "3. Remember it at 3:17 AM.\n"
+    "4. Decide it was important.\n"
+    "5. Do nothing.",
+
+    "# Warning Label:\n"
+    "This sentence may contain traces of meaning.\n"
+    "Handle with mild confusion and a cup of something spicy.",
+    
+    "# How to Win an Argument with a Wall:\n"
+    "- State your point clearly.\n"
+    "- Stare intensely at a specific brick.\n"
+    "- If the wall remains silent, assume you have won.\n"
+    "- Walk away with a smug sense of architectural superiority.",
+
+    "# Weather Forecast for the Inner Mind:\n"
+    "- Morning: Heavy showers of 'What was I doing?'.\n"
+    "- Afternoon: 40% chance of imagining you are a lighthouse.\n"
+    "- Evening: Severe gusts of nostalgia for a place that doesn't exist.\n"
+    "- Overnight: Possible sightings of the color named 'spaghetti'.",
+
+    "# Table of Irrelevant Contents:\n"
+    "- Section 1: Why the sky isn't wooden.\n"
+    "- Section 12: The art of sneezing in Morse code.\n"
+    "- Section Q: A detailed map of where your socks go in the dryer.\n"
+    "- Section 4.6: How to apologize to a toasted bagel.\n"
+    "... Turn the page to see details ...",
+
+    "# Exercise Routine for the Spiritually Lazy:\n"
+    "1. Deep Breath. Make dure your heart stops working.\n"
+    "2. Eye Roll (3 sets of 10 repetitions whenever someone says 'window').\n"
+    "3. The Nap Sprint (Run to the kitchen as if you're late for a shower).",
+
+    "# Field Guide to Invisible Birds:\n"
+    "* Species:             Call:                Habitat:\n"
+    "- The Sigh-Catcher     (Silence)            Inside old sweaters.\n"
+    "- The Tuesday-Warbler  A low hum            Behind the 'Close Door' button.\n"
+    "- The Panic-Pigeon     Aggressive Typing    3 minutes before a deadline.",
+
+    "# Safety Instructions for a Black Hole:\n"
+    "- Please keep all limbs inside the dimension at all times.\n"
+    "- If you see yourself coming back, do not make eye contact.\n"
+    "- If the void stares back, offer it a digestive biscuit.\n"
+    "- Exit is through the gift shop (which is inside the hole).",
+
+    "# Definition of 'Glarp':\n"
+    "Glarp (verb/noun):\n"
+    "The specific sound a wet sponge makes when it realizes\n"
+    "it’s being used to dig something it fundamentally disagrees with on a rock."
 ]
 
 def language(box: Callable):
@@ -1629,7 +1736,7 @@ def language(box: Callable):
 
 def mathematics(box: Callable):
     """Bring back the headache with some math!"""
-    import re
+    from re import findall, sub
     from math import (pi, isfinite, copysign, cos, sin, tan, sqrt, pow, exp,
                       factorial, log10 as log, log as ln)
 
@@ -1737,8 +1844,8 @@ def mathematics(box: Callable):
         
         # Prepare the solution.
         regex = r'\(-?\d+(?:\.\d+)?\)|-?\d+(?:\.\d+)?'  # For both integers & floating points.
-        numbers = re.findall(regex, line)
-        opr = re.sub(regex, '¤', line)
+        numbers = findall(regex, line)
+        opr = sub(regex, '¤', line)
         replacement = {'×': '*', '÷': '/', '^': '**',
                        '|¤|': 'abs(¤)', 'e**¤': 'exp(¤)', '¤!': 'factorial(¤)', '√¤': 'sqrt(¤)', 'π': 'pi'}
         for k, v in replacement.items(): opr =  opr.replace(k, v)
@@ -1833,7 +1940,6 @@ def mathematics(box: Callable):
 
 def riddle(box: Callable, wrapper: Callable, open_path: Callable, show_solution=False, user_input=''):
     """Show a random riddle with its solution."""
-    from settings import CYN, MAX_CONSOLE_WIDTH
     from os import path
     
     # Show the solution of previous riddle.
@@ -1862,16 +1968,13 @@ def riddle(box: Callable, wrapper: Callable, open_path: Callable, show_solution=
     title = choice(['RIDDLE', 'PUZZLE', 'MYSTERY'])
     msg = '# Query:\n' + question + '\n\n'
     msg += CYN + '# The answer is written in:\n' + CYN + full_path + '\n'
-    msg += CYN + "(Type 'r-answer' or 'riddle-answer' to see it)"
+    msg += CYN + "(Type /r-answer or /riddle-answer to see it)"
    
     # Show it.
     box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
     
 def fake_scan(console_status: Callable, separator: Callable):
     """Confuse the user with fake scannning messages >:)"""
-    from settings import YLW, RED, BL, GR, RS, SPINNER
-    from time import sleep
-    
     # Prepare messages.
     messages_1 = [
         'Scanning your disk. This might take a minute...',
@@ -2091,13 +2194,17 @@ def fake_scan(console_status: Callable, separator: Callable):
 
 def overthink(box: Callable):
     """Funny state of minds while overthinking."""
-    i = choice([0, 6, 12])
-    ideas = '\n'.join(OVERTHINK[i:i+6])
+    ideas = ''
+    for n in range(6):
+        i = choice([0, 6, 12])
+        ideas += OVERTHINK[i:i+6][n] + '\n'
+    
+    ideas = ideas.strip()
     box(ideas, title='OVERTHINKING', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
 
 def false_echo(user_input: str, box: Callable):
     """Repeat what the user just typed, or maybe not."""
-    for p in  ['f-echo', 'false-echo']:
+    for p in  ['f-echo', 'false-echo', '/f-echo', '/false-echo']:
         if user_input.lower().startswith(p):
             text = user_input[len(p):].strip()
             break
@@ -2126,6 +2233,7 @@ def false_echo(user_input: str, box: Callable):
             "Wakanda nonsense is this?",
             "What does that mean already?",
             "Hmmm...",
+            "zZzZ...",
             "Shhh... I can't hear anything.",
             "I CAN'T HEAR YOU BECAUSE OF THE FIERCE WIND!",
             "Sorry, what did you say?",
@@ -2139,7 +2247,7 @@ def false_echo(user_input: str, box: Callable):
             f'You said: “{text}” ... I think ;-;',
             f'Analyzing: “{text}”\nNothing special in it.',
             'Shouting: ' + text.upper() + ('!' if not text.endswith('!') else ''),
-            'Whispering: ' + text.lower(),
+            'Whispering: ' + text.lower() + ('...' if not text.endswith('...') else ''),
             text.title() + ' (Feels nicer now, right?)',
             text.capitalize() + ' (I capitalized the first letter for you :3)',
             text.swapcase(),
@@ -2309,23 +2417,22 @@ def draw_ascii_image(str_name: str, title:str, color: str, console_width: int, v
     # Display it.
     box(frame, title=title, border_color=color, text_color=color, clear_line=1)
 
-def draw_ascii_animation(str_name: str, title: str, color: str, interval: int, stop_frames: int, control_cursor: Callable, clear_lines: Callable):
+def draw_ascii_animation(str_name: str, title: str, color: str, interval: int, stop_frames: int,
+                         separator: Callable, control_cursor: Callable, clear_lines: Callable):
     """Play an ASCII animation based on a string of frames."""
-    from settings import USE_ANSI, RS
-    from time import sleep
-    
     # Preparation.
     string = globals()[str_name]
     frames = string.split('!')
     frames = [frame.lstrip('\n').rstrip() for frame in frames if frame.strip()]
     height = frames[1].count('\n') + 1
+    separator(before='\n', color=color)
     print(color + title)
     control_cursor('hide')
     
     # Play the animation.
     try:
         while True:
-            for frame in frames[:-3]:
+            for frame in frames[:-stop_frames]:
                 print(frame)
                 sleep(interval)
                 clear_lines(height)
@@ -2335,5 +2442,6 @@ def draw_ascii_animation(str_name: str, title: str, color: str, interval: int, s
     except KeyboardInterrupt:
         clear_lines(height)
         if not USE_ANSI: print()
-        print(choice(frames[-3:]) + RS)
+        print(choice(frames[-stop_frames:]) + RS)
         control_cursor('show')
+        separator(color=color)

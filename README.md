@@ -15,7 +15,7 @@
 
 ## Gemini Py-CLI
 A simple Gemini CLI program, written in Python. <br>
-Used for simple conversations. <br>
+Used for simple conversations; and for fun too :) <br>
 + Tested using Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br>
 + <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
 + **Screenshots can be seen [here](SCREENSHOTS.md).**

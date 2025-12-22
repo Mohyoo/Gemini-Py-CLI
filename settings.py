@@ -1,6 +1,3 @@
-import os
-import sys
-
 # When editing this, respect each option's possible values, otherwise prepare yourself
 # for a crash (Better to keep a backup of this file).
 # If you are confused with some settings, try 'settings_editor.py' or visit the wiki:
@@ -8,6 +5,8 @@ import sys
 # You can always ask in my GitHub page, or even request a future change. I'll try hard to
 # keep everything easily accessible.
 
+import os
+import sys
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
@@ -20,6 +19,7 @@ SUGGEST_FROM_WORDLIST = True                 # Suggest words while typing, in a 
 SUGGEST_FROM_WORDLIST_FUZZY = False          # This completion mode is more forgiving, you get approximate suggestions instead of accurate ones.
 SUGGESTIONS_LIMIT = 5                        # The number of suggestions to show while typing a prompt.
 PROMPT_HISTORY_ON = True                     # Every user prompt is saved to a file and can be quickly reused in future chats.
+PROMPT_HISTORY_MEMORY = False                # If True, prompt history will be saved in momory only, rather than in a file.
 SAVED_INFO = True                            # If True, user input will be saved with highest priority if he starts it with 'remember'.
 USE_COLORS = True                            # Better to disable colors for old consoles.
 USE_ANSI = True                              # Like USE_COLORS, but more general, once OFF, all ANSI escape codes will be disabled (Recommended to be False for old consoles).
@@ -98,7 +98,7 @@ if USE_COLORS and USE_ANSI:
     WAIT_1 = 'green'        # Used when waiting for Gemini response.
     WAIT_2 = 'cyan'         # Used with Gemini response's 2nd attempt.
 else:
-    CYN = RED = GR = YLW = YLW_2 = BL = GRY = PURP = BRW = UL = BD = RS = GEM_BG = ''
+    CYN = RED = GR = YLW = YLW2 = BL = GRY = PURP = BRW = UL = BD = RS = GEM_BG = ''
     PROMPT_BG = PROMPT_FG = WAIT_1 = WAIT_2 = 'white'
 
 
@@ -120,17 +120,18 @@ FAREWELLS_MESSAGES = [      # Messages displayed upon existing.
     "The chat is lost, but the war has just begun!",
     "Abracadabra! Poof...\nWait, who turned off the lights?",
     "Adios, Amigo! The terminal awaits your return.",
+    "Bibbidi Bobbidi Boo!",
+    "Artryoos. Metryoos. Zeetoos!",
     "¡Nos vemos, cocodrilo!\n(See you, crocodile :P)",
     "¡Hasta la vista!\n(See you around :D)",
     "Au revoir!",
-    "Bibbidi Bobbidi Boo!",
+    "Cya!",
     "Ciao! I'm outta here faster than an Italian pizza disappearing at a party.",
-    f"Okay okay, calm down, he only ended the chat...\nBUT AAAAARGHHH...!!!\n"
-    f"{RED}System Rage Error occurred;{RS}{GR} Cya!",
+    f"Whoa there, easy! He just ended the chat, no need to panic...\nBUT WAIT... AAAAARGHHH...!!!\n"
+    f"{RED}System Rage Error occurred!{RS}{GR} Catch you later!",
     "Ladies & Gentlemen, we are closing.",
     "Just a quick fake cleanup...\nOK, all done!",
     "Okay ladies, time to go home.",
-    "Artryoos. Metryoos. Zeetoos!",
     "Remember, it's all about: Hakuna Matata!\n(No Worries :)",
     "Ma chère mademoiselle, it is with deepest pride and greatest pleasure that we proudly present... The End.",
     "¡Ándale! ¡Ándale! ¡Arriba! ¡Arriba! Yeehaw!",
@@ -162,13 +163,13 @@ FAREWELLS_MESSAGES = [      # Messages displayed upon existing.
     "May your logic be sound and your keys be clean.",
     "Go forth and query, friend.",
     "I'll be here. You know where to find me.",
-    "Enjoy the silence. Goodbye.",
+    "Enjoy the silence...",
     "Until our paths cross again.",
     "Stay curious, stay connected.",
     "Farewell, may the consequences be ever in your favor.",
     "Ce sont les mots que j'aime dans un chat! Au revoir!",
     "I will stay here... if you ever turn back.",
-    "Sometimes it's too difficult, yet.. it's not impossible ;)",
+    "Sometimes it's too difficult, yet.. still feasible ;)",
     "Keep it up gentleman, the world needs your work.",
     "The waves are calling.. Captain.",
     "Every step, no matter how small, moves you forward ;)",
@@ -247,7 +248,7 @@ Before replying to any message, follow these mandatory formatting rules:
 SUPPRESS_CATCHED_ERRORS = False             # Never show catched errors.
 SUPPRESS_UNEXPECTED_ERRORS = False          # Never show fatal errors, let it be a sudden exit.
 NO_QUESTIONS = False                        # Never ask the user for anything, and use the default option.
-SERIOUS = False                             # No jokes, good for old people.
+SERIOUS_MODE = False                        # No jokes; everything becomes serious & boring. Good for old people.
 
 
 # Hotkeys
@@ -265,10 +266,12 @@ class Hotkeys():
     else:
         SUBMIT = ('enter',)                                         # Press ENTER alone, or ENTER-KEY2 if available.
         NEW_LINE = (('escape', 'enter'), 'c-space', 's-tab', 'c-j') # Press ESCAPE-ENTER or CTRL-SPACE or SHIFT-TAB or CTRL-J.
-
+    
+    CANCEL = 'escape'               # Press ESC.
     TAB = 'tab'                     # Press TAB.
     UNDO = 'c-z'                    # Press CTRL-Z at once.
     REDO = 'c-y'                    # Press CTRL-Y at once.
+    COPY = 'c-a'                    # Press CTRL-A at once.
     INTERRUPT = ('c-c', 'c-d')      # Press CTRL-C or CTRL-D.
     # F_KEYS here is a dictionary of 'F' key to press & its fellow 'command' (commands are listed in the help menu).
     F_KEYS = {'f1': 'show', 'f2': 'copy', 'f3': 'restart', 'f4': 'quit', 'f5': 'discard', 'f6': 'kill', 'f7': 'help'}
@@ -280,4 +283,6 @@ console_width = min(MAX_CONSOLE_WIDTH, os.get_terminal_size().columns - 1)    # 
 if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if VIM_EMACS_MODE not in (None, 'vim', 'emacs'): VIM_EMACS_MODE = None
 if INPUT_HIGHLIGHT == 'None': INPUT_HIGHLIGHT = None
+if not USE_ANSI: USE_COLORS = False
+if not USE_COLORS: INPUT_HIGHLIGHT = None
 if not sys.stdout.isatty(): USE_ANSI = False            # Hide ANSI characters if the output is being redirected to a non-terminal location.

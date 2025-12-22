@@ -73,6 +73,13 @@ GENERAL_SETTINGS = [
         'type': 'bool',
     },
     {
+        'key': 'PROMPT_HISTORY_MEMORY',
+        'desc': "If True, prompt history will be saved in memory only, rather\n" + SPACE +
+                "than in a file; so it's forgotten at exit.\n",
+        'default': 'True',
+        'type': 'bool',
+    },
+    {
         'key': 'ENTER_NEW_LINE',
         'desc': 'If True, Enter inserts a new line, and Esc-Enter submits;\n' + SPACE +
                 'if False, Enter submits, and Esc-Enter inserts a new line.\n',
@@ -88,7 +95,8 @@ GENERAL_SETTINGS = [
     },
     {
         'key': 'BOTTOM_TOOLBAR',
-        'desc': "Show a handy bottom toolbar for a quick reference.",
+        'desc': "Show a handy bottom toolbar for a quick reference." + SPACE +
+                "* Might cause glitches with CTRL-C.\n",
         'default': 'True',
         'type': 'bool',
     },
@@ -101,7 +109,8 @@ GENERAL_SETTINGS = [
     {
         'key': 'SUGGEST_FROM_WORDLIST',
         'desc': "Suggest words while typing, in a menu popup, based on a wordlist\n" + SPACE +
-                "file (Default file: word_suggestion.txt).\n",
+                "file (Default file: word_suggestion.txt).\n" + SPACE +
+                "* Press ESC to dismiss the menu.\n",
         'default': 'True',
         'type': 'bool',
     },
@@ -235,15 +244,15 @@ ADVANDED_SETTINGS = [
 ]
 
 separator_1 = """
-   +--------------------+
-   | General Settings   |
-   +--------------------+
+   ┌────────────────────┐
+   │ General Settings   │
+   └────────────────────┘
 """
 
 separator_2 = """
-   +--------------------+
-   | Advanced Settings  |
-   +--------------------+
+   ┌────────────────────┐
+   │ Advanced Settings  │
+   └────────────────────┘
 """
 
 # ==========================================
@@ -354,7 +363,7 @@ def load_menu(lines: list):
         ))
     
     # Exit option.
-    choices.append(questionary.Separator('=' * 22))
+    choices.append(questionary.Separator('─' * 22))
     choices.append(questionary.Choice("< EXIT >", value="EXIT"))
     
     return choices

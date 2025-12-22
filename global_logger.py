@@ -52,6 +52,10 @@ class StdoutTee:
         # 1. Write to the real console immediately.
         self.original_stdout.write(s)
         
+        # Only log from the main thread if LOG_ROOT is False
+        if not LOG_ROOT and threading.current_thread() != threading.main_thread():
+            return  # skip logging for other threads
+        
         # Acquire the lock. No other thread can proceed past here until this thread releases it.
         with self._lock:
             # Accumulate in buffer.

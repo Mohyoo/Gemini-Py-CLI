@@ -201,3 +201,5 @@ forget
 open
 saved-info
 stats
+quick-chat
+copy-prompt
