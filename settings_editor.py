@@ -76,7 +76,7 @@ GENERAL_SETTINGS = [
         'key': 'PROMPT_HISTORY_MEMORY',
         'desc': "If True, prompt history will be saved in memory only, rather\n" + SPACE +
                 "than in a file; so it's forgotten at exit.\n",
-        'default': 'True',
+        'default': 'False',
         'type': 'bool',
     },
     {
@@ -205,6 +205,13 @@ ADVANDED_SETTINGS = [
         'key': 'DYNAMIC_CONSOLE_WIDTH',
         'desc': "If True, console text width will be automatically updated upon\n" + SPACE +
                 "a terminal size change, to fit in it.\n",
+        'default': 'True',
+        'type': 'bool',
+    },
+    {
+        'key': 'VALIDATE_INPUT',
+        'desc': "Check your prompt while typing & show warnings about its length.\n" + SPACE +
+                "* Should be False if it's slow or causes gliches.\n",
         'default': 'True',
         'type': 'bool',
     },

@@ -962,7 +962,11 @@ FACTS = [
     "Farts contain flammable gases: Methane (CH₄), Oxygen (O₂), Hydrogen (H₂), Nitrogen (N₂), Carbon Dioxide (CO₂), Hydrogen Sulfide (H₂S). "
     "There is a risk of explosion if these gases accumulate in a confined space and then come into contact with an open flame or spark :1",
     "Math: the only subject where you can have problems and still be happy!",
-    "If you stretch all the DNA in one human body, it would be about 200 billion km long. While the distance between Earth and Sun ≈ 150 million km. So DNA is enough to reach from Earth to the Sun and back about 670~1300 times!",
+    "If you stretch all the DNA in one human body, it would be about 200 billion km long. While the distance between Earth and Sun ≈ 150 million km. "
+    "So DNA is enough to reach from Earth to the Sun and back about 670~1300 times!",
+    "Fact: Deer sleep for short periods throughout the day and night, often in a safe hidden spot. They enter a state called 'resting', where they remain alert to potential dangers while dozing.",
+    "Horses sleep both lying down and standing up. They rest in short naps throughout the day and night, but they need to lie down for deeper REM (Rapid Eye Movement) sleep, "
+    "during which their eyes move while sleeping (This phase happens to humans too); horses typically do it for a few hours at a time.",
 ]
 
 JOKES = [
@@ -999,9 +1003,13 @@ JOKES = [
     "Customer service must end. It is time for customer sacrifice!",
     "I pick my eggs randomly to surprise them; they don't ever know who is next.",
     "Hate when older people say 'you are too young to be tired'. Alright margaret you're too old to be alive, but here we are.",
+    "Sometimes I feel like I have my life together and them I'm like: Wow, that was a really nice 45 seconds.",
+    "First 12 months of the year are always the hardest...",
+    "People who take naps are the real heroes. It takes courage to wake up twice in one day.",
+    "I reached that age where I'm bothered by lights ON, open doors, louse noises and guests...",
+    "Stopped using exlamation points in work messages so coworkers know they've killed my spirit.",
     
-
-    
+    "Coworker: how come you never smile at work?\nMe: they don't pay me for that.",
     "Inventor of fish sticks: but what to call them?\nGuy who named the meatball: what shape are they?",
     "People at night: *chat and exchange love.*\nMe at night: *wondering whether to urinate now or leave it for morning.*",
     "Morning people: *jump out of bed energized.*\nMe & Night owls: *question life choices at 2 AM.*",
@@ -1107,12 +1115,14 @@ ACHIEVEMENTS = [
     "You know how to use the keyboard & mouse.",
     "You typed 'achievement'.",
     "You did nothing productive.",
-    "You found an secret command.",
+    "You found a secret command that is no longer secret. Thanks to you.",
     "Only 100% of people can type 'achievement'.",
     "Only a few people can see this.",
     "You are in the top 1% of people running this app.",
     "Staring at the screen without blinking.",
     "You are reading this long and verbose text that serves no purpose other than wasting your time reading it. That’s an achievement in patience.",
+    "You've reached the level of being an absolutely normal person. Your hard work has been recognized.",
+    "You are now like anyone else.",
     "Being alive.",
     f"You are the first one to read this after ({randint(2, 100)}) people.",
 ]

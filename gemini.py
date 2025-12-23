@@ -35,9 +35,6 @@ try:
     import httpx
     import textwrap
     import traceback
-    from functools import partial
-    from datetime import datetime
-    from math import isclose as math_isclose
     from webbrowser import open as browser_open
     from random import randint, choice, uniform
     from time import sleep, perf_counter, time as now_time
@@ -59,6 +56,12 @@ try:
     from rich.markdown import Markdown
     
     # Conditional.
+    if os.name == 'posix':
+        import termios
+        
+    elif os.name == 'nt':
+        import msvcrt
+        
     if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
         from google.genai.types import GenerateContentConfig
     
@@ -84,7 +87,10 @@ try:
     if RESPONSE_EFFECT:
         from rich.text import Text 
         from rich.segment import Segment
-        from rich.console import RenderResult 
+        from rich.console import RenderResult
+    
+    if RESPONSE_EFFECT == 'char fast':
+        from math import isclose as math_isclose
 
     if INPUT_HIGHLIGHT == 'special':
         from prompt_toolkit.lexers import PygmentsLexer
@@ -100,6 +106,12 @@ try:
     
     if BOTTOM_TOOLBAR:
         from prompt_toolkit.formatted_text import HTML
+    
+    if INFORMATIVE_RPROMPT:
+        from datetime import datetime
+    
+    if DYNAMIC_CONSOLE_WIDTH: 
+        from functools import partial
     
 except ImportError as error:
     print(f'\nError: {error}.')
@@ -121,6 +133,7 @@ if GLOBAL_LOG_ON:
 
     # Initialize.
     setup_global_console_logger(ignore_strings=OMIT_LIST)
+
 
 
 
@@ -172,7 +185,26 @@ class Keys():
             self.wrap_input_buffer(event)
             self.save_history(original_text)
             event.cli.exit(result=original_text)
-      
+            
+        # @key_bindings.add('c-v', eager=True)
+        # def _(event):
+            # """
+            # Handle text paste instead of the terminal.
+            # To avoid long text lag and help show long paste warning.
+            # """
+            # # Stop the terminal from also handling Ctrl+V
+            # event.prevent_default()
+    
+            # # Access the clipboard.
+            # clipboard = event.cli.clipboard
+            # text = clipboard.get_data().text
+            # if not text: return
+            
+            # # Insert it into the current buffer, split it to avoid lag.
+            # j = 100
+            # chunks = [text[i:i+j] for i in range(0, len(text), j)]
+            # for chunk in chunks: event.current_buffer.insert_text(chunk)
+        
         @key_bindings.add(self.TAB)
         def _(event):
             """Insert a tab (4 spaces)."""
@@ -184,12 +216,17 @@ class Keys():
             Undo the last change.
             Only pushes a state to the REDO stack if the text actually changes.
             """
+            # Undo.
             buffer = event.cli.current_buffer
             before_undo = buffer.text
             buffer.undo()
+            
+            # Store the change for fallback redo.
             after_undo = buffer.text
             if before_undo != after_undo:
                 self.redo_fallback_stack.append(before_undo)
+                length = len(self.redo_fallback_stack)
+                if length >= 100: self.redo_fallback_stack.pop(0)
             
         @key_bindings.add(self.REDO)
         def _(event):
@@ -200,10 +237,10 @@ class Keys():
             # Try the original method.
             buffer = event.cli.current_buffer
             before_redo = buffer.text
-            event.cli.current_buffer.redo()
+            buffer.redo()
+            after_redo = buffer.text
             
             # If it doesn't work, try the secondary method (Less reliable but fine).
-            after_redo = buffer.text
             if (before_redo == after_redo) and (self.redo_fallback_stack):
                 restored_text = self.redo_fallback_stack.pop()
                 buffer.text = restored_text
@@ -325,16 +362,6 @@ class Keys():
         
         return min_len
 
-class LengthValidator(Validator):
-    """A class used to check/validate user input while typing."""
-    def validate(self, document):
-        """Warn the user if he types a very long prompt, but still allow him to submit."""
-        if len(document.text) > 4096:
-            raise ValidationError(
-                message='WARNING! You typed more than 4000 characters!',
-                # cursor_position=len(document.text) # Keep cursor at the end
-            )
-
 class GeminiWorker(Thread):
     """
     - A worker thread to run & control the asynchronous (unblockable) API call.
@@ -357,71 +384,6 @@ class GeminiWorker(Thread):
         except Exception as error:
             self.exception = error
 
-class ConsoleWidthUpdater(Thread):
-    """
-    A separate thread class to monitor the console width variable and keep it lower
-    than MAX_CONSOLE_WIDTH, which itself is lower than the real terminal size.
-    So always ensure: console_width <= MAX_CONSOLE_WIDTH < real terminal size.
-    """
-    def __init__(self):
-        """Initialize attributes."""
-        super().__init__()
-        self.daemon = True
-        self.interval = 0.2
-        self._stop_event = ThreadEvent()
-        self.lock = ThreadLock()
-        self.last_terminal_width = terminal_size().columns
-        
-        # Store the original copy of modiffied functions to avoid infinite nesting of partial objects.
-        self.original_cprint = cprint
-        self.original_separator = separator
-        self.original_box = box
-
-    def update_console_width(self):
-        """Keep updating the console width as the terminal size changes."""
-        global console_width, glitching_text_width, console, temp_console, \
-               cprint, separator, box
-        
-        # Do nothing if the terminal width didn't change.
-        current_width = terminal_size().columns
-        if (current_width == self.last_terminal_width) and \
-           (console_width <= MAX_CONSOLE_WIDTH < current_width):
-            return
-
-        # Also do nothing if terminal became wider, but our console width is already in its MAX value.
-        elif (current_width > self.last_terminal_width) and \
-             (console_width == MAX_CONSOLE_WIDTH):
-            self.last_terminal_width = current_width
-            return
-
-        # Start Updating.
-        self.last_terminal_width = current_width
-
-        # Update the console width variable and its derived variables & attributes.
-        console_width = min(MAX_CONSOLE_WIDTH, current_width - 1)
-        glitching_text_width = min(console_width, 79)
-        console.width = console_width
-        temp_console.width = console_width
-
-        # Update functions' default width parameter.
-        cprint = partial(self.original_cprint, wrap_width=console_width-1)
-        separator = partial(self.original_separator, width=console_width)
-        box = partial(self.original_box, width=console_width)
-
-    def run(self):
-        """
-        The main loop for the continuous check of the console width variable.
-        Sleep for a short duration to avoid the CPU busy-loop (spin-wait).
-        """
-        # Loop until the stop event is set or the main program exits (daemon).
-        while not self._stop_event.is_set():
-            with self.lock: self.update_console_width()
-            sleep(self.interval)
-
-    def stop(self):
-        """Method to externally signal the thread to stop."""
-        self._stop_event.set()
-
 class SoftRestart(Exception):
     """Custom exception to signal a safe restart of the chat session."""
     pass
@@ -441,6 +403,119 @@ if SUGGEST_FROM_WORDLIST:
             for i, completion in enumerate(all_completions):
                 if i >= SUGGESTIONS_LIMIT: break
                 yield completion
+
+if DYNAMIC_CONSOLE_WIDTH:  
+    class ConsoleWidthUpdater(Thread):
+        """
+        A separate thread class to monitor the console width variable and keep it lower
+        than MAX_CONSOLE_WIDTH, which itself is lower than the real terminal size.
+        So always ensure: console_width <= MAX_CONSOLE_WIDTH < real terminal size.
+        """
+        def __init__(self):
+            """Initialize attributes."""
+            super().__init__()
+            self.daemon = True
+            self.interval = 0.2
+            self._stop_event = ThreadEvent()
+            self.lock = ThreadLock()
+            self.last_terminal_width = terminal_size().columns
+            
+            # Store the original copy of modiffied functions to avoid infinite nesting of partial objects.
+            self.original_cprint = cprint
+            self.original_separator = separator
+            self.original_box = box
+
+        def update_console_width(self):
+            """Keep updating the console width as the terminal size changes."""
+            global console_width, glitching_text_width, console, temp_console, \
+                   cprint, separator, box
+            
+            # Do nothing if the terminal width didn't change.
+            current_width = terminal_size().columns
+            if (current_width == self.last_terminal_width) and \
+               (console_width <= MAX_CONSOLE_WIDTH < current_width):
+                return
+
+            # Also do nothing if terminal became wider, but our console width is already in its MAX value.
+            elif (current_width > self.last_terminal_width) and \
+                 (console_width == MAX_CONSOLE_WIDTH):
+                self.last_terminal_width = current_width
+                return
+
+            # Start Updating.
+            self.last_terminal_width = current_width
+
+            # Update the console width variable and its derived variables & attributes.
+            console_width = min(MAX_CONSOLE_WIDTH, current_width - 1)
+            glitching_text_width = min(console_width, 79)
+            console.width = console_width
+            temp_console.width = console_width
+
+            # Update functions' default width parameter.
+            cprint = partial(self.original_cprint, wrap_width=console_width-1)
+            separator = partial(self.original_separator, width=console_width)
+            box = partial(self.original_box, width=console_width)
+
+        def run(self):
+            """
+            The main loop for the continuous check of the console width variable.
+            Sleep for a short duration to avoid the CPU busy-loop (spin-wait).
+            """
+            # Loop until the stop event is set or the main program exits (daemon).
+            while not self._stop_event.is_set():
+                with self.lock: self.update_console_width()
+                sleep(self.interval)
+
+        def stop(self):
+            """Method to externally signal the thread to stop."""
+            self._stop_event.set()
+
+if VALIDATE_INPUT:
+    class LengthValidator(Validator):
+        """A class used to check/validate user input while typing."""
+        last_length = 0
+        last_diff = 0
+        
+        def validate(self, document):
+            """
+            Warn the user if he types a very long prompt, but still allow him to submit.
+            Warn only for a short while to avoid annoyance & glitches.
+            """
+            # Get terminal size & text length.
+            columns, rows = terminal_size()
+            marker = len(line_continuation)
+            x = columns - marker - 1    # (x) = one line of the text field, without the margins.
+            text = document.text
+            characters = len(text)
+            
+            # Warn about long paste.
+            difference = characters - self.last_length
+            self.last_length = characters
+            self.last_diff = difference
+            if difference > 48 and self.last_diff > 48:
+                self.warn('Long paste! Might feel slow & hide upper text...')
+            
+            # Warn about N° of characters.
+            if 4096 <= characters <= 4256:
+                self.warn('WARNING! You typed more than 4000 characters!')
+
+            # Calculate occupied terminal rows (text lines + rprompt + toolbar).
+            used_rows = 0
+            lines = text.splitlines()
+            for line in lines:
+                used_rows += len(line) // x + 1
+            
+            if BOTTOM_TOOLBAR: used_rows += 3
+            if INFORMATIVE_RPROMPT: used_rows += 1
+            # raise ValidationError(message=f'{used_rows}/{rows}')
+   
+            # Warn if terminal space isn't enough for text.
+            if 0 <= used_rows - rows <= 3:
+                self.warn('Long prompt! Some text is now hidden (You can use CTRL+X-CTRL+E)')
+        
+        def warn(self, message):
+            """Leave this validator & Show a warning."""
+            raise ValidationError(message=message)
 
 if INPUT_HIGHLIGHT == 'special':
     class CustomLexer(RegexLexer):
@@ -670,10 +745,6 @@ if INPUT_HIGHLIGHT == 'special':
                     (r'.', WHITE),
                 ]
             }
-
-
-
-
 
 
 
@@ -1970,7 +2041,10 @@ def copy_to_clipboard(text: str, msg='Text copied to clipboard!', color=GR):
     box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color, clear_line=1)
 
 def copy_last_prompt():
-    """Copy the user's last sent message to cpliboard."""
+    """
+    Copy the user's last sent message to cpliboard.
+    Used with 'copy-prompt' command.
+    """
     # Last prompt is already stored in memory as 'last_prompt'.
     global last_prompt
     msg = 'Your last prompt was copied to clipboard!'
@@ -2296,6 +2370,18 @@ if EXTERNAL_EDITOR:
 
 
 # 6) Part V: Main Functions ------------------------------------------------------------------------
+def flush_input():
+    """
+    Flush the input buffer to avoid accidental hotkeys registration.
+    E.g: If the user presses F1 outside prompt(), prompt() may still catch it
+         when it's back ON.
+    """
+    if os.name == "posix":    # Linux/Mac.
+        termios.tcflush(sys.stdin, termios.TCIFLUSH)
+        
+    elif os.name == "nt":     # Windows.
+        while msvcrt.kbhit(): msvcrt.getch()
+
 def serialize_history():
     """Convert active chat history into json format to save it later."""
     global messages_to_remove
@@ -2635,102 +2721,6 @@ def setup_chat():
     restarting = False
     return client, chat
 
-def get_user_input():
-    """
-    Handle prompt_toolkit input and catch Ctrl-C/Ctrl-D.
-    NOTE: User input will never be stripped or modified, it'll be sent as-is,
-    we only use a stripped copy of it to beautify the output.
-    """
-    global default_prompt, prompt_placeholder, last_prompt
-    
-    # Store last user prompt.
-    try: last_prompt = user_input
-    except: pass
-    
-    # Set input options.
-    # 1. RPrompt.
-    rprompt = None
-    if INFORMATIVE_RPROMPT:
-        current_time = datetime.now().strftime('%I:%M %p')
-        margin = ' ' * (terminal_size().columns - console_width - 1)
-        rprompt = f"[{GEMINI_MODEL} | {current_time}]{margin}"
-        
-    # 2. Hotkeys editing mode.
-    if VIM_EMACS_MODE == 'vim': editing_mode = EditingMode.VI
-    elif VIM_EMACS_MODE == 'emacs': editing_mode = EditingMode.EMACS
-    else: editing_mode = None
-    
-    # 3. Others.
-    error_handler = lambda *args, **kwargs: log_caught_exception() if ERROR_LOG_ON else None
-    bottom_free_space = SUGGESTIONS_LIMIT + 1 if SUGGEST_FROM_WORDLIST else False
-    
-    # Log.
-    if GLOBAL_LOG_ON:
-        if rprompt: in_time_log(' ' * (console_width - len(rprompt)) + rprompt + '\n')
-        else: in_time_log(' ')
-        in_time_log(' You >  ' + str(prompt_placeholder[0][1]))
-
-    # Stream input.
-    try:
-        # Just a reference - Possible prompt() args:
-        # ['message', 'history', 'editing_mode', 'refresh_interval', 'vi_mode', 'lexer', 'completer'
-        # , 'complete_in_thread', 'is_password', 'key_bindings', 'bottom_toolbar', 'style', 
-        # 'color_depth', 'cursor', 'include_default_pygments_style', 'style_transformation', 
-        # 'swap_light_and_dark_colors', 'rprompt', 'multiline', 'prompt_continuation', 'wrap_lines', 
-        # 'enable_history_search', 'search_ignore_case', 'complete_while_typing', 
-        # 'validate_while_typing', 'complete_style', 'auto_suggest', 'validator', 'clipboard', 
-        # 'mouse_support', 'input_processors', 'placeholder', 'reserve_space_for_menu', 
-        # 'enable_system_prompt', 'enable_suspend', 'enable_open_in_editor', 'tempfile_suffix', 
-        # 'tempfile', 'show_frame', 'default', 'accept_default', 'pre_run', 'set_exception_handler', 
-        # 'handle_sigint', 'in_thread', 'inputhook']
-        
-        user_input = prompt(
-            # Main options.
-            style=prompt_style,
-            message=prompt_message,
-            placeholder=prompt_placeholder,
-            prompt_continuation='....... ',
-            multiline=True,
-            wrap_lines=True,
-            key_bindings=keys,
-            
-            # Other options.
-            default=default_prompt if default_prompt else '',
-            mouse_support=MOUSE_SUPPORT,
-            history=history,
-            auto_suggest=auto_suggest,
-            completer=word_completer,
-            complete_while_typing=bool(word_completer),
-            complete_in_thread=bool(word_completer),
-            rprompt=rprompt,
-            bottom_toolbar=prompt_bottom_toolbar,
-            editing_mode=editing_mode,
-            enable_open_in_editor=EXTERNAL_EDITOR,
-            reserve_space_for_menu=bottom_free_space,
-            search_ignore_case=True,
-            lexer=lexer,
-            validator=input_validator,
-            set_exception_handler=error_handler,
-            # tempfile=tempfile,
-            # pre_run=,
-        )
-        
-    except Interruption:
-        farewell()
-        return None
-    
-    finally:
-        # If prompt options changed (because of open_path() function), restore them.
-        if default_prompt: default_prompt = None
-        if 'Ask Gemini...' not in repr(prompt_placeholder): prompt_placeholder = FormattedText([(PROMPT_FG, 'Ask Gemini...')])
-        
-    # Return input.
-    if user_input.strip():
-        return user_input
-    else:
-        clear_lines(2)
-        return None
-
 def interpret_commands(user_input: str):
     """If the user input is a special command, execute it."""
     global discarding, history, default_prompt
@@ -2988,6 +2978,103 @@ def interpret_extra_commands(command: str):
         case _:
             return True
 
+def get_user_input():
+    """
+    Handle prompt_toolkit input and catch Ctrl-C/Ctrl-D.
+    NOTE: User input will never be stripped or modified, it'll be sent as-is,
+    we only use a stripped copy of it to beautify the output.
+    """
+    global last_prompt, default_prompt, prompt_placeholder
+    
+    # Store last user prompt.
+    try: last_prompt = user_input
+    except: pass
+    
+    # Set input options.
+    # 1. RPrompt.
+    rprompt = None
+    if INFORMATIVE_RPROMPT:
+        current_time = datetime.now().strftime('%I:%M %p')
+        margin = ' ' * (terminal_size().columns - console_width - 1)
+        rprompt = f"[{GEMINI_MODEL} | {current_time}]{margin}"
+        
+    # 2. Hotkeys editing mode.
+    if VIM_EMACS_MODE == 'vim': editing_mode = EditingMode.VI
+    elif VIM_EMACS_MODE == 'emacs': editing_mode = EditingMode.EMACS
+    else: editing_mode = None
+    
+    # 3. Others.
+    error_handler = lambda *args, **kwargs: log_caught_exception() if ERROR_LOG_ON else None
+    bottom_free_space = SUGGESTIONS_LIMIT + 1 if SUGGEST_FROM_WORDLIST else False
+    
+    # Log.
+    if GLOBAL_LOG_ON:
+        if rprompt: in_time_log(' ' * (console_width - len(rprompt)) + rprompt + '\n')
+        else: in_time_log(' ')
+        in_time_log(' You >  ' + str(prompt_placeholder[0][1]))
+
+    # Stream input.
+    flush_input()
+    try:
+        # Just a reference - Possible prompt() args:
+        # ['message', 'history', 'editing_mode', 'refresh_interval', 'vi_mode', 'lexer', 'completer'
+        # , 'complete_in_thread', 'is_password', 'key_bindings', 'bottom_toolbar', 'style', 
+        # 'color_depth', 'cursor', 'include_default_pygments_style', 'style_transformation', 
+        # 'swap_light_and_dark_colors', 'rprompt', 'multiline', 'prompt_continuation', 'wrap_lines', 
+        # 'enable_history_search', 'search_ignore_case', 'complete_while_typing', 
+        # 'validate_while_typing', 'complete_style', 'auto_suggest', 'validator', 'clipboard', 
+        # 'mouse_support', 'input_processors', 'placeholder', 'reserve_space_for_menu', 
+        # 'enable_system_prompt', 'enable_suspend', 'enable_open_in_editor', 'tempfile_suffix', 
+        # 'tempfile', 'show_frame', 'default', 'accept_default', 'pre_run', 'set_exception_handler', 
+        # 'handle_sigint', 'in_thread', 'inputhook']
+        
+        user_input = prompt(
+            # Main options.
+            style=prompt_style,
+            message=prompt_message,
+            placeholder=prompt_placeholder,
+            prompt_continuation=line_continuation,
+            multiline=True,
+            wrap_lines=True,
+            key_bindings=keys,
+            
+            # Other options.
+            default=default_prompt if default_prompt else '',
+            mouse_support=MOUSE_SUPPORT,
+            history=history,
+            auto_suggest=auto_suggest,
+            completer=word_completer,
+            complete_while_typing=bool(word_completer),
+            complete_in_thread=bool(word_completer),
+            rprompt=rprompt,
+            bottom_toolbar=prompt_bottom_toolbar,
+            editing_mode=editing_mode,
+            enable_open_in_editor=EXTERNAL_EDITOR,
+            reserve_space_for_menu=bottom_free_space,
+            search_ignore_case=True,
+            lexer=lexer,
+            validator=input_validator,
+            set_exception_handler=error_handler,
+            # tempfile=tempfile,
+            # pre_run=,
+        )
+        
+    except Interruption:
+        farewell()
+        return None
+    
+    finally:
+        # If prompt options changed (because of open_path() function), restore them.
+        if default_prompt: default_prompt = None
+        if 'Ask Gemini...' not in repr(prompt_placeholder): prompt_placeholder = FormattedText([(PROMPT_FG, 'Ask Gemini...')])
+        
+    # Return input.
+    if user_input.strip():
+        return user_input
+    else:
+        clear_lines(2)
+        return None
+
 def get_response():
     """Send the user input to AI and wait to receive the response."""
     try:
@@ -3191,6 +3278,7 @@ def define_global_objects():
     messages_to_remove_steps = []                   # Used to undo messages deletion.
     default_prompt = None                           # An initial prompt the user gets when asked for input, mostly not used.
     last_prompt = None                              # Used to store last user prompt, to copy it if requested.
+    line_continuation = '....... '                  # Line break marker.
     if RESPONSE_EFFECT: current_response_line = 0   # Used to clean output upon blocking a response.
     if VIM_EMACS_MODE: editor_variable = None       # This will change to the current EDITOR variable in the system, if available.
 
@@ -3264,10 +3352,13 @@ def define_global_objects():
         'rprompt': PROMPT_FG, 
         'prompt-continuation': PROMPT_FG, 
         'bottom-toolbar': f'bg:{PROMPT_FG} fg: black',
+        'validation-error': 'fg:yellow bold',
         # 'completion-menu': 'bg: cyan fg: white',
     }) 
     
-    input_validator = LengthValidator()                    # To check user input before submitting.
+    input_validator = None                                 # To check user input before submitting.
+    if VALIDATE_INPUT: input_validator = LengthValidator()     
+    
     keys = Keys().get_key_bindings()                       # The custom keyboard shortcuts.
     # from prompt_toolkit.key_binding import merge_key_bindings
     # from prompt_toolkit.key_binding.defaults import load_key_bindings

@@ -25,6 +25,7 @@ USE_COLORS = True                            # Better to disable colors for old 
 USE_ANSI = True                              # Like USE_COLORS, but more general, once OFF, all ANSI escape codes will be disabled (Recommended to be False for old consoles).
 INFORMATIVE_RPROMPT = True                   # Short informational text at top right of the prompt field.
 BOTTOM_TOOLBAR = True                        # Show a handy toolbar for a quick reference.
+INPUT_HIGHLIGHT = 'special'                  # Syntax highlighting for the user prompt; 'special' is our built-in option, but 'python' may also be a good option.
 SPINNER = 'line'                             # Shown while waiting, can be: dots, line, bounce, moon, star, runner... (In CMD type 'python -m rich.spinner' for more).
 RESPONSE_EFFECT = 'line'                     # Effect while displaying response, can be:
                                                  # None for no animation.
@@ -42,7 +43,7 @@ ALWAYS_LOAD_CHAT = True                      # If True, chat history will be alw
 STARTUP_API_CHECK = False                    # Disable for a slightly faster loading, and for the ability to enter the chat offline.
 MAX_CONSOLE_WIDTH = 85                       # Max N° characters to print per line, only effective if the terminal size is bigger than this fixed value, should always be < terminal width.
 DYNAMIC_CONSOLE_WIDTH = True                 # If True, console width will be automatically updated upon a terminal size change.
-INPUT_HIGHLIGHT = 'special'                  # Syntax highlighting for the user prompt; 'special' is our built-in option, but 'python' may also be a good option.
+VALIDATE_INPUT = True                        # Check user prompt while typing & show warnings about text length.
 SAVE_INPUT_ON_CLEAR = False                  # Save the prompt to history when the user clears its prompt with Ctrl-C.
 SAVE_INPUT_ON_STOP = False                   # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys.
 EXTERNAL_EDITOR = True                       # Allow you to edit your prompt in an external editor by pressing CTRL-X-CTRL-E in a row.
@@ -144,7 +145,7 @@ FAREWELLS_MESSAGES = [      # Messages displayed upon existing.
     "Seriously man? The excitement has just started!",
     "I'm watching you 0-0",
     "I see you :3",
-    "Cleaning crime scene...\nAlright! ready to escape.",
+    "Cleaning crime scene...\nAlright! Ready to escape.",
     "Normal mode OFF, switching to Agent Six...",
     "There'll be no mercy next time, I promise...",
     "Let's celebrate a party just for no reason!",
