@@ -26,6 +26,7 @@ Used for simple conversations (and for fun too :) <br>
 ----
 
 ## Features
+* Free program & API access. Built for the free-tier users, but also works for users with a billing account or paid subscription (not tested on paid accounts).
 * Made primarily for low-spec or slow internet users; Worked even with a dead connection (< 15 kb/s); Yeah! but with only short messages (< 100 characters).
 * Privacy respect, the program doesn't send, hold or manipulate any personal data or sent-messages; your ***API key*** is only yours; even with logs (which can be turned OFF), the program removes file paths and user prompts, keeping only what is absolutely needed.
 * Content can be saved locally in many forms, even if the program crashes:
@@ -44,7 +45,7 @@ Used for simple conversations (and for fun too :) <br>
 ## Quick Start
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
-2. Install required libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary`
+2. Install required libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary tksvg resvg_py`
 3. Clone this repository; or download the [ZIP](https://github.com/Mohyoo/Gemini-Py-CLI/archive/refs/heads/main.zip) file, extract it, and enter the extracted folder.
 4. Unleash Gemini Py-CLI! open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading)
 
@@ -58,7 +59,7 @@ Used for simple conversations (and for fun too :) <br>
 1. Press `Ctrl-Space` to add a new line to your prompt.
 2. Press `Ctrl-C` to clear/cancel a prompt, stop a response, or quit
 the program.
-3. Type `help-2` for more details (No *bla bla bla...* just 1 min reading).
+3. Type `help` for more details (No *bla bla bla...* just 1 min reading).
 
 ## Wiki
 Visit the [Wiki](https://github.com/Mohyoo/Gemini-Py-CLI/wiki) for some valuable information.
@@ -74,11 +75,11 @@ will appear as a plain text.
 
 ## To Do
 1. Handle big markdown tables so that they appear readable.
-2. Add the ability to upload files.
-3. Refactor the code and make it human readable (A total mess is here).
-5. Enhance response speed (If already possible).
-6. Handle more stupid errors.
-7. And more... I'm suffering.
+2. Refactor the code and make it human readable (A total mess is here).
+3. Enhance response speed (If already possible).
+4. Handle more stupid errors.
+5. Change the world...
+6. And more... I'm suffering.
 
 ---
 ***Useless Notes:*** <br>

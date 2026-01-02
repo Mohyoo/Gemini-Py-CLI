@@ -28,6 +28,7 @@ LOG_LEVEL_INT = LOG_LEVEL_MAP[LOG_LEVEL_NAME]   # The level number/value.
 LOG_FORMAT = '%(asctime)s - T:%(threadName)-10s - %(levelname)-8s | %(message)s'
 LOG_ROOT = False            # If True, it'll log main thread + other threads + libraries debugging messages.
 LINE_SEPARATOR = '-'        # If LOG_ROOT is ON, this'll add a separator if the thread or the module who's logging changes.
+OMIT_LIST = []              # A list of substrings; if a line contains one, it is skipped.
 
 original_stdout = None      # Used to keep console output intact.
 console_logger = None       # An instance of the logger.
@@ -39,7 +40,10 @@ class StdoutTee:
     & also preventing multiple threads conflicts while writing.
     """
     def __init__(self, original_stdout_stream, logger_instance, ignore_strings=None):
-        """Initialize attributes."""
+        """
+        Initialize attributes.
+        * ignore_strings: A list of substrings. If a line contains one, it is skipped.
+        """
         self.original_stdout = original_stdout_stream
         self.logger = logger_instance
         self.ignore_strings = ignore_strings if ignore_strings else []
@@ -163,7 +167,7 @@ class SeparatingFileHandler(logging.FileHandler):
         super().emit(record)
 
 
-def setup_global_console_logger(log_file=GLOBAL_LOG_FILE, ignore_strings=None):
+def setup_global_console_logger(log_file=GLOBAL_LOG_FILE, ignore_strings=OMIT_LIST):
     """
     Sets up the logger.
     * ignore_strings: A list of substrings. If a line contains one, it is skipped.

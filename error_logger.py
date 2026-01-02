@@ -5,6 +5,7 @@ import traceback
 from settings import ERROR_LOG_ON, ERROR_LOG_FILE
 # (+1) import inside log_unhandled_exception().
 
+
 # Logging Configuration.
 LOG_FORMAT = (
     "%(asctime)s - %(levelname)s!"
@@ -15,6 +16,7 @@ LOG_FORMAT = (
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 LOG_SEPARATOR = '-' * 100
 STACK_LEVEL = 4     # The N° of steps the logger goes back to see the origine of the error.
+
 
 def setup_logger():
     """Configures the logging system."""
@@ -87,15 +89,15 @@ def log_unhandled_exception(exc_type, exc_value, exc_traceback):
     Custom handler called automatically by Python for all uncaught exceptions.
     It logs the error details and then exits the program gracefully.
     """
-    from gemini import save_chat_history_json, cprint, separator
+    from gemini import save_chat_history_json, console_width
     # Save the chat seesion.
     save_chat_history_json()
 
     # Print error to console (standard behavior, with some customization).
-    separator(before='\n')
-    cprint('Unexpected error, program terminated!\n')
+    print('\n' + '─' * console_width)
+    print('Unexpected error, program terminated!\n')
     sys.__excepthook__(exc_type, exc_value, exc_traceback)
-    separator()
+    print('─' * console_width)
     
     # Use 'traceback.format_exception' to get the full traceback structure.
     traceback_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)

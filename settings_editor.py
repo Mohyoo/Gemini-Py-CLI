@@ -19,6 +19,7 @@ if not os.path.exists(FILE_PATH):
 # ==========================================
 # 2. CONFIGURATION
 # ==========================================
+# Adding or removing a list of options, means editing load_menu() & main().
 # Define exactly what you want to be able to edit here.
 # - 'key': The variable name in settings.py
 # - 'desc': A friendly description to show in the menu
@@ -26,43 +27,25 @@ if not os.path.exists(FILE_PATH):
 # - 'type': 'bool', 'select', 'text' or 'digit'
 # - 'options': A list of choices (only required if type is 'select')
 
-SPACE = ' ' * 13        # Used instead of tab inside settings descriptions.
+SPACE = ' ' * 13   # Used instead of tab inside settings descriptions.
 
-GENERAL_SETTINGS = [
-    {
-        'key': 'GEMINI_API_KEY',
-        'desc': 'Your Google API key; you can get it easily from:\n             '
-                'https://aistudio.google.com/app/api-keys\n',
-        'default': 'YOUR_API_KEY_HERE (Just a placeholder)',
-        'type': 'text',
-    },
-    {
-        'key': 'GEMINI_MODEL',
-        'desc': 'The AI model to use; advanced models are more expensive and\n' + SPACE +
-                'have less API limits. These are aliases to the latest versions\n' + SPACE +
-                'For more specific models, see the WIKI.\n',
-        'default': 'gemini-flash-latest',
-        'type': 'select',
-        'options': ['gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'],
-    },
+PRIVACY_SETTINGS = [
     {
         'key': 'MAX_HISTORY_MESSAGES',
-        'desc': 'Maximum N° of chat history messages to keep; set it low\n' + SPACE +
-                'to save internet bandwidth & loading/saving time.\n',
-        'default': '512',
+        'desc': 'Maximum N° of chat history turns to keep; set it low to save\n' + SPACE +
+                'RPM/TPM limits, internet bandwidth & loading/saving time.\n' + SPACE +
+                '* (1) turn = Your message + AI response.\n' + SPACE +
+                '* RPM: Requests Per Minute.\n' + SPACE +
+                '* TPM: Tokens Per Minute.\n' + SPACE +
+                '* Set it to (0) if you want Gemini to forget every message\n' + SPACE +
+                '  immediately.\n',
+        'default': '48',
         'type': 'digit',
     },
     {
         'key': 'NO_HISTORY_LIMIT',
         'desc': 'When True, chat history will never be truncated.',
         'default': 'False',
-        'type': 'bool',
-    },     
-    {
-        'key': 'SAVED_INFO',
-        'desc': "If True, your prompt will be saved with highest priority\n" + SPACE +
-                "if you start it with 'remember' (Use 'forget' to delete it).\n",
-        'default': 'True',
         'type': 'bool',
     },
     {
@@ -79,6 +62,60 @@ GENERAL_SETTINGS = [
         'default': 'False',
         'type': 'bool',
     },
+    {
+        'key': 'SAVED_INFO',
+        'desc': "If True, your prompt will be saved with highest priority\n" + SPACE +
+                "if you start it with 'remember' (Use 'forget' to delete it).\n",
+        'default': 'True',
+        'type': 'bool',
+    },
+    {
+        'key': 'LOAD_CHAT_MODE',
+        'desc': "Whether to load or forget chat history at startup; options:\n" + SPACE +
+                "- 'ask' to always ask you.\n" + SPACE +
+                "- 'load' to always load last chat without asking.\n" + SPACE +
+                "- 'forget' to always forget last chat without asking.\n",
+        'default': 'load',
+        'type': 'select',
+        'options': ['ask', 'load', 'forget'],
+    },
+    {
+        'key': 'ERROR_LOG_ON',
+        'desc': "To log errors to a file, console output won't be affected.",
+        'default': 'True',
+        'type': 'bool',
+    },
+    {
+        'key': 'GLOBAL_LOG_ON',
+        'desc': "To log the entire console output to a file + optionally hidden\n" + SPACE +
+                "debugging info; it gets cleared on each launch; visual console\n" + SPACE +
+                "output won't be affected.\n",
+        'default': 'False',
+        'type': 'bool',
+    },
+]
+
+GENERAL_SETTINGS = [
+    {
+        'key': 'GEMINI_API_KEY',
+        'desc': 'Your Google API key; you can get it easily from:\n             '
+                'https://aistudio.google.com/app/api-keys\n',
+        'default': 'YOUR_API_KEY_HERE (Just a placeholder)',
+        'type': 'text',
+    },
+    {
+        'key': 'GEMINI_MODEL',
+        'desc': "The AI model to use; advanced models are more expensive and\n" + SPACE +
+                "have less API limits. For more specific models, see the WIKI.\n" + SPACE +
+                "* (flash-lite) versions are the most generous.\n" + SPACE +
+                "* Suffix (latest) is an alias to the newest version.\n" + SPACE +
+                "* Models other than (2.5-flash-lite or 2.5-flash) may require\n" + SPACE +
+                "  linking a billing account even for Free Tier! So fallback to.\n" + SPACE +
+                "  (gemini-2.5-flash-lite) if you face issues.\n",
+        'default': 'gemini-2.5-flash-lite',
+        'type': 'select',
+        'options': ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-pro-latest'],
+    },  
     {
         'key': 'ENTER_NEW_LINE',
         'desc': 'If True, Enter inserts a new line, and Esc-Enter submits;\n' + SPACE +
@@ -102,7 +139,8 @@ GENERAL_SETTINGS = [
     },
     {
         'key': 'SUGGEST_FROM_HISTORY',
-        'desc': "Use your prompt history for inline word completion (SLOW).",
+        'desc': "Use your prompt history (if it's ON) for inline word completion\n" + SPACE +
+                "(SLOW).\n",
         'default': 'False',
         'type': 'bool',
     },
@@ -176,13 +214,24 @@ GENERAL_SETTINGS = [
         'default': 'True',
         'type': 'bool',
     },
+    {
+        'key': 'FUN_MODE',
+        'desc': 'If True, you may see some clean jokes or funny statements while\n' + SPACE +
+                'using the program. If False, everything becomes serious\n' + SPACE +
+                "& professional, but boring (Good for adults) - but you'll lose\n" + SPACE +
+                "access to some secrets\n" + SPACE +
+                '* Just for entairtainment, no bad intentions.\n',
+        'default': 'True',
+        'type': 'bool',
+    },
 ]
 
 ADVANDED_SETTINGS = [
     {
-        'key': 'ALWAYS_LOAD_CHAT',
-        'desc': "If True, chat history will be always loaded without asking you.\n",
-        'default': 'True',
+        'key': 'DEV_MODE',
+        'desc': "If True, you'll get access to the developper commands, like...\n" + SPACE +
+                "(Shhh, they are secret)\n",
+        'default': 'False',
         'type': 'bool',
     },
     {
@@ -191,6 +240,40 @@ ADVANDED_SETTINGS = [
                 "enter the chat offline.\n",
         'default': 'False',
         'type': 'bool',
+    },
+    {
+        'key': 'FILE_COMPRESSION',
+        'desc': "This will save tokens, but Gemini will pay less attention to\n" + SPACE +
+                "details in your attached files.\n",
+        'default': 'False',
+        'type': 'bool',
+    },
+    {
+        'key': 'TEXT_COMPRESSION',
+        'desc': "Compress your prompt & save tokens by shortening it.\n" + SPACE +
+                "E.g: AI will understand 'Hi, prblm app...' instead of 'Hi\n" + SPACE +
+                "Gemini, I have this problem in my app...'\n" + SPACE +
+                "* True = ON, False = OFF.\n" + SPACE +
+                "* This will remove stop words & replace long expressions with\n" + SPACE +
+                "  shortcuts, causing a little bit of inaccuracy.\n" + SPACE +
+                "* If OFF, your text will never be compressed unless you use\n" + SPACE +
+                "  /compress command\n" + SPACE +
+                "* If On, your text will always be compressed unless you use\n" + SPACE +
+                "  /no-compress command (E.g: to keep important messages intact).\n",
+        'default': 'False',
+        'type': 'bool',
+    },
+    {
+        'key': 'COMPRESSION_LANGUAGE',
+        'desc': "Whether (TEXT COMPRESSION) is ON or you use /compress command,\n" + SPACE +
+                "this will be the default language used to compress your prompt.\n" + SPACE +
+                "* Choose a language code (e.g: ar -> Arabic); if you ever write\n" + SPACE +
+                "  a prompt in a different language, no error will occur, but\n" + SPACE +
+                "  no compression either.\n",
+        'default': 'en',
+        'type': 'select',
+        'options': ['ar', 'bg', 'ca', 'cz', 'da', 'nl', 'en', 'fi', 'fr', 'de', 'hi', 'hu', 'id', 
+                    'it', 'nb', 'pl', 'pt', 'ro', 'ru', 'sk', 'es', 'sv', 'tr', 'uk', 'vi']
     },
     {
         'key': 'MAX_CONSOLE_WIDTH',
@@ -209,9 +292,24 @@ ADVANDED_SETTINGS = [
         'type': 'bool',
     },
     {
+        'key': 'CASE_SENSITIVITY',
+        'desc': "If True, commands like /copy must be in lower case to be executed.\n" + SPACE +
+                "If False, commands become more forgiving, so you can type\n" + SPACE +
+                "/COPY or /CoPy instead of /copy.\n",
+        'default': 'True',
+        'type': 'bool',
+    },
+    {
         'key': 'VALIDATE_INPUT',
         'desc': "Check your prompt while typing & show warnings about its length.\n" + SPACE +
                 "* Should be False if it's slow or causes gliches.\n",
+        'default': 'True',
+        'type': 'bool',
+    },
+    {
+        'key': 'HIDE_LONG_INPUT',
+        'desc': "If you type a long prompt, its last half will be hidden to\n" + SPACE +
+                "beautify & clean the console.\n",
         'default': 'True',
         'type': 'bool',
     },
@@ -222,41 +320,36 @@ ADVANDED_SETTINGS = [
         'type': 'bool',
     },
     {
-        'key': 'ERROR_LOG_ON',
-        'desc': "To log errors to a file, console output won't be affected.",
-        'default': 'True',
-        'type': 'bool',
-    },
-    {
-        'key': 'GLOBAL_LOG_ON',
-        'desc': "To log the entire console output to a file + optionally hidden\n" + SPACE +
-                "debugging info, it gets cleared on each launch; visual console\n" + SPACE +
-                "output won't be affect.\n",
-        'default': 'False',
-        'type': 'bool',
-    },
-    {
         'key': 'SAVE_INPUT_ON_CLEAR',
-        'desc': "Save your prompt to history when you clear it with Ctrl-C.",
+        'desc': "Save your prompt to history when you clear it with Ctrl-C\n" + SPACE +
+                "(If prompt-history is ON).\n",
         'default': 'False',
         'type': 'bool',
     },
     {
         'key': 'SAVE_INPUT_ON_STOP',
         'desc': "Save your prompt to history when you stop it with Ctrl-C\n" + SPACE +
-                "or F-Keys.\n",
+                "or F-Keys (If prompt-history is ON).\n",
         'default': 'False',
         'type': 'bool',
     },
 ]
 
+ALL_SETTINGS = PRIVACY_SETTINGS + GENERAL_SETTINGS + ADVANDED_SETTINGS
+
 separator_1 = """
+   ┌────────────────────┐
+   │ Privacy Settings   │
+   └────────────────────┘
+"""
+
+separator_2 = """
    ┌────────────────────┐
    │ General Settings   │
    └────────────────────┘
 """
 
-separator_2 = """
+separator_3 = """
    ┌────────────────────┐
    │ Advanced Settings  │
    └────────────────────┘
@@ -347,9 +440,18 @@ def load_menu(lines: list):
         value='README',
         # disabled=True
     ))
+    # Privacy settings.
     choices.append(questionary.Separator(separator_1.strip()))
+    for item in PRIVACY_SETTINGS:
+        current_val = find_current_value(lines, item['key'])
+        # Format: "VARIABLE  [Current Value]".
+        choices.append(questionary.Choice(
+            title=f"{item['key']:<27} [{str(current_val)}]",
+            value=item['key']
+        ))
     
     # General settings.
+    choices.append(questionary.Separator(separator_2.strip()))
     for item in GENERAL_SETTINGS:
         current_val = find_current_value(lines, item['key'])
         # Format: "VARIABLE  [Current Value]".
@@ -358,9 +460,8 @@ def load_menu(lines: list):
             value=item['key']
         ))
         
-    choices.append(questionary.Separator(separator_2.strip()))
-    
     # Advanced settings.
+    choices.append(questionary.Separator(separator_3.strip()))
     for item in ADVANDED_SETTINGS:
         current_val = find_current_value(lines, item['key'])
         # Format: "VARIABLE [Current Value]".
@@ -372,7 +473,6 @@ def load_menu(lines: list):
     # Exit option.
     choices.append(questionary.Separator('─' * 22))
     choices.append(questionary.Choice("< EXIT >", value="EXIT"))
-    
     return choices
 
 def main():
@@ -392,21 +492,30 @@ def main():
     while True:
         # 1. Main screen.
         os.system('cls' if os.name == 'nt' else 'clear')
-        print('=' * 79)
-        print(f"{' ' * 23} Simple Editor for '{FILE_PATH}'")
-        print('=' * 79 + '\n')
+        print('┌' + '─' * 58 + '┐')
+        print(f"│{' ' * 13} Simple Editor for '{FILE_PATH}'{' ' * 13}│")
+        print('└' + '─' * 58 + '┘\n')
 
         # 2. Show Menu.
         lines = read_file_lines()
         choices = load_menu(lines)
         
         selected_key = questionary.select(
-            "Select a setting to change:",
+            message="Select a setting to change:",
             choices=choices,
-            use_shortcuts=True,
-            qmark="⚙️",
-            style=style,
             default=last_selected_key,
+            style=style,
+            qmark="⚙️",
+            pointer='>',
+            use_arrow_keys=True,
+            use_emacs_keys=True,
+            mouse_support=True,
+            use_search_filter=True,
+            show_selected=True,
+            use_shortcuts=False,
+            use_indicator=False,
+            show_description=False,
+            use_jk_keys=False,
         ).ask()
         
         # 3. Handle special options.
@@ -431,7 +540,7 @@ def main():
             break
 
         # 4. Find the config for selected item.
-        config = next(c for c in GENERAL_SETTINGS + ADVANDED_SETTINGS if c['key'] == selected_key)
+        config = next(c for c in ALL_SETTINGS if c['key'] == selected_key)
         current_val = find_current_value(lines, selected_key)
         
         print(f"\nEditing: {selected_key}")

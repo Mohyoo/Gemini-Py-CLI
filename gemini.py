@@ -1,3 +1,7 @@
+# I'll try to stick to the "Golden Rule" of Coding:
+# "If the user can already do it easily, and automating it adds 50 lines of code
+#  and a new metadata file, skip it."
+
 # 1) Part I: Initialization ------------------------------------------------------------------------
 if __name__ == '__main__':
     # Loading Screen.
@@ -17,7 +21,7 @@ try:
     if ERROR_LOG_ON: from error_logger import log_caught_exception, LOG_SEPARATOR
     if GLOBAL_LOG_ON: from global_logger import setup_global_console_logger, in_time_log
 
-except ImportError as error:
+except (ImportError, ModuleNotFoundError) as error:
     print(f'\nError: {error}.')
     print('Reinstall the program to restore the missing file.')
     quit(1)
@@ -35,16 +39,21 @@ try:
     import httpx
     import textwrap
     import traceback
+    from tkinter import filedialog
+    from stop_words import get_stop_words
+    from shlex import split as shlex_split
     from webbrowser import open as browser_open
     from random import randint, choice, uniform
+    from mimetypes import guess_type as guess_mime_type
     from time import sleep, perf_counter, time as now_time
-    from shutil import copy as copy_file, move as move_file
     from pyperclip import PyperclipException, copy as clip_copy
     from threading import Thread, Event as ThreadEvent, Lock as ThreadLock
+    from shutil import rmtree as remove_dir, copy as copy_file, move as move_file
     from subprocess import Popen as NewProcess, CREATE_NEW_CONSOLE as NEW_CONSOLE_FLAG
     from httpcore import RemoteProtocolError, ConnectError, ConnectTimeout, ReadTimeout
     from prompt_toolkit import prompt
     from prompt_toolkit.styles import Style
+    from prompt_toolkit.filters import has_completions
     from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.formatted_text import FormattedText
     from prompt_toolkit.validation import Validator, ValidationError
@@ -56,10 +65,10 @@ try:
     from rich.markdown import Markdown
     
     # Conditional.
-    if os.name == 'posix':
+    if OPERATING_SYSTEM == 'posix':
         import termios
         
-    elif os.name == 'nt':
+    elif OPERATING_SYSTEM == 'nt':
         import msvcrt
         
     if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
@@ -112,8 +121,8 @@ try:
     
     if DYNAMIC_CONSOLE_WIDTH: 
         from functools import partial
-    
-except ImportError as error:
+      
+except (ImportError, ModuleNotFoundError) as error:
     print(f'\nError: {error}.')
     print("Use 'pip' to install the missing modules.")
     print("E.g: open CMD & type: pip install httpx rich")
@@ -122,17 +131,6 @@ except ImportError as error:
 except (KeyboardInterrupt, EOFError):
     quit(0)
 
-
-# Prepare the global logger.
-if GLOBAL_LOG_ON:
-    # Define the visual clutter to hide from global log.
-    OMIT_LIST = [
-        # "Keys: (UP/DOWN)",
-        # "Commands: (quit/exit)",
-    ]
-
-    # Initialize.
-    setup_global_console_logger(ignore_strings=OMIT_LIST)
 
 
 
@@ -162,6 +160,9 @@ class Keys():
     UNDO = Hotkeys.UNDO
     REDO = Hotkeys.REDO
     COPY = Hotkeys.COPY
+    UPLOAD = Hotkeys.UPLOAD
+    RAW_FILE = Hotkeys.RAW_FILE
+    UPLOAD_FOLDER = Hotkeys.UPLOAD_FOLDER
     F_KEYS = Hotkeys.F_KEYS
 
     # Define variables.
@@ -178,11 +179,13 @@ class Keys():
             - Pass the stripped input to buffer for a cleaner output.
             - Save prompt to history.
             - Submits the original input.
+            - Hide some of the input if it's too long.
             * 'eager=True' ensures this binding takes precedence.
             """
             original_text = event.cli.current_buffer.text
             self.trim_input_buffer(event)
             self.wrap_input_buffer(event)
+            if HIDE_LONG_INPUT: self.hide_long_text(event)
             self.save_history(original_text)
             event.cli.exit(result=original_text)
             
@@ -204,6 +207,28 @@ class Keys():
             # j = 100
             # chunks = [text[i:i+j] for i in range(0, len(text), j)]
             # for chunk in chunks: event.current_buffer.insert_text(chunk)
+        
+        # @key_bindings.add('c-x')
+        # def _(event):
+            # """Handle CTRL-X to cut the whole current line if there is no selected text."""
+            # buffer = event.cli.current_buffer
+            
+            # # 1. If user has selected text, do the normal 'Cut'
+            # if buffer.selection_state:
+                # data = buffer.cut_selection()
+                # event.cli.clipboard.set_data(data)
+                # return
+
+            # # 2. If no selection, cut the last line
+            # lines = buffer.text.splitlines()
+            # if lines:
+                # last_line = lines.pop()
+                # # Copy to clipboard
+                # clip_copy(last_line)
+                # # Update buffer
+                # buffer.text = "\n".join(lines)
+                # # Move cursor to end
+                # buffer.cursor_position = len(buffer.text)  
         
         @key_bindings.add(self.TAB)
         def _(event):
@@ -261,10 +286,9 @@ class Keys():
                     
             except:
                 if ERROR_LOG_ON: log_caught_exception()
-                buffer.insert_text('[Copy Error!]')        
+                buffer.insert_text('[Copy Error!]')         
 
-        
-        @key_bindings.add(self.CANCEL, eager=True)
+        @key_bindings.add(self.CANCEL, filter=has_completions, eager=True)
         def _(event):
             """Hides the autocompletion menu when ESC is pressed."""
             buffer = event.cli.current_buffer
@@ -272,6 +296,31 @@ class Keys():
             # If the suggestion menu is currently open/active, cancel & close the menu.
             if SUGGEST_FROM_WORDLIST and buffer.complete_state:
                 buffer.cancel_completion()
+        
+        @key_bindings.add(self.UPLOAD)
+        def _(event):
+            """Open a dialog to select files for upload."""
+            # Get files.
+            paths = select_files_dialog('file')
+            if not paths: return
+            self.file_dialog_helper(event, paths, 'file')
+        
+        @key_bindings.add(self.RAW_FILE)
+        def _(event):
+            """Open a dialog to select files & concatenate their raw content with the message directly."""
+            # Get files.
+            paths = select_files_dialog('file')
+            if not paths: return
+            self.file_dialog_helper(event, paths, 'raw')
+        
+        for combination in (self.UPLOAD_FOLDER, self.UPLOAD_FOLDER[::-1]):   # F3+F4 or F4+F3; we use the reversed tuple so the pressing order doesn't matter.
+            @key_bindings.add(*combination)
+            def _(event):
+                """Open a dialog to select folders for upload."""
+                # Get files.
+                path = select_files_dialog('dir')
+                if not path: return
+                self.file_dialog_helper(event, [path], 'dir')
         
         for key, command in self.F_KEYS.items():
             @key_bindings.add(key)
@@ -299,17 +348,16 @@ class Keys():
             def _(event):
                 """Handle interruption/termination signal, by either: clear or quit."""
                 buffer = event.cli.current_buffer
-                original_text = buffer.text
-                if original_text:
+                text = buffer.text
+                if text:
                     # If there is a text, clear it.
-                    if SAVE_INPUT_ON_CLEAR: self.save_history(original_text)
-                    buffer.text = ''
-                    buffer.cursor_position = 0
+                    if SAVE_INPUT_ON_CLEAR: self.save_history(text)
+                    buffer.reset()
                     buffer.save_to_undo_stack()
                 else:
                     # If empty, quit input.
                     self.trim_input_buffer(event)
-                    if SAVE_INPUT_ON_STOP: self.save_history(original_text)
+                    if SAVE_INPUT_ON_STOP: self.save_history(text)
                     event.cli.exit(exception=KeyboardInterrupt())
         
         return key_bindings
@@ -341,6 +389,13 @@ class Keys():
         wrapped_text = '\n'.join(wrapped_segments)
         buffer.text = wrapped_text
  
+    def hide_long_text(self, event):
+        """If user prompt is too long, only show some of it."""
+        buffer = event.cli.current_buffer
+        text = buffer.text
+        if len(text) > 256:
+            buffer.text = text[:253].rstrip() + ' [...]'
+        
     def save_history(self, prompt):
         """Save the current prompt to history, if conditions are met."""
         if not prompt.strip(): return
@@ -362,25 +417,83 @@ class Keys():
         
         return min_len
 
+    def file_dialog_helper(self, event, selected: list, cmd: str):
+        """Upon selecting files or folders, insert them."""
+        # Insert a new line for readability.
+        buffer = event.cli.current_buffer
+        text = buffer.text.strip()
+        line_start = buffer.document.cursor_position_col == 0
+        if text and not line_start: buffer.insert_text('\n')
+        
+        # Avoid quotes conflict; Window allows single quotes in file names; Linux/Mac allow both.
+        double_quotes = any('"' in path for path in selected)
+        q = "'" if double_quotes else '"'
+        
+        # Insert the command-path pairs.
+        formatted_commands = '\n'.join([f"/{cmd} {q}{path}{q}" for path in selected])
+        buffer.insert_text(formatted_commands)
+
 class GeminiWorker(Thread):
     """
-    - A worker thread to run & control the asynchronous (unblockable) API call.
+    - A worker thread to run & control the asynchronous (unblockable) API call when sending a message.
     - Set to 'daemon' so the thread is terminated automatically on main program
       exit or on exception (like KeyboardInterrupt).
     """
-    def __init__(self, chat_session, user_input, *args, **kwargs):
+    def __init__(self, chat_session, message_to_send, *args, **kwargs):
         """initialize worker attributes."""
         super().__init__(*args, **kwargs)
         self.daemon = True
         self.send_message = chat_session.send_message
-        self.user_input = user_input
+        self.contents = message_to_send   # This will hold a string or a list [text, file_part]
         self.response = None
         self.exception = None
 
     def run(self):
         """The main execution of the thread - API call."""
         try:
-            self.response = self.send_message(self.user_input)
+            # *) Test for message_to_send.
+            # separator()
+            # for item in self.contents: print(choice([RED, GR, BL]), [item], RS)
+            # separator()
+            # self.response = 'Test'
+            # return
+            
+            self.response = self.send_message(self.contents)
+        except Exception as error:
+            self.exception = error
+
+class FileUploader(Thread):
+    """
+    - A worker thread to run & control the asynchronous (unblockable) API call when uploading a file.
+    - Set to 'daemon' so the thread is terminated automatically on main program
+      exit or on exception (like KeyboardInterrupt).
+    """
+    def __init__(self, client, file_to_upload, *args, **kwargs):
+        """initialize uploader attributes."""
+        super().__init__(*args, **kwargs)
+        self.daemon = True
+        self.upload = client.files.upload
+        self.path = file_to_upload
+        self.uploaded_file = None
+        self.exception = None
+
+    def run(self):
+        """The main execution of the thread - API call."""
+        try:
+            path = self.path
+            mime_type = guess_type(path)
+            file_name = get_file_name(path)
+            display_name = file_name if file_name.isascii() else f"file_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S_%f')}"
+            
+            with open(path, 'rb') as f:                # We pass data stream instead of file path to avoid non-ASCII names errors.
+                self.uploaded_file = self.upload(
+                    file=f,
+                    config={
+                        'mime_type': mime_type,        # Force standard MIME types.
+                        'display_name': display_name,  # API accepts only ASCII-named files, so we do that to avoid errors (no side effects).
+                    },  
+                )
+                
         except Exception as error:
             self.exception = error
 
@@ -422,6 +535,7 @@ if DYNAMIC_CONSOLE_WIDTH:
             
             # Store the original copy of modiffied functions to avoid infinite nesting of partial objects.
             self.original_cprint = cprint
+            self.original_wrapper = wrapper
             self.original_separator = separator
             self.original_box = box
 
@@ -452,7 +566,8 @@ if DYNAMIC_CONSOLE_WIDTH:
             temp_console.width = console_width
 
             # Update functions' default width parameter.
-            cprint = partial(self.original_cprint, wrap_width=console_width-1)
+            cprint = partial(self.original_cprint, wrap_width=glitching_text_width)
+            wrapper = partial(self.original_wrapper, width=console_width-1)
             separator = partial(self.original_separator, width=console_width)
             box = partial(self.original_box, width=console_width)
 
@@ -484,16 +599,20 @@ if VALIDATE_INPUT:
             # Get terminal size & text length.
             columns, rows = terminal_size()
             marker = len(line_continuation)
-            x = columns - marker - 1    # (x) = one line of the text field, without the margins.
+            x = columns - marker - 1    # (x) = length of one line in the text field, without the margins.
             text = document.text
             characters = len(text)
             
             # Warn about long paste.
-            difference = characters - self.last_length
-            self.last_length = characters
-            self.last_diff = difference
-            if difference > 48 and self.last_diff > 48:
-                self.warn('Long paste! Might feel slow & hide upper text...')
+            # difference = characters - self.last_length
+            # self.last_length = characters
+            # self.last_diff = difference
+            # if difference > 48 and self.last_diff > 48:
+                # self.warn('Long paste! Might feel slow & hide upper text...')
+            
+            # Warn about dangerous developper commands.
+            if DEV_MODE and text.startswith(('/system ', '/exec ')):
+                self.warn("Use the command at your own risk! Beware of self-destruction!")
             
             # Warn about N° of characters.
             if 4096 <= characters <= 4256:
@@ -704,7 +823,7 @@ if INPUT_HIGHLIGHT == 'special':
             'accomplishments', 'milestones',
 
             'consequences', 'implications', 'responsibilities', 'accountabilities',
-            'commitments', 'decisions', 'judgments', 'priorities',
+            'commitments', 'decisions', 'judgments', 'priorities', 'sensational',
         ]
         
         PUNCTUATION = r'.,;،؛:!?…'
@@ -749,24 +868,13 @@ if INPUT_HIGHLIGHT == 'special':
 
 
 
+
+
+
+
+
+
 # 3) Part III: Error Handlers ----------------------------------------------------------------------
-NetworkExceptions = (
-    ConnectionError,
-    ReadTimeout,
-    ConnectTimeout,
-    ConnectError,
-    RemoteProtocolError,
-    httpx.ReadTimeout,
-    httpx.HTTPError,
-    httpx.ConnectError,
-    httpx.RemoteProtocolError,
-)
-
-Interruption = (
-    KeyboardInterrupt,
-    EOFError,
-)
-
 def catch_no_api_key():
     """Used in setup_chat() if the API key placeholder wasn't changed."""
     msg_1 = "Please replace 'YOUR_API_KEY_HERE' in 'settings.py' with your actual key."
@@ -788,11 +896,21 @@ def catch_client_error_startup(error):
 def catch_client_error_in_chat(error):
     """Used in get_response() upon a client side error."""
     if ERROR_LOG_ON: log_caught_exception()
-    msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}\n"
-    msg_2 = f"{YLW}Check your settings, especially the API key validation or limits."
-    msg_3 = f"{YLW}If you exceeded characters limit (like hundreds of thousands of\n{YLW}characters), shorten your prompt!"
-    msg_4 = f"{YLW}Restarting the session might also help (Type 'restart')."
-    box(msg_1, msg_2, msg_3, msg_4, title='CLIENT SIDE ERROR', border_color=RED, text_color = RED, secondary_color=RED)
+    msg = f"{RED}Client side error occurred:\n{RED}{error.message}."
+    
+    if error.code in [429, 503]:
+        # 429 (Quota Limit), 503 (Overloaded).
+        msg += f"\n\n{YLW}Wait.. or type /switch & press enter for a quick conversation update."
+    
+    elif 'mime type' in error.message.lower():
+        msg += f"\n\n{YLW}The file type you uploaded isn't supported by Google API."
+        
+    else:
+        msg += f"\n\n{YLW}Check your settings, especially the API key validation or limits."
+        msg += f"\n{YLW}If you exceeded characters limit (like hundreds of thousands\n{YLW}of characters), shorten your prompt!"
+        msg += f"\n{YLW}Restarting the session might also help (Type 'restart')."
+        
+    box(msg, title='CLIENT SIDE ERROR', border_color=RED, text_color = RED, secondary_color=RED)
 
 def catch_server_error_startup(error_occurred, attempts):
     """Used in setup_chat() if STARTUP_API_CHECK is True & the API validation encounters a google server error."""
@@ -827,11 +945,9 @@ def catch_server_error_startup(error_occurred, attempts):
     
 def catch_server_error_in_chat():
     """Used in get_response() upon a google server error."""
-    global confirm_separator
     if ERROR_LOG_ON: log_caught_exception()
     MAX_ATTEMPTS, DELAY_1, DELAY_2 = SERVER_ERROR_ATTEMPTS, *SERVER_ERROR_DELAY
     
-    confirm_separator = False
     separator('\n', color=RED)
     cprint(f"{RED}A temporary server problem occurred.")
     cprint(f'It might be a service overloading, maintenance or backend errors...')
@@ -841,8 +957,8 @@ def catch_server_error_in_chat():
         print_status(lambda: quick_sleep(DELAY_1), f'Retrying in {DELAY_1} seconds...', 'yellow')
         
     except Interruption:
+        cprint(f'{YLW}Cancelled by you...')
         separator(color=RED)
-        cprint()
         return
     
     response = None
@@ -853,7 +969,7 @@ def catch_server_error_in_chat():
             worker.start()
 
             # Loop while the worker thread is still running & Update the status at random intervals.
-            with console.status(status=f'[bold {WAIT_1}]Waiting for response...[/bold {WAIT_1}]',
+            with console.status(status=f'[bold {STATUS_GR}]Waiting for response...[/bold {STATUS_GR}]',
                                 spinner=SPINNER):
                 while worker.is_alive(): worker.join(SLEEP_INTERVAL)
             
@@ -868,7 +984,13 @@ def catch_server_error_in_chat():
                 response = None
                 break
                 
-            print_status(lambda: quick_sleep(DELAY_2), f'Issue persisting, retrying in {DELAY_2} seconds...', 'yellow')
+            try:
+                print_status(lambda: quick_sleep(DELAY_2), f'Issue persisting, retrying in {DELAY_2} seconds...', 'yellow')
+            except Interruption:
+                cprint(f'{YLW}Cancelled by you...')
+                separator(color=RED)
+                return
+                
             continue
         
         except ClientError as error:
@@ -882,12 +1004,11 @@ def catch_server_error_in_chat():
             return
         
         except Interruption:
+            cprint(f'{YLW}Cancelled by you...')
             separator(color=RED)
-            cprint()
             return
     
     # Exit the function.
-    confirm_separator = True
     separator(color=RED)
     if not response: cprint()
     return response
@@ -911,6 +1032,7 @@ def catch_network_error():
         title = 'NETWORK ERROR'
         msg = f"{RED}Failed to connect, check your network or firewall!"
         try:
+            # Check for user_input if we are in chat; if we are in setup_chat(), this'll be skipped.
             if user_input and not restarting:
                 msg += f"\n{YLW}Press (UP) to get your prompt back."
                 user_input = None
@@ -922,20 +1044,21 @@ def catch_network_error():
 
 def catch_exception(error):
     """Used to catch any generic exception that can be forgiven during a chat."""
-    global confirm_separator
     if ERROR_LOG_ON: log_caught_exception()
     separator('\n', color=RED)
     
     # Show error & ask the user to see details (If details aren't disabled).
+    try: error = error.message  # Google exceptions have 'message' attribute.
+    except: pass
     print_error(f'An error occurred:\n"{error}"')
+    
     if not NO_ERROR_DETAILS:
         try:
             if GLOBAL_LOG_ON: in_time_log("See the details? (y/n): ...")
             see_error = input("See the details? (y/n): ").strip().lower()
         except Interruption:
-            confirm_separator = False
+            see_error = 'n'
             cprint()
-            raise
         
         if see_error == 'y':
             cprint(RED + traceback.format_exc().strip() + RS)
@@ -944,8 +1067,8 @@ def catch_exception(error):
     
     else:
         clear_lines()
-        
-    separator(color=RED, end='\n')
+    
+    separator(color=RED)
 
 def catch_fatal_exception(error):
     """Used to catch any critical generic exception that bypassed all of the handlers."""
@@ -992,6 +1115,8 @@ def catch_keyboard_interrupt():
 
 
 
+
+
 # 4) Part IV: Helper Functions ---------------------------------------------------------------------
 def wrapper(text: str, width=console_width-1, joiner='\n'):
     """Wrap a given text to a given line width."""
@@ -1009,7 +1134,7 @@ def wrapper(text: str, width=console_width-1, joiner='\n'):
     text = joiner.join(wrapped_lines)
     return text
     
-def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=console_width-1, wrap_joiner='\n'):
+def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=glitching_text_width, wrap_joiner='\n'):
     """
     - A custom print function that writes directly to stdout and guarantees an
       immediate display by forcing a flush.
@@ -1065,11 +1190,24 @@ def clear_lines(lines_to_erase=1):
     # Skip if not compatible with ANSI escape codes.
     if not USE_ANSI: return
     
-    # \033[A:  Move cursor Up one line
-    # \033[2K: Erase the entire current line
+    # \033[A:  Move cursor Up one line.
+    # \033[2K: Erase the entire current line.
     for _ in range(lines_to_erase):
-        cprint('\033[A\033[2K', end='')
+        stdout_write('\033[A\033[2K\r')
     
+    stdout_flush()
+ 
+def control_cursor(command: str):
+    """A custom function to show or hide the terminal cursor."""
+    # Skip if not compatible with ANSI escape codes.
+    if not USE_ANSI: return
+    
+    if command == 'show':
+        cprint('\033[?25h\r', end='')
+        
+    elif command == 'hide':
+        cprint('\033[?25l\r', end='')
+ 
 def visual_len(text_with_ansi: str):
     """Return the length of the longest line, ignoring ANSI codes."""
     if not text_with_ansi.strip(): return 0
@@ -1079,19 +1217,18 @@ def visual_len(text_with_ansi: str):
 
 def separator(before='', after='', char='─', color=GRY, width=console_width, end='\n'):
     """Display a line of hyphens or any horizontal symbol."""
-    # Used console.print() instead of print() and our defined cprint(), because
+    # Used console.out() instead of print() and our defined cprint(), because
     # others have an issue of printing double new line after.
-    console.print(color + before + char * width + after + RS,
-                  end=end, no_wrap=True, soft_wrap=True, overflow='ignore')
-
-def box(*texts: str, title='Message', border_color='', text_color='', secondary_color='',
-         width=console_width, clear_line=0, new_line=True):
+    line = f'{color}{before}{char * width}{after}{RS}'
+    console.out(line, end=end)
+    
+def box(*texts: str, title='Message', border_color='', text_color='', secondary_color='', width=console_width):
     """
     1) Draw a box using standard ASCII characters, respecting ANSI colors inside.
     2) Limitations:
        - When wrapping, ANSI codes are considered normal characters.
        - ANSI code must not be in the wrap point, as it'll get broken and useless.
-       - If your give a string a special color, next lines must also have the ANSI
+       - If you give a string a special color, next lines must also have the ANSI
          color code, and not depend on the the previous line.
        - You have to rewrite the ANSI code after '\n' inside strings.
        - Wrapped lines will lose their colors! thus 'secondary_color' is an
@@ -1141,28 +1278,218 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     
     # Show the box (Idk why I have to separate cases based on colors, but bugs forced me).
     box_string = box_string.strip()
-    if not USE_COLORS:
-        console.print(box_string)   # Other print functions cause glitches.
-        cprint('\r', end='')        # console.print() might add a blank line.
+    if USE_COLORS: console.print(box_string, style=None, markup=False, highlight=False, soft_wrap=True, no_wrap=True, overflow='ignore')
+    else: console.print(box_string)
+    cprint('\r', end='')    # To prevent any extra blank line from appearing.
     
-    else:
-        cprint(box_string, wrap=False)
-        # Sometimes our function adds an extra blank line, especially if the console width is high.
-        # Also if the console width is low we have to manually add a blank line, Idk why (it's complicared).
-        if clear_line and console_width > 79: clear_lines(clear_line)
-        elif clear_line: cprint('\r', end='')
-        elif new_line and console_width <= 79: cprint()
-
-def control_cursor(command: str):
-    """A custom function to show or hide the terminal cursor."""
-    # Skip if not compatible with ANSI escape codes.
-    if not USE_ANSI: return
+def upload_preprocessor(mode: str):
+    """
+    A helper function used with upload_to_google() & upload_raw_file()
+    to check message_to_send variable, file paths, etc...
+    """
+    global message_to_send
     
-    if command == 'show':
-        cprint('\033[?25h', end='')
+    # For upload_to_google(): Check if the message has already been processed by convert_raw_urls().
+    # For upload_raw_file(): Check if it hasy been processed by convert_raw_urls() or upload_to_google().
+    # This order is defined in interpret_special_commands().
+    if not isinstance(message_to_send, list): message_to_send = [message_to_send]
+    
+    # Syntax: /file path/to/file.ext Rest of prompt text
+    # Or with quotes: /file "path/to/my file.ext" Rest of prompt text
+    # NOTE: same syntax for /upload, /raw, /content commands.
+    # This splits the command, the path (handling quotes), and the rest.
+    try:
+        # posix = False preserves backslashes for Windows paths; and avoid escaping sequence.
+        parts = shlex_split(converted_prompt, posix=False)
         
-    elif command == 'hide':
-        cprint('\033[?25l', end='')
+    except ValueError as error:
+        if ERROR_LOG_ON: log_caught_exception()
+        msg = f'A mistake was found in your message: {error}.\n{YLW}Check your commands & files paths!'
+        box(msg, title='COMMAND MISTAKE', border_color=RED, text_color=RED, secondary_color=RED)
+        return None
+        
+    except Exception as error:
+        catch_exception(error)
+        return None
+    
+    # Get paths & Remove them from the user prompt.
+    paths = {}          # We use a dict to avoid duplicate files (a waste of tokens).
+    if mode == 'to_google': cmd_1, cmd_2 = '/file', '/upload'
+    elif mode == 'raw': cmd_1, cmd_2 = '/raw', '/content'
+    
+    for i, part in enumerate(parts):
+        if i == len(parts) - 1: break
+        if not CASE_SENSITIVITY: part = part.lower()
+        if part in [cmd_1, cmd_2]:         
+            # Regex to find this specific command + path pair
+            part_1 = re.escape(part)
+            part_2 = re.escape(parts[i+1])
+            if CASE_SENSITIVITY: pattern = rf"{part_1}\s+(?:(['\"]){part_2}\1|{part_2})"
+            else: pattern = rf"(?i:{part_1})\s+(?:(['\"]){part_2}\1|{part_2})"
+            
+            # Replace the string with: str + file-placeholder + str.
+            for j, obj in enumerate(message_to_send[:]):
+                if isinstance(obj, str) and re.search(pattern, obj):
+                    before, _, after = re.split(pattern, obj, maxsplit=1)
+                    replacement = []
+                    placeholder_idx = j + (1 if before else 0)
+                    if before: replacement.append(before)
+                    replacement.append(None)    # A placeholder for the file/part object.
+                    if after: replacement.append(after)
+                    message_to_send[j:j+1] = replacement
+                    break
+            
+            # Save the path if not duplicated (ignore dups in upload mode cause the file object is just a URL).
+            path = parts[i+1].strip('"').strip("'")
+            pointer = "(Refer to the file content provided previously in this message)"
+            is_large_duplicate = False
+            
+            if mode == 'raw' and path in paths.values():
+                try:
+                    # Use encode() to compare bytes vs bytes
+                    if os.path.getsize(path) > len(pointer.encode('utf-8')):
+                        is_large_duplicate = True
+                except (OSError, FileNotFoundError):
+                    # If file is missing/inaccessible, we don't treat it as a duplicate pointer.
+                    # We let the 'Check files existence' block handle it later.
+                    pass
+
+            if is_large_duplicate: message_to_send[placeholder_idx] = pointer
+            else: paths[placeholder_idx] = path
+    
+    if not paths: return False
+
+    # Check files paths to avoid time loss.
+    errors_list = []
+    for path in paths.values():
+        file_name = get_file_name(path)
+        error = None
+        
+        # 1. Check Existence.
+        if not path_exist(path):
+            error = f"your attached file '{path}' doesn't exist, perhaps you forgot to mention the full path, or to surround it by quotes?"
+        
+        # 2. Check if it's not a folder.
+        elif os.path.isdir(path):
+            error = f"'{path}' is a directory. Please provide a file path instead."
+        
+        # 3. Check if it's a regular file.
+        elif not os.path.isfile(path):
+            error = f"'{path}' is not a valid file (it might be a named pipe or a device)."
+            
+        # 4. Check Readability (Permissions).
+        elif not os.access(path, os.R_OK):
+            error = f"permission denied; cannot read '{path}'. Check file permissions!"
+        
+        if error:
+            msg = f"[{file_name}]: {error}"
+            errors_list.append(msg) 
+        
+    # Check all data size for 'raw' mode.
+    # NOTE: File size in python is a bit smaller than its size on disk; but this
+    #       isn't an issue, it's actually better (we get pure data size, without metadata overhead).
+    if mode == 'raw':
+        MAX_SIZE = 20  # 20 MB (defined by google).
+        # Calculate text size (bytes).
+        # At this stage, 'message_to_send' contains only strings or uploaded files URLs (which are negligeable).
+        text_bytes = sum(len(s.encode('utf-8')) for s in message_to_send if isinstance(s, str))
+        
+        # Calculate file size (bytes).
+        # Sum all file sizes first (to avoid losing decimals).
+        # NOTE: There is no difference between file types (images/docs/txt); they are sent as
+        #       raw binary bytes, so their size in transit is identical as in-here.
+        file_bytes = sum(os.path.getsize(p) for p in paths.values() if path_exist(p))
+        
+        # Final conversion to MB (most APIs use 1024 instead of 1000).
+        total_size = (text_bytes + file_bytes) / (1024 * 1024)
+                
+        if total_size > MAX_SIZE:
+            total_size = round(total_size, 3)
+            if total_size == 20: total_size = 20.001
+            error = f'# NOTE! the data size you tried to send is {total_size}MB, but max allowed size is exactly {MAX_SIZE}MB.'
+            errors_list.append(error)
+        
+    # Return our variables.
+    return (paths, errors_list)
+
+def guess_type(path: str):
+    """
+    Guess the mime type of a file before uploading it to avoid errors.
+    Also fix known types to a standard string that won't get just rejected by the API.
+    Because it only accepts official IANA standards (like 'image/jpeg' instead of 'image/jpg').
+    * The 'mimetypes' library relies on a local database (E.g: on Windows, it's the Registry);
+      because these databases are managed by the OS, they often contain non-standard or
+      legacy strings (like audio/mp3 instead of the IANA-standard audio/mpeg).
+    """
+    # (strict=True) only returns official IANA types.
+    mt = guess_mime_type(path, strict=True)[0]
+    text_names = (   # Those types may not start with 'text/', so we need to fix them.
+        'javascript', 'json', 'xml', 'csv', 'htm', 'yaml', 'x-sh', 'x-bash', 'php',
+        'x-perl', 'x-python', 'wasm', 'toml', 'jsonld', 'vnd.ms-excel', 'x-markdown',
+        'sparql-query', 'latex', 'x-tex', 'x-config', 'x-cfg', 'graphql', 'x-cmake',
+        'x-git', 'x-properties', 'x-env', 'x-ruby', 'x-typescript', 'x-sql', 'srt', 'vtt',
+    )
+    
+    match mt:
+        # Special.
+        case None | 'application/octet-stream': mt = ''  # Let the server guess.
+        
+        # Images.
+        case 'image/jpg' | 'image/jfif' | 'image/pjpeg': mt = 'image/jpeg'
+        case 'image/x-png': mt = 'image/png'
+        
+        # Documents.
+        case 'application/epub+zip': mt = 'application/epub'
+        case 'image/pdf': mt = 'application/pdf'
+        case 'text/rtf': mt = 'application/rtf'
+        case c if c.startswith('text/'): mt = 'text/plain'  # Gemini likes code as text/plain.
+        case c if any(name in c for name in text_names): mt = 'text/plain'
+        
+        # Audio.
+        case 'audio/mp3': mt = 'audio/mpeg'
+        case 'audio/wav' | 'audio/x-wav': mt = 'audio/wav'
+        case 'audio/m4a': mt = 'audio/mp4'
+
+        # Videos.
+        case 'video/quicktime': mt = 'video/mov'
+        case 'video/x-msvideo': mt = 'video/avi'
+        case 'video/x-matroska': mt = 'video/mkv'
+        
+        # Microsoft Office
+        case 'application/msword': mt = 'application/msword'
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': mt = 'application/docx'
+        case 'application/vnd.ms-excel': mt = 'application/xls'
+        case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': mt = 'application/xlsx'
+        case 'application/vnd.ms-powerpoint': mt = 'application/ppt'
+        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation': mt = 'application/pptx'
+        case 'application/vnd.oasis.opendocument.text': mt = 'application/odt'
+        case 'application/vnd.oasis.opendocument.spreadsheet': mt = 'application/ods'
+        
+    return mt
+
+def update_placeholder(text=None, temp=False, restore=False):
+    """
+    Set the prompt placeholder to a random message.
+    Placeholder is only set once per session, unless changed by open_path(),
+    though it'll return to its last state.
+    * temp: means change the placeholder temporarily, so keep 'last_placeholder'
+      variable untouched to restore initial placeholder later.
+    """
+    global prompt_placeholder, last_placeholder
+    
+    # Restore to initial state.
+    if restore:
+        prompt_placeholder = last_placeholder
+        return
+    
+    # Update (temporarily or permanently).        
+    if not text: text = choice(PLACEHOLDER_MESSAGES)
+    placeholder = FormattedText([                   
+        (PROMPT_GRY, text)
+    ])
+    
+    prompt_placeholder = placeholder
+    if not temp: last_placeholder = placeholder
 
 def welcome_screen():
     """Display a short welcoming screen."""
@@ -1184,9 +1511,34 @@ def welcome_screen():
     system(CLEAR_COMMAND)
     separator()
     cprint(f"{GR}Welcome to {gemini_logo}{GR} Py-CLI! (API-based chat)", wrap=False)
-    cprint(f"Chat Initialized (Type '{UL}help{RS}{GR}' for a quick start){RS}\n", wrap=False)
+    cprint(f"Chat Initialized (Type '{UL}/help{RS}{GR}' for a quick start){RS}\n", wrap=False)
 
-if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
+def compress_text(text: str):
+    """
+    Return a compressed version of a text by removing stop words & replacing
+    long expressions with shortcuts.
+    * Used always if (TEXT_COMPRESSION is True), unless the user uses 'no-compress' command.
+    * Skipped if (TEXT_COMPRESSION is False), unless the user uses 'compress' command.
+    """
+    # Create a sorted list of keys (longest first).
+    # We use a list because we only need the keys to build the pattern.
+    # (?:s|es|ing|ed)? matches these common endings if they exist
+    sorted_keys = sorted(SHORTCUT_WORDS.keys(), key=len, reverse=True)
+    pattern = re.compile(r'\b(' + '|'.join(re.escape(word) for word in sorted_keys) + r')(s|es|ing|ed)?\b',
+              re.IGNORECASE)
+    
+    def replacer(m):    # m -> match.
+        base_word = m.group(1).lower()
+        suffix = m.group(2) if m.group(2) else ""
+        return SHORTCUT_WORDS[base_word] + suffix
+    
+    text = pattern.sub(replacer, text)
+    
+    # Remove stop words and clean up spacing
+    text = ' '.join([w for w in text.split() if w.lower() not in STOP_WORDS])
+    return text
+
+if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON or FILE_COMPRESSION:
     def load_system_instructions():
         """
         - Load system instructions at startup; they can be either implicit orders,
@@ -1194,9 +1546,10 @@ if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
         - Then return the configuration object.
         """
         system_instructions = ''
+        media_resolution = None
         
         # Check saved info first.
-        if SAVED_INFO and os.path.exists(SAVED_INFO_FILE):
+        if SAVED_INFO and path_exist(SAVED_INFO_FILE):
             try:
                 with open(SAVED_INFO_FILE, 'r', encoding='utf-8') as f:
                     saved_info_content = f.read().strip()
@@ -1209,17 +1562,25 @@ if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON:
         # Check implicit orders.
         if IMPLICIT_INSTRUCTIONS_ON and IMPLICIT_INSTRUCTIONS.strip():
             system_instructions += '# Your Implicit Instructions as AI:\n' + IMPLICIT_INSTRUCTIONS.strip()
+        if not system_instructions: system_instructions = None
+        
+        # Check media resultion (how much tokens to use per attached file, lower resolution = less tokens but less AI accuracy).
+        if FILE_COMPRESSION:
+            media_resolution = 'MEDIA_RESOLUTION_LOW'
         
         # Create the configuration object if previous instructions were available.
         config = None
-        if system_instructions:
-            config = GenerateContentConfig(system_instruction=system_instructions)
+        if system_instructions or media_resolution:
+            config = GenerateContentConfig(
+                system_instruction=system_instructions,
+                media_resolution=media_resolution,
+            )
                 
         return config
 
 if PROMPT_HISTORY_ON:
     def load_prompt_history():
-        """Load prompt history, either from memory or from file, depeing on settings."""
+        """Load prompt history, either from memory or from file, depending on settings."""
         global history
         history = None
         
@@ -1239,36 +1600,43 @@ if PROMPT_HISTORY_ON and not PROMPT_HISTORY_MEMORY:
         Check the history file size. If > PROMPT_HISTORY_SIZE, this prunes the
         file to the nearest history block (timestamp).
         """
-        if not os.path.exists(PROMPT_HISTORY_FILE):
+        if not path_exist(PROMPT_HISTORY_FILE):
             return
         
         # Check file size.
+        MAX_SIZE = PROMPT_HISTORY_SIZE * 1024 * 1024
         file_size = os.path.getsize(PROMPT_HISTORY_FILE)
-        if file_size <= (PROMPT_HISTORY_SIZE * 1024 * 1024):
+        if file_size <= (MAX_SIZE):
             return
         
         # Split file.
-        cprint(GR + 'Shrinking the prompt history file...' + RS)
-        while file_size > 1:
-            file_size = file_size // 2
+        # cprint(GR + 'Shrinking the prompt history file...' + RS)
+        limited_size  = MAX_SIZE * 0.66
         
-        start_seek_position = file_size
+        start_seek_position = int(file_size - limited_size)
         with open(PROMPT_HISTORY_FILE, 'rb') as f:
             f.seek(start_seek_position)
             content_last_half = f.read().decode(sys.getdefaultencoding(), 'ignore')
         
         # Discard the broken content, keep the rest intact, and remove unwanted characters.
-        match = HISTORY_PATTERN.search(content_last_half)
+        pattern = re.compile(
+            r'^#\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+\r?\n\+',
+            re.MULTILINE
+        )
+        
+        match = pattern.search(content_last_half)
         if match:
-            start_index = match.start()
-            content_last_half = content_last_half[start_index:]
+            i = match.start()
+            content_last_half = content_last_half[i:]
         
         # Write the kept file content.
         with open(PROMPT_HISTORY_FILE, 'w', encoding='utf-8') as f:
             content_last_half = content_last_half.replace('\r\n', '\n').replace('\r', '\n')
             f.write(content_last_half)
         
-        cprint(GR + 'Done!\n' + RS)
+        # cprint(GR + 'Done!' + RS)
+        # separator()
+        return
 
 if SUGGEST_FROM_WORDLIST:
     def load_word_completer():
@@ -1297,7 +1665,7 @@ if SUGGEST_FROM_WORDLIST:
                 # Don't ask why clean then print, I personally don't know, but it works to avoid glitches.
                 cprint('\033[2K')
                 warning = f"{YLW}Suggestions from a wordlist is ON, but '{WORDLIST_FILE}' file is "
-                if os.path.exists(WORDLIST_FILE): warning += "empty!"
+                if path_exist(WORDLIST_FILE): warning += "empty!"
                 else: warning += "missing!"
                 cprint(warning + RS)
                 separator(end='')
@@ -1366,7 +1734,7 @@ if RESPONSE_EFFECT:
                 continue
                 
             # Use regex to split text into [word, space, word, space, ...].
-            parts = WORD_AND_SPACE_PATTERN.split(str(line))
+            parts = WORD_SPACE_PATTERN.split(str(line))
             current_pos = 0
             
             for part in parts:
@@ -1461,14 +1829,14 @@ if ERROR_LOG_ON and GLOBAL_LOG_ON:
             msg = 'Log files cleared!'
             color = GR
             
-        box(msg, title='LOG CLEANUP', border_color=color, text_color=color, clear_line=1)
+        box(msg, title='LOG CLEANUP', border_color=color, text_color=color)
 
 if ERROR_LOG_ON:
     def shrink_log_file():
         """Shrink the log file to a target size by keeping the most recent lines."""
         # Quick Check.
         MAX_SIZE = LOG_SIZE * 1024 * 1024
-        if not os.path.exists(ERROR_LOG_FILE): return
+        if not path_exist(ERROR_LOG_FILE): return
         file_size = os.path.getsize(ERROR_LOG_FILE) * 10
         if file_size <= (MAX_SIZE): return
         
@@ -1497,7 +1865,7 @@ if ERROR_LOG_ON:
             current_size += line_size
         
         # Shrink the lines to a valid log point & Reverse them to restore chronological order.
-        while collected_lines[-1].strip() != LOG_SEPARATOR:
+        while collected_lines and collected_lines[-1].strip() != LOG_SEPARATOR:
             collected_lines.pop()
             
         collected_lines.pop()    
@@ -1514,11 +1882,133 @@ if ERROR_LOG_ON:
 
 
 
-# 5) Part VI: Command Attached-Functions ----------------------------------------------------------- 
-def help(short=False):
+
+
+# 5) Part VI: Command Handlers ---------------------------------------------------------------------
+def help(mode: str):
     """Display a quick cheat sheet with the commands 'help' or 'help-2'."""
     # Long version.
     LONG = f"""
+    1) First Thing First:
+       -Get an API key from: {UL}https://aistudio.google.com/app/api-keys{RS}
+        and run 'python settings_editor.py' to paste it. Remember, it's free,
+        easy to get, and generous for the free tier (Just requires an account).
+       -You can change other settings if you wish (e.g: The Gemini model).
+    
+    2) Keyboard Shortcuts (While in Prompt):
+       -ENTER to send.
+       -CTRL-SPACE, SHIFT-TAB or CTRL-J to add a new line to your prompt
+        (SHIFT-ENTER won't work, and it will submit your text!)
+       -CTRL-C or CTRL-D to clear / cancel a prompt, stop a response, or quit.
+        (If you press it earlier upon submitting a prompt, you will have a
+        chance that google won't receive it at all)
+       -UP/DOWN arrows to navigate between input lines / history prompts,
+        or to accept word suggestions.
+       -CTRL-A to copy your current prompt text to clipboard.
+       -CTRL-Z/CTRL-Y to undo/redo.
+       -CTRL-X-CTRL-E to call external editor - if its option is ON.
+        (Once the editor is closed, changes are registered & submitted)
+    
+    3) Special Commands (While in Prompt):
+       /clear to clear the screen.
+       /show to show last AI response.
+       /copy to copy last AI response to clipboard.
+       /copy-prompt to copy your last prompt.
+        (Can also be copied by pressing UP then CTRL-A)
+       /remember at prompt start to save it with high priority.
+        (Saved info are shared across all chat sessions)
+       /forget at prompt start to delete a saved info.
+       /saved-info to open the saved info file for manual edit.
+        (Changes take effect at next session)
+       /file or /upload followed by a file path to upload files.
+        (Can be used multi-times in a prompt, but may consume tokens)
+       /save-last to save last AI response to a text file.
+        (You will lose the formatting style and colors!)
+       /restart for a quick session restart.
+       /quit or /exit to leave.
+       /discard to destroy everything done in current session and restart.
+        (Won't affect log files & manually saved content)
+       /kill to destroy everything done in current session and exit.
+    
+    4) F-Keys & Their Commands:
+       -F1: /show
+       -F2: /copy
+       -F3: /upload
+       -F4: /raw
+       -F5: /quit
+       -F6: /help
+       -F3-F4: /dir (Press them at once)
+    
+    5) More Commands:
+       /quick-chat to open a new window with another chat mode.
+       /save-chat to save the whole chat to a readable text file.
+       /last-links or /last-urls to see the links of your last successfully
+        uploaded files.
+       /saved-links or /saved-urls to see ready-to-use links of your
+        previously uploaded files.
+       /recover to use a generated prompt upon a failed upload attempt,
+        where successfull files paths are replaced with their URLs to avoid
+        re-uploading.
+       /raw or /content followed by a file path to add the file content
+        as-is to your prompt, it won't be uploaded/saved to goole servers.
+        (Can be used multi-times in one prompt, but may consume tokens;
+        plus its limited in size & file types).
+       /dir or /folder followed by a directory path to upload every file
+        in it to google servers (Sub-directories are ignored).
+       /open to open the program's directory.
+       /original at prompt start, so it won't be checked for commands, but
+        will be sent as-is.
+       /compress to compress your prompt text once; attached files won't be
+        affected (useless if TEXT COMPRESSION setting is ON).
+       /no-compress to skip compression for ur prompt text once; attached files
+        won't be affected (useless if TEXT COMPRESSION setting is OFF).
+       /pop-last to remove the last message pair from history; you can use
+        it multiple times to remove messages in a row, or type '/pop-last 3'
+        for example to remove last (3) messages pairs.
+        (Permanent, takes effect at next session)
+       /pop-all to clear chat history, future messages won't be affected.
+        (May cause an extra delay at exit)
+       /restore-last to restore last removed message(s) pair(s), you can use
+        it multiple times if you deleted many times.
+       /restore-all to restore all of the deleted messages before chat end.
+       /del-prompt to delete the whole prompt history file, and lose all
+        past history, future prompts won't be affected (No cancel option!).
+       /del-links or /del-urls to delete saved links of uploaded files.
+       /del-output to remove AI generated files.
+       /del-uploaded to remove your uploaded files from Google server.
+       /del-log to clear both log files, future logs won't be affected.
+       /del-all to wipe private files: chat + prompt history + log files
+        + saved info, etc (No cancel option!)
+       /stats or /statistics to show total N° of message in current chat.
+       /about for program information.
+       /license for copyright.
+    
+    6) More Shortcuts (System / Terminal Dependent):
+       -CTRL-L to clear screen.
+       -CTRL-U to clear current line in prompt
+       -CTRL-R (Reverse Search) to search backward & find the most recent
+        match in prompt history, keep pressing to move, press ESC to cancel
+        or confirm (ESC to confirm, not ENTER!).
+       -CTRL-S (Forward Search) used after CTRL-R to find older matches,
+        keep pressing to move.
+       -And even more if you enable (VIM_EMACS_MODE) in settings.
+
+    7) Limitations:
+       -Tables with many columns will appear chaotic.
+       -Special characters (Like LaTeX syntax) will appear as a plain text.
+       -Some other bugs I didn't discover yet :/
+    
+    8) Notes:
+       * Please avoid uploading big files or adding raw long text files,
+         they'll be counted as tokens; the program will refuse to send them
+         in this case just to save your tokens, because Google will refuse
+         them anyway - except that it'll count the tokens!
+       * If you have any question, issue or suggestion, please let me know in:
+         {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}
+    """
+    
+    # Regular version.
+    REGULAR = f"""
     1) First Thing First:
        -Get an API key from: {UL}https://aistudio.google.com/app/api-keys{RS}
         and run 'python settings_editor.py' to paste it. Remember, it's free,
@@ -1549,57 +2039,22 @@ def help(short=False):
        /forget at prompt start to delete a saved info.
        /saved-info to open the saved info file for manual edit.
         (Changes take effect at next session)
+       /file or /upload followed by a file path to upload files.
+        (Can be used multi-times in a prompt, but may consume tokens)
        /save-last to save last AI response to a text file.
         (You will lose the formatting style and colors!)
-       /save-chat to save the whole chat to a readable text file.
        /restart for a quick session restart.
        /quit or /exit to leave.
        /discard to destroy everything done in current session and restart.
         (Won't affect log files & manually saved content)
        /kill to destroy everything done in current session and exit.
-       /quick-chat to open another window for a temporary chat.
     
     4) F-Keys & Their Commands:
        -F1: /show
        -F2: /copy
-       -F3: /restart
-       -F4: /quit
-       -F5: /discard
-       -F6: /kill
-       -F7: /help
-    
-    5) More Commands:
-       /open to open the program's directory.
-       /pop-last to remove the last message pair from history; you can use
-        it multiple times to remove messages in a row, or type '/pop-last 3'
-        for example to remove last (3) messages pairs.
-        (Permanent, takes effect at next session)
-       /pop-all to clear chat history, future messages won't be affected.
-        (May cause an extra delay at exit)
-       /restore-last to restore last removed message(s) pair(s), you can use
-        it multiple times if you deleted many times.
-       /restore-all to restore all of the deleted messages before chat end.
-       /del-prompt to delete the whole prompt history file, and lose all
-        past history, future prompts won't be affected (No cancel option!).
-       /del-all to wipe private files: chat + prompt history + log files
-        + saved info (No cancel option!)
-       /del-log to clear both log files, future logging won't be affected.
-       /stats or /statistics to show total N° of message in current chat.
-       /about for program information.
-       /license for copyright.
-    
-    6) More Shortcuts (System / Terminal Dependent):
-       -CTRL-L to clear screen.
-       -CTRL-R (Reverse Search) to search backward & find the most recent
-        match in prompt history, keep pressing to move, press ESC to cancel
-        or confirm (ESC to confirm, not ENTER!).
-       -CTRL-S (Forward Search) used after CTRL-R to find older matches,
-        keep pressing to move.
-
-    7) Limitations:
-       -Tables with many columns will appear chaotic.
-       -Special characters (Like LaTeX syntax) will appear as a plain text.
-       -Some other bugs I didn't discover yet :/
+       -F3: /upload
+       -F5: /quit
+       -F6: /help
     """
     
     # Short version.
@@ -1621,10 +2076,13 @@ def help(short=False):
        /copy to copy last AI response to clipboard.
        /quit or 'exit' to leave.
        /help for this guide menu.
-       {GR}/help-2 for the full guide (No yada yada).{RS}
+       {GR}/help-2 for a longer version of this guide.{RS}
+       {GR}/help-3 for the full guide (No yada yada).{RS}
     """
     
-    message = SHORT if short else LONG
+    if mode == 'short': message = SHORT
+    elif mode == 'regular': message = REGULAR
+    else: message = LONG
     message = textwrap.dedent(message).lstrip('\n').rstrip()
     box(message, title='HELP MENU', border_color=YLW, text_color=YLW, secondary_color=YLW)
 
@@ -1632,6 +2090,7 @@ def farewell(confirmed=False):
     """
     Display a random but beautiful farewell message upon quitting.
     Also give the user a chance to go back.
+    Used with /quit or /exit command, or any other exit door.
     """
     global FAREWELLS_MESSAGES, CONTINUE_MESSAGES, confirm_separator
 
@@ -1672,11 +2131,17 @@ def farewell(confirmed=False):
     if saved: cprint()
     elif not saved and confirmed: separator()
     
-    # Show a farewell message..
-    from useless import QUOTES, FACTS, JOKES, ADVICES, MATH
-    message = choice(FAREWELLS_MESSAGES + QUOTES + FACTS + JOKES + ADVICES + MATH)
-    if (not saved) and (not confirmed) and message.count('\n') == 0 and len(message) <= glitching_text_width: clear_lines()
-    cprint(GR + message + RS, wrap_width=glitching_text_width)     # Fixed width to avoid glitchs on wide consoles.
+    # Show a farewell message.
+    if FUN_MODE:
+        from useless import QUOTES, ADVICES, FACTS, JOKES, MATH
+        messages = [*FAREWELLS_MESSAGES, *QUOTES, *ADVICES, *FACTS, *JOKES, *MATH]
+    else:
+        from useless import QUOTES, ADVICES
+        messages = [*FAREWELLS_MESSAGES, *QUOTES, *ADVICES]    # Unpacking with (*) is faster than copying with (+).
+        
+    msg = choice(messages)
+    if (not saved) and (not confirmed) and msg.count('\n') == 0 and len(msg) <= glitching_text_width: clear_lines()
+    cprint(GR + msg + RS)
     
     # Exit.
     separator()
@@ -1708,13 +2173,15 @@ def get_last_response(command: str):
                 last_response = last_model_message.parts[0].text
     
     if command == 'save-last' and last_response:
-        # Save the last response.
+        # Save the last response & Show the file.
         try:
             with open(LAST_RESPONSE_FILE, "w", encoding='utf-8') as f:
                 f.write(last_response)
             
-            msg = f"Last response saved successfully to '{LAST_RESPONSE_FILE}'."
+            path = os.path.abspath(LAST_RESPONSE_FILE)
+            msg = f"Last response successfully saved to:\n{path}"
             color = GR
+            open_path(LAST_RESPONSE_FILE)
         
         except Exception as error:
             if ERROR_LOG_ON: log_caught_exception()
@@ -1732,7 +2199,7 @@ def get_last_response(command: str):
         copy_to_clipboard(last_response, msg)
         return
     
-    box(msg, title='STATUS', border_color=color, text_color=color, clear_line=1)
+    box(msg, title='STATUS', border_color=color, text_color=color)
 
 def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
     """
@@ -1761,11 +2228,9 @@ def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
     else:
         # Check for overflow (N° of requested messages to delete > available messages).
         msg = ''
-        overflow = None
         if n_turns > history_len / 2:
             n_turns = history_len // 2
             msg = f'{RED}Overflow! falling back to current chat history length: ({n_turns}).\n'
-            overflow = True
         
         messages_to_remove_steps.append(0)
         issue = None   
@@ -1801,8 +2266,8 @@ def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
             if remove_all: msg += f"\n{YLW}Remember! you've cleared the chat history."
             else: msg += f"\n{YLW}But know that you've removed all available chat messages."
         
-        # Just in case, ensure the first message isn't kept in case of overflow.
-        if overflow and (n_turns != history_len / 2):
+        # Just in case, ensure no message is kept in case of 'pop-all'.
+        if remove_all and (n_turns != history_len / 2):
             messages_to_remove.append(0)
             messages_to_remove_steps[-1] += 1
             issue = True
@@ -1811,9 +2276,9 @@ def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
                 msg += f'\n{YLW}Found a small problem in chat history, but it should have been fixed.'
                 msg += f"\n{YLW}You can check '{CHAT_HISTORY_JSON}' file later to eliminate doubt."
     
-        msg += "\nChanges will take effect at next session, you can type 'restart' for a quick refresh."
+        msg += "\nChanges will take effect at next session, you can type /restart for a quick refresh."
         
-    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color, clear_line=1)
+    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
 
 def restore_removed_messages(command: str):
     """
@@ -1849,7 +2314,7 @@ def restore_removed_messages(command: str):
         msg = "You didn't remove any message in current session."
         color = YLW
         
-    box(msg, title='STATUS', border_color=color, text_color=color, clear_line=1)
+    box(msg, title='STATUS', border_color=color, text_color=color)
     
 def del_all():
     """
@@ -1862,26 +2327,27 @@ def del_all():
     cprint()
     separator(color=YLW)
     to_remove_files = [
-        CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT, LAST_RESPONSE_FILE,
-        PROMPT_HISTORY_FILE, SAVED_INFO_FILE, ERROR_LOG_FILE, GLOBAL_LOG_FILE
+        CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT, LAST_RESPONSE_FILE, SAVED_INFO_FILE,
+        SAVED_LINKS_FILE, PROMPT_HISTORY_FILE, RECOVERY_PROMPT_FILE,
+        ERROR_LOG_FILE, GLOBAL_LOG_FILE,
     ]
     
-    cprint(f'{YLW}WARNING! The program will exit & wipe the following files:')
+    to_remove_dirs = ['Output']
+    
+    cprint(f'{YLW}WARNING! The program will exit & wipe the following:')
     for file in to_remove_files: cprint('- ' + file)
+    for folder in to_remove_dirs: cprint('- ' + folder + ' (directory)')
     cprint('')
     
     # Confirm.
     text = f"Are you sure you want to reset everything? (y/n): {RS}"
     if GLOBAL_LOG_ON: in_time_log(text + '...')
-    confirm = None
     
-    while True:
-        try:
-            confirm = input(text).lower().strip()
-            break
-        except Interruption:
-            cprint()
-            break
+    try:
+        confirm = input(text).lower().strip()
+    except Interruption:
+        cprint()
+        confirm = None
     
     # Cancel.
     if confirm != 'y':
@@ -1890,18 +2356,84 @@ def del_all():
         return
     
     # Do it.
-    cprint(GR + 'Clearing everything & Quitting...')
-    separator(color=YLW)
-    discarding = True
+    cprint(f'\n{GR}# Clearing everything & Quitting...')
     for file in to_remove_files:
         try:
             with open(file, 'w', encoding='utf-8'): pass
+            cprint(f"{GR}[✓] File '{file}' cleared!{RS}")
         except:
             if ERROR_LOG_ON: log_caught_exception()
-            pass
+            cprint(f"{RED}[✗] File '{file}' couldn't be deleted!{RS}")
     
+    for folder in to_remove_dirs:
+        try:
+            remove_dir(folder)
+            cprint(f"{GR}[✓] Directory '{folder}' deleted!{RS}")
+        except:
+            if ERROR_LOG_ON: log_caught_exception()
+            cprint(f"{RED}[✗] Directory '{folder}' couldn't be deleted!{RS}")
+            
+    discarding = True
+    separator(color=YLW)
     raise SystemExit
 
+def del_uploaded_files():
+    """
+    Delete all of the files that have been uploaded to Google File API server.
+    They'll deleted in 48h hours anyway, but you know... self control.
+    """
+    try:
+        # List files & Warn the user.
+        separator()
+        cprint(f"{YLW}Warning! You are going to delete the following file(s) from Google server:\nand (Their saved links will no longer work)")
+        with console.status(status=f'[bold {STATUS_CYN}]Retrieving info...[/bold {STATUS_CYN}]',
+                            spinner=SPINNER):
+            files = list(client.files.list())
+        
+        length = len(files)
+        if length == 0:
+            cprint("\nWell, you don't have any files on Google server for now\n(Remember they only last for 48h).")
+            separator()
+            return
+        
+        for file in files[:10]: cprint(f'- {file.display_name}')
+        if length > 10: cprint(f'* And another ({length - 10}) file(s).')
+        if GLOBAL_LOG_ON: in_time_log('\nAre you sure you want to proceed? (y/n): ...')
+        
+        try:
+            confirm = input(f'\nAre you sure you want to proceed? (y/n): {RS}')
+        except Interruption:
+            cprint()
+            confirm = None
+            
+        if confirm != 'y':
+            cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+            separator()
+            return
+        
+        # Delete all files.
+        cprint(GR, end='')
+        for file in files:
+            cprint(f"- Deleting: '{file.display_name}'...")
+            # raise ConnectionError('Hi!')
+            client.files.delete(name=file.name)
+            
+        cprint(f"\n{GR}All files have been removed from the server!")
+        cprint("You may want to use /del-links command to clear the saved URLs list.")
+        separator()
+        
+    except Interruption:
+        cprint(f'{YLW}# Cancelled by you...')
+        separator()
+            
+    except Exception as error:
+        if ERROR_LOG_ON: log_caught_exception()
+        error_type = type(error).__name__
+        try: msg = error.message     # Get 'message' attribute from 'genai' errors.
+        except: msg = error.args[0]  # Built-in excepetions have 'args' tuple, 1st item is the message.
+        print(f'\n{RED}# {error_type}: {msg}.')
+        separator()
+   
 def statistics():
     """
     Inform the user of his data statistics.
@@ -1920,7 +2452,7 @@ def statistics():
     msg += '\n'
     
     # Check saved-info.
-    if os.path.exists(SAVED_INFO_FILE):
+    if path_exist(SAVED_INFO_FILE):
         with open(SAVED_INFO_FILE, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -1936,7 +2468,7 @@ def statistics():
         n = len(prompts)
         msg += f'\nTotal N° of prompts in prompt-history: ({n}).'
     
-    if os.path.exists(PROMPT_HISTORY_FILE) and (PROMPT_HISTORY_MEMORY or not PROMPT_HISTORY_ON):
+    if path_exist(PROMPT_HISTORY_FILE) and (PROMPT_HISTORY_MEMORY or not PROMPT_HISTORY_ON):
         with open(PROMPT_HISTORY_FILE, 'r', encoding='utf-8') as f:
             content = f.read()
         
@@ -1946,7 +2478,7 @@ def statistics():
         msg += f"\n{YLW}(In-file prompt history is disabled, but the file still contains: ({n}) entries)"
     
     # Check wordlist suggestion.
-    if os.path.exists(WORDLIST_FILE):
+    if path_exist(WORDLIST_FILE):
         with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
             content = f.readlines()[4:]
         
@@ -1957,50 +2489,53 @@ def statistics():
     
     # Show it.
     msg = msg.strip() + f'\n\n{CYN}(Remember, You have the commands to control your data)'
-    box(msg, title='STATISTICS', border_color=GR, text_color=GR, secondary_color=YLW, clear_line=1)
+    box(msg, title='STATISTICS', border_color=GR, text_color=GR, secondary_color=YLW)
 
 def quick_chat():
     """
-    Open another console window in quick chat mode.
+    Launch a specific chat mode in a new console.
     Used with 'quick-chat' command.
     """
     # Choose a mode.
     separator(before='\n', color=GR)
     prompt = GR + 'Quick Chat Modes:\n'
-    prompt += '1) Momentary: With each new message, previous one is forgotten.\n'
-    prompt += '2) Temporary: At exit, everything is forgotten.\n\n'
-    prompt += 'Choose 1 or 2: ' + RS
+    prompt += '1) Momentary: Single-turn (no memory between messages).\n'
+    prompt += '2) Temporary: At exit, history is forgotten.\n'
+    prompt += '3) File Generator: Generate simple files (no memory).\n'
+    prompt += '4) Image Generator: Generate simple images (no memory).\n\n'
+    prompt += 'Choose 1-4: ' + RS
     
-    if GLOBAL_LOG_ON: in_time_log(prompt)
+    if GLOBAL_LOG_ON: in_time_log(prompt + '...')
     mode = input(prompt).strip()
     
-    if mode == '1':
-        file = 'gemini_momentary.py'
-    elif mode == '2':
-        file = 'gemini_temporary.py'
-    else:
-        cprint(RED + 'Invalid option; aborting...')
-        separator(color=GR)
-        return
+    match mode:
+        case '1': file = 'gemini_momentary.py'
+        case '2': file = 'gemini_temporary.py'
+        case '3': file = 'gemini_file_generator.py'
+        case '4': file = 'gemini_image_generator.py'
+        case _:
+            cprint(RED + 'Invalid option; aborting...')
+            separator(color=GR)
+            return
     
     # Use current python interpreter to execute another '.py' file.
     cprint(GR + 'Opening the new chat...' + RS)
     NewProcess([sys.executable, file], creationflags=NEW_CONSOLE_FLAG)
     separator(color=GR)
 
-def open_path(path_to_open ,clear=0, restore_prompt='', set_placeholder=''):
+def open_path(path_to_open, clear=0, restore_prompt='', set_placeholder=''):
     """
     - Open a file or folder using the default OS application/file explorer.
-    - Used with 'open' or 'saved-info' commands.
+    - Used with 'open', 'saved-info' and other file commands.
     - Add a quick cleanup if requested.
     - Work reliably across Windows, macOS, and Linux.
     """
     global default_prompt, prompt_placeholder
     
     # Check if the file/folder exists.
-    if not os.path.exists(path_to_open):
+    if not path_exist(path_to_open):
         msg = "Requested file/folder isn't present in the current working directory."
-        box(msg, title='ERROR', border_color=RED, text_color=RED, clear_line=1)
+        box(msg, title='ERROR', border_color=RED, text_color=RED)
         return
 
     # webbrowser.open() handles both files and directories.
@@ -2008,7 +2543,7 @@ def open_path(path_to_open ,clear=0, restore_prompt='', set_placeholder=''):
     if GLOBAL_LOG_ON: in_time_log(' ')
     if clear: clear_lines(clear)
     if restore_prompt: default_prompt = restore_prompt
-    elif set_placeholder: prompt_placeholder = FormattedText([(PROMPT_FG, set_placeholder)])
+    elif set_placeholder: update_placeholder(set_placeholder, temp=True)
 
 def copy_to_clipboard(text: str, msg='Text copied to clipboard!', color=GR):
     """
@@ -2038,7 +2573,7 @@ def copy_to_clipboard(text: str, msg='Text copied to clipboard!', color=GR):
         msg += f"Details: {error}."
         color = RED
 
-    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color, clear_line=1)
+    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
 
 def copy_last_prompt():
     """
@@ -2062,14 +2597,487 @@ def copy_last_prompt():
     
     # Do it.
     copy_to_clipboard(last_prompt, msg, color)
-   
+
+def select_files_dialog(mode: str):
+    """
+    Open file/folder dialog allowing multiple selections.
+    Then return the selected files/folders' paths.
+    Works upon pressing F3 or F4 while in prompt.
+    """
+    selected = None
+    
+    if mode == 'file':
+        selected = list(filedialog.askopenfilenames(title="Select File(s)"))
+        
+    elif mode == 'dir':
+        selected = filedialog.askdirectory(title="Select Folder")   # Can only select one folder at a time.
+        
+    return selected  
+
+def convert_raw_urls():
+    """
+    If user prompt has private API URLs, convert them to objects that Gemini
+    can access & understand.
+    (Used inside interpret_special_commands() function).
+    """
+    global message_to_send
+    
+    # Syntax: https://generativelanguage.googleapis.com/v1beta/files/abcdefhijklm   
+    mark = 'generativelanguage.googleapis.com/'
+    
+    # Start resolving URLs.
+    content_parts = []
+    errors_list = []
+    with open(SAVED_LINKS_FILE, 'r', encoding='utf-8') as f:
+        content = f.read()
+        
+    # We'll keep the order of user-strings & attached-files-URLs.
+    parts = re.split(r'(\s+)', message_to_send)
+    pure_prompt_text = ''
+
+    # This operation is fast, so it doesn't need a status or a CTRL-C handler.
+    for part in parts:
+        if mark in part and '/files/' in part:
+            # Push any text we've collected so far.
+            if pure_prompt_text:
+                content_parts.append(pure_prompt_text)
+                pure_prompt_text = ''
+
+            # Get the mime_type from file.
+            part = part.rstrip('/')
+            i1 = content.find(part)
+
+            # Check if it's available.
+            if i1 == -1:
+                mime_type = ''                      # Let the server guess.
+            else:
+                i1 += len(part) + 1
+                i2 = content[i1:].find('\n') + 5    # (5) to remove the word 'Type:'
+                mime_type = content[i1:i2].strip()
+
+            # Get the file object.
+            try:
+                file_part = Part.from_uri(file_uri=part, mime_type=mime_type)
+            except Exception as error:
+                if ERROR_LOG_ON: log_caught_exception()
+                try: error = error.message
+                except: pass
+                msg = f"[{part}]:\n{error}"
+                errors_list.append(msg)
+                continue
+
+            # Save changes.
+            content_parts.append(file_part)
+            # message_to_send = message_to_send.replace(part, '')
+
+        else:
+            pure_prompt_text += part
+
+    # Append any remaining text after the loop finishes.
+    if pure_prompt_text: content_parts.append(pure_prompt_text)
+
+    # Check errors & Cancel sending the message.
+    if errors_list:
+        msg = '\n\n'.join(errors_list)
+        n = len(errors_list)
+        if len(content_parts) == 1: msg = f'{YLW}Resolving URLs failed:\n' + msg
+        elif n == len(content_parts): msg = f'{YLW}Resolving failed for all URLs! Details:\n' + msg
+        else: msg = f'{YLW}Resolving failed for some URLs! Details:\n' + msg
+        msg += f'\n\n{YLW}- Press (UP) to get your prompt back.\n'
+        clear_lines(1)
+        box(msg, title='LINKS ERROR', border_color=RED, text_color=RED, secondary_color=RED)
+        return False
+
+    # Save & Send the message.
+    message_to_send = content_parts
+    return True
+
+def convert_folder_to_files():
+    """
+    If the user uses the /folder command followed by a directory path, this will
+    replace that command-dir pair with all of the files in that dir.
+    Sub-dirs are ignored.
+    """
+    global message_to_send
+    
+    # 'message_to_send' is still a string at this stage.
+    # Pattern finds /dir or /folder followed by the path.
+    if CASE_SENSITIVITY: pattern = r"/(?:dir|folder)\s+(['\"]?)(.*?)\1(?=\s|$)"
+    else: pattern = r"(?i)/(?:dir|folder)\s+(['\"]?)(.*?)\1(?=\s|$)"
+    
+    # Iterate over user message to replace all /dir commands.
+    errors_list = []
+    match = re.search(pattern, message_to_send)
+    
+    while match:
+        # 'group(2)' is the path string captured by the regex (inside the quotes).
+        path = match.group(2)
+        
+        # Check if the dir exist.
+        if os.path.isdir(path):
+            # List dir items (ignore sub-dirs & their sub-files).
+            files = [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+            files.sort()
+            # Convert list of files back into a string of /file commands.
+            files = '\n'.join([f'/file "{f}"' for f in files]) + '\n'
+            message_to_send = re.sub(pattern, lambda _: files, message_to_send, count=1)    # We use lambda to tell 're.sub' to treat the string as literal text without mangling slashes & quotes.
+        else:
+            msg = f"[{path}]: "
+            if not path_exist(path): msg += "this directory doesn't exist, perhaps you forgot absolute path or quotes?"
+            else: msg += "this isn't a valid directory path; perhaps it requires permissions, or it's a file."
+            errors_list.append(msg)
+            # Remove the command-dir pair to continue finding error; user message won't be sent anyway.
+            message_to_send = re.sub(pattern, '', message_to_send, count=1)
+        
+        match = re.search(pattern, message_to_send)
+    
+    # Check errors & Cancel sending the message.
+    if errors_list:
+        msg = f'{YLW}Resolving one or more directories failed! Details:\n'
+        msg += '\n\n'.join(errors_list)
+        msg += f'\n\n{YLW}- Press (UP) to get your prompt back.\n'
+        box(msg, title='DIRECTORY ERROR', border_color=RED, text_color=RED, secondary_color=RED)
+        return None
+    
+    return True
+    
+def upload_to_google():
+    """
+    Uploads any file (txt, pdf, png, mp4, etc) to Google's File API.
+    Any file uploaded to Google’s servers using this File API is auto-deleted after 48 hours.
+    We can upload files of the same name without issues, Google handle that.
+    This API will refuse non-standard files like DOCX, although the webapp accepts them.
+    Works with 'file' or 'upload' commands.
+    """
+    global uploading, message_to_send, last_urls, recovery_prompt
+    
+    value = upload_preprocessor(mode='to_google')
+    if value == False: return True    # No path found, send message normally.
+    elif value == None: return None   # Error occured, cancel all.
+    else: paths, errors_list = value
+    
+    url_list = ''
+    uploaded_files = {}
+    
+    if not errors_list:
+        MAX_RETRIES = 3
+        N_FILES = len(set(paths.values()))   # Don't count duplicate files.
+        n = 1
+        for idx, path in paths.items():
+            disconnected = 0
+            for attempt in range(MAX_RETRIES + 1):
+                try:
+                    # raise ServerError(code=403, response_json={'status': 'Failed', 'reason': 'Unknown', 'message': 'Test' * 25})
+                    # Turn uploading flag ON, and reset last used URLs.
+                    if not uploading:
+                        cprint()
+                        uploading = True
+                        last_urls.clear()
+                    
+                    # Check if it's already uploaded.
+                    if path in uploaded_files:
+                        # Use its URL directly instead of reuploading.
+                        message_to_send[idx] = uploaded_files[path]
+                        break
+                    
+                    # Send the file to Google servers in another thread to keep UI responsive.
+                    file_name = get_file_name(path)
+                    if disconnected: status = f"Lost connection, retrying for '{file_name}'..."
+                    else: status = f"Uploading file '{file_name}'..."
+                    indicator = f'[{n}/{N_FILES}] ' if N_FILES > 1 else ''
+                    status = f"[bold {STATUS_PURP}]{indicator}{status}[/bold {STATUS_PURP}]"
+                    
+                    uploader = FileUploader(client, path)
+                    active = uploader.is_alive
+                    uploader.start()
+
+                    with console.status(status=status, spinner=SPINNER):
+                        while active(): uploader.join(SLEEP_INTERVAL)
+                        
+                    if uploader.exception: raise uploader.exception
+                    uploaded_file = uploader.uploaded_file
+                          
+                    # Check if google returned a non-empty object.
+                    if not uploaded_file:
+                        msg = f"received Google File object for '{path}' contained nothing; wait for sometime if you uploaded too many times..."
+                        raise ServerError(code=403, response_json={'status': 'Failed', 'reason': 'Unknown', 'message': msg})
+                    
+                    # Store the uploaded file.
+                    uploaded_files[path] = uploaded_file
+                    message_to_send[idx] = uploaded_file
+                    url = uploaded_file.uri
+                    last_urls[path] = url
+                    n += 1
+                        
+                    # Save the given URL (to avoid re-uploading later).
+                    date = datetime.now().strftime('%A, %B %d, %Y %I:%M %p')
+                    m_type = uploaded_file.mime_type
+                    url_list += f'File: {path}\n'
+                    url_list += f'Type: {m_type}\n'
+                    url_list += f'Link: {url}\n'
+                    url_list += f'Upload Date: {date}\n\n'
+                    break
+                
+                except Interruption:
+                    # Our thread is a daemon, so it's already dead here.
+                    msg = f"Uploading stopped and the message is cancelled.\nURLs for successful files might still be saved in: '{SAVED_LINKS_FILE}'."
+                    clear_lines()
+                    box(msg, title='KEYBOARD INTERRUPTION', border_color=GR, text_color=GR, secondary_color=GR)
+                    uploading = False
+                    return
+                    
+                except NetworkExceptions:
+                    # Try three more times before stopping.
+                    if disconnected == 3:
+                        catch_network_error()
+                        uploading = False
+                        return
+                    else:
+                        disconnected += 1
+                        continue
+                    
+                except Exception as error:
+                    if ERROR_LOG_ON: log_caught_exception()
+                    try: error = error.message
+                    except: pass
+                    msg = f"[{file_name}]: {error}"
+                    errors_list.append(msg)
+                    break
+    
+    # Write URLs to a file. Also shrink the file if it's too long.
+    if url_list:
+        if not path_exist(SAVED_LINKS_FILE):
+            open(SAVED_LINKS_FILE, 'w').close()
+            
+        with open(SAVED_LINKS_FILE, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        notes = "# This is a list of the files you uploaded to Gemini; use them to avoid re-uploading.\n"
+        notes += "# Each file's link can be reused within 48h of its upload date.\n"
+        notes += "# The first ones here are the most recent.\n"
+        notes += "# [!] Only Gemini can access these links with their specific API key, not you!"
+        sep = '─' * 80
+        old_urls = content.lstrip(notes).strip()
+        new_urls = '\n\n' + url_list.strip() + '\n' + sep + '\n'
+        new_content = notes + new_urls + old_urls
+        
+        if new_content.count('\n') > 200:
+            lines = new_content.splitlines()[:200]
+            while lines[-1] != sep: lines.pop()
+            new_content = '\n'.join(lines[:-1])
+        
+        with open(SAVED_LINKS_FILE, 'w', encoding='utf-8') as f:
+            f.write(new_content)
+
+    # Tell the user how many files failed to upload (user message won't be sent).
+    if errors_list:
+        # Clarify the errors.
+        msg = '\n\n'.join(errors_list)
+        n = len(errors_list)
+        if len(paths) == 1: msg = f'{YLW}Upload failed:\n' + msg
+        elif n == len(paths): msg = f'{YLW}Upload failed for all files! Details:\n' + msg
+        else: msg = f'{YLW}Upload failed for some files! Details:\n' + msg
+        msg += f'\n\n{YLW}- Press (UP) to get your prompt back.'
+        msg += f'\n{YLW}- You can try /raw command instead of /file for failed files.'
+        
+        # Prepare a recovery prompt.
+        if url_list:
+            recovery_prompt = user_input
+            # Sort paths by length (longest first) so 'final_report.pdf' 
+            # isn't accidentally caught by 'report.pdf'
+            sorted_paths = sorted(last_urls.keys(), key=len, reverse=True)
+            for path in sorted_paths:
+                url = last_urls[path]
+                
+                # This regex looks for:
+                # 1. /file or /upload
+                # 2. Any amount of whitespace \s+
+                # 3. The path, optionally surrounded by quotes
+                # 4. (?i:/file|/upload) makes ONLY the command case-insensitive; path remains sensitive.
+                escaped_path = re.escape(path)
+                if CASE_SENSITIVITY: pattern = rf"/(?:file|upload)\s+(?:(['\"]){escaped_path}\1|{escaped_path}(?=\s|$))"
+                else: pattern = rf"(?i:/(?:file|upload))\s+(?:(['\"]){escaped_path}\1|{escaped_path}(?=\s|$))"
+                
+                # re.sub() replaces the entire match (command + path) with just the URL
+                file_name = get_file_name(path)
+                replacement = f'[{file_name}]: {url}'
+                recovery_prompt = re.sub(pattern, replacement, recovery_prompt)
+                
+                # Add the recovery suggestion.
+                msg += f"\n{GR}- Successful files are already in the cloud; type /recover.{RS}"
+                msg += f'\n{GR}- Or for manual edit, type /last-links & press ENTER.\n'
+        
+        # Display.
+        box(msg, title='UPLOAD ERROR', border_color=RED, text_color=RED, secondary_color=RED)
+        uploading = False
+        return
+    
+    # Instead of raw data, we now send the 'Google File' objects (Which represent the shared files URLs).
+    return True
+
+def upload_raw_file():
+    """
+    Read a file from disk and wrap it in a Gemini Part object.
+    Send its content directly without using Google File API.
+    Used with /raw or /content commands.
+    """
+    global message_to_send
+    
+    value = upload_preprocessor(mode='raw')
+    if value == False: return True    # No path found, send message normally.
+    elif value == None: return None   # Error occured, cancel all.
+    else: paths, errors_list = value
+    
+    # Start converting files into objects.
+    if not errors_list:
+        for idx, path in paths.items():
+            try:
+                file_name = get_file_name(path)
+                mime_type = guess_type(path)
+                
+                # This is fast so it doesn't need a status message or a CTRL-C handler.
+                with open(path, 'rb') as f:
+                    file_part = Part.from_bytes(data=f.read(), mime_type=mime_type)
+                message_to_send[idx] = file_part
+                
+            except Exception as error:
+                if ERROR_LOG_ON: log_caught_exception()
+                try: error = error.message
+                except: pass
+                msg = f"[{file_name}]: {error}"
+                errors_list.append(msg)
+
+    if errors_list:
+        # Clarify the errors.
+        msg = '\n\n'.join(errors_list)
+        n = len(errors_list)
+        if len(paths) == 1: msg = f'{YLW}Processing raw content failed:\n' + msg
+        elif n == len(paths): msg = f'{YLW}Processing raw content failed for all files! Details:\n' + msg
+        else: msg = f'{YLW}Processing raw content failed for some files! Details:\n' + msg
+        msg += f'\n\n{YLW}- Press (UP) to get your prompt back.'
+        
+        # Display.
+        box(msg, title='RAW FILE ERROR', border_color=RED, text_color=RED, secondary_color=RED)
+        return False
+    
+    # Instead of raw data, we now send the 'Google File' object (Which contains the shared file URL as a part of it).
+    return True
+
+def recover_prompt():
+    """
+    Upon a failed upload attempt, an alternative prompt is generated for the user
+    (in upload_to_google() function) where sucessfully uploaded files paths are
+    replaced with their ready-to-use URLs; this function shows that generated prompt.
+    Used with 'recover' command.
+    """
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(app_dir, RECOVERY_PROMPT_FILE)
+        
+    if recovery_prompt:
+        msg = 'This is a generated recovery prompt where uploaded files paths are replaced with their URLs'
+        color = GR
+        
+        # Copy to clipboard.
+        try:
+            clip_copy(recovery_prompt)
+            msg += " (It's already copied to clipboard).\n"
+        except:
+            msg += '.\n'
+        
+        # Write it to a file & open it.
+        with open(RECOVERY_PROMPT_FILE, 'w', encoding='utf-8') as f:
+            f.write(recovery_prompt)
+        
+        msg += f'\nIt is saved in:\n{path}'
+        open_path(RECOVERY_PROMPT_FILE)
+    
+    else:
+        msg = f"You didn't try to upload anything for now; "
+        color = YLW
+        if path_exist(path):
+            msg += f'for a previous attempt, check: {path}'
+            open_path(path)
+        else:
+            msg += f"and the file '{RECOVERY_PROMPT_FILE}' doesn't exist."
+    
+    # Display.
+    box(msg, title='RECOVERY', text_color=color, border_color=color, secondary_color=color)
+
+def switch_chat_configuration():
+    """
+    Switch or update client & chat settings (AI model & API key) while in chat
+    to quickly resume the conversation and avoid 'Quota Exceeded' or related errors.
+    Work with /switch command.
+    """
+    global client, chat
+    
+    # Get new settings.
+    separator(before='\n', color=GR)
+    msg = f"{CYN}You are about to update chat settings temporarily; you won't lose chat history or anything else; settings file and future conversations won't be affected. "
+    msg += "Don't use the /switch command too much often, you know Google...\n\nLeave any field empty to keep using its current setting; "
+    msg += "you can use an API key from another account; for the AI model, 'gemini-2.5-flash' or 'gemini-2.5-flash-lite' are recommended "
+    msg += "(Your new options won't be validated; press CTRL-C to cancel).\n"
+    cprint(msg)
+    
+    try:
+        if GLOBAL_LOG_FILE: in_time_log('New API Key: ...')
+        api_key = input(f"{GR}New API Key: {RS}").strip() or GEMINI_API_KEY
+        if GLOBAL_LOG_FILE: in_time_log('New Gemini Model: ...')
+        ai_model = input(f"{GR}New Gemini Model: {RS}").strip() or GEMINI_MODEL
+    
+    except Interruption:
+        cprint(f"\n\n{YLW}Cancelled by you...")
+        separator(color=GR)
+        return
+    
+    # Check:
+    if (api_key == GEMINI_API_KEY) and (ai_model == GEMINI_MODEL):
+        cprint(f"\n{YLW}Settings look the same, so no need to update anything...")
+        separator(color=GR)
+        return
+    
+    # Client first.
+    cprint(f"{GR}\nUpdating...")
+    try:
+        # raise Exception
+        http_options = {
+            "timeout": HTTP_TIMEOUT * 1000, 
+        }
+        
+        client = GemClient(
+            api_key=api_key,
+            http_options=http_options,
+        )
+             
+        # Chat instance.
+        history = chat.get_history()
+        config = None
+        if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON or FILE_COMPRESSION:
+            config = load_system_instructions()
+            
+        chat = client.chats.create(
+            model=ai_model,
+            history=history,
+            config=config,
+        )
+    
+    except Exception as error:
+        if ERROR_LOG_ON: log_caught_exception()
+        separator(color=GR, end='')
+        catch_exception(error)
+        return
+    
+    # Inform.
+    cprint(f"Chat updated!")
+    separator(color=GR)
+        
 if SAVED_INFO:
     def manage_saved_info(user_input, command):
         """Manage user saved info by either: 'forget' or 'remember'."""
         # Check if it's worth adding/removing.
         MIN_WORDS = 3
         MIN_CHARS = 10
-        requested_info = user_input[len(command):].strip()
+        requested_info = user_input[len(command)+1:].strip()
         word_count = len(requested_info.split())  # split() uses space as default delimiter.
         char_count = len(requested_info)
         
@@ -2082,7 +3090,7 @@ if SAVED_INFO:
             try:
                 # A quick cleanup for the saved info file.
                 clean_file = False
-                if os.path.exists(SAVED_INFO_FILE) and os.path.getsize(SAVED_INFO_FILE) > 0:
+                if path_exist(SAVED_INFO_FILE) and os.path.getsize(SAVED_INFO_FILE) > 0:
                     with open(SAVED_INFO_FILE, 'r+', encoding='utf-8') as f:
                         content = f.read()
                         if not content.endswith('\n'):
@@ -2106,7 +3114,7 @@ if SAVED_INFO:
                         wrapped_lines = textwrap.wrap(line, width=80)
                         for line in wrapped_lines:
                             if not first_line_written:
-                                f.write(f'\n- {line}\n')
+                                f.write(f'\n- {line.lstrip("/")}\n')
                                 first_line_written = True
                             else:
                                 f.write(f'  {line}\n')
@@ -2121,7 +3129,7 @@ if SAVED_INFO:
                 msg = f"Couldn't save your info!\nError: {error}."
                 color = RED
                 
-            box(msg, title='SAVED INFO STATUS', border_color=color, text_color=color, secondary_color=color, clear_line=1)
+            box(msg, title='SAVED INFO STATUS', border_color=color, text_color=color, secondary_color=color)
 
         # User wants to forget something.
         elif command == 'forget':
@@ -2129,9 +3137,9 @@ if SAVED_INFO:
                 deleted = False     # If the info was deleted, this becomes True.
                 
                 # Get the saved info list.
-                if not os.path.exists(SAVED_INFO_FILE):
+                if not path_exist(SAVED_INFO_FILE):
                     msg = f"There is no '{SAVED_INFO_FILE}' file!"
-                    box(msg, title='WARNING', border_color=YLW, text_color=YLW, clear_line=1)
+                    box(msg, title='WARNING', border_color=YLW, text_color=YLW)
                     return
                 
                 try:        
@@ -2140,12 +3148,12 @@ if SAVED_INFO:
                 except Exception as error:
                     if ERROR_LOG_ON: log_caught_exception()
                     msg = f"Couldn't read '{SAVED_INFO_FILE}' file!\nError: {error}."
-                    box(msg, title='ERROR', border_color=RED, text_color=RED, clear_line=1)
+                    box(msg, title='ERROR', border_color=RED, text_color=RED)
                     return
                 
                 if not content:
                     msg = f"File '{SAVED_INFO_FILE}' is empty!"
-                    box(msg, title='WARNING', border_color=YLW, text_color=YLW, clear_line=1)
+                    box(msg, title='WARNING', border_color=YLW, text_color=YLW)
                     return
                 
                 # Split SAVED_INFO_FILE content according to '- ' at the start of line.
@@ -2156,7 +3164,7 @@ if SAVED_INFO:
                     # If there is only one saved info, avoid the remaining complex code.
                     cprint(f"{YLW}Found only one saved info in the whole '{SAVED_INFO_FILE}' file:{GR}")
                     info = re.sub(r'\s+', ' ', info_list[0].capitalize()).strip()
-                    cprint('- ' + info, wrap_width=console_width, wrap_joiner='\n  ')
+                    cprint('- ' + info, wrap_joiner='\n  ')
                     if GLOBAL_LOG_ON: in_time_log('\nDelete it? (y/n): ...')
                     user_choice = input(YLW + '\nDelete it? (y/n): ' + RS).strip().lower()
                     
@@ -2196,15 +3204,15 @@ if SAVED_INFO:
                 # Case (1): High confidence, almost sure.
                 if (ratio_1 > 0.7) and (ratio_1 / ratio_2 > 1.25):
                     cprint(CYN + 'Saved Info found:' + GR)
-                    cprint('- Remember ' + info_1, wrap_width=console_width, wrap_joiner='\n  ')
+                    cprint('- Remember ' + info_1, wrap_joiner='\n  ')
                     question = 'Are you sure you want to delete it? (y/n): '
                     answers = ['y']
                         
                 # Case (2): Match is decent, but dangerously ambiguous.
                 elif (ratio_1 > 0.5) and (ratio_1 / ratio_2 <= 1.30):
                     cprint(YLW + 'You probably meant one of these saved info:' + GR)
-                    cprint('1) Remember ' + info_1, wrap_width=console_width, wrap_joiner='\n   ')
-                    cprint('2) Remember ' + info_2, wrap_width=console_width, wrap_joiner='\n   ')
+                    cprint('1) Remember ' + info_1, wrap_joiner='\n   ')
+                    cprint('2) Remember ' + info_2, wrap_joiner='\n   ')
                     question = "(If none, use 'saved-info' command for manual edit)\n"
                     question += 'Which one you want to delete? (1, 2, cancel): '
                     answers = ['1', '2']
@@ -2212,11 +3220,11 @@ if SAVED_INFO:
                 # Case (3): Match is too poor.
                 else:   # elif ratio_1 <= 0.5:
                     cprint(YLW + 'Perphaps you meant one of these saved info:' + GR)
-                    cprint('1) Remember ' + info_1, wrap_width=console_width, wrap_joiner='\n   ')
-                    cprint('2) Remember ' + info_2, wrap_width=console_width, wrap_joiner='\n   ')
+                    cprint('1) Remember ' + info_1, wrap_joiner='\n   ')
+                    cprint('2) Remember ' + info_2, wrap_joiner='\n   ')
                     question = "(If none, use 'saved-info' command for manual edit)\n"
                     if top_n == 3:
-                        cprint('3) Remember ' + info_3, wrap_width=console_width, wrap_joiner='\n   ')
+                        cprint('3) Remember ' + info_3, wrap_joiner='\n   ')
                         question += f'Which one you want to delete? (1, 2, 3, cancel): '
                         answers = ['1', '2', '3']
                     else:
@@ -2238,7 +3246,7 @@ if SAVED_INFO:
                     except Exception as error:
                         if ERROR_LOG_ON: log_caught_exception()
                         msg = f"Couldn't edit '{SAVED_INFO_FILE}' file!\nError: {error}."
-                        box(msg, title='ERROR', border_color=RED, text_color=RED, clear_line=1)
+                        box(msg, title='ERROR', border_color=RED, text_color=RED)
                         return
                     
                     cprint(GR + 'Saved info permanently deleted!' + RS)
@@ -2369,6 +3377,8 @@ if EXTERNAL_EDITOR:
 
 
 
+
+
 # 6) Part V: Main Functions ------------------------------------------------------------------------
 def flush_input():
     """
@@ -2376,10 +3386,10 @@ def flush_input():
     E.g: If the user presses F1 outside prompt(), prompt() may still catch it
          when it's back ON.
     """
-    if os.name == "posix":    # Linux/Mac.
+    if OPERATING_SYSTEM == "posix":    # Linux/Mac.
         termios.tcflush(sys.stdin, termios.TCIFLUSH)
         
-    elif os.name == "nt":     # Windows.
+    elif OPERATING_SYSTEM == "nt":     # Windows.
         while msvcrt.kbhit(): msvcrt.getch()
 
 def serialize_history():
@@ -2395,10 +3405,9 @@ def serialize_history():
     if not history_list: return []
     
     # Respect history max limit.
-    if not NO_HISTORY_LIMIT:
-        if len(history_list) > MAX_HISTORY_MESSAGES:
-            messages_to_keep = history_list[-MAX_HISTORY_MESSAGES:]
-            history_list = messages_to_keep
+    if (not NO_HISTORY_LIMIT) and len(history_list) > MAX_HISTORY_MESSAGES:
+        if MAX_HISTORY_MESSAGES > 0: history_list = history_list[-MAX_HISTORY_MESSAGES:]
+        else: history_list.clear()
     
     # Serialize it.
     serializable_history = [
@@ -2518,7 +3527,7 @@ def save_chat_history_text():
         msg = "Current conversation is empty!"
         color = YLW
     
-    box(msg, title='STATUS', border_color=color, text_color=color, clear_line=1)
+    box(msg, title='STATUS', border_color=color, text_color=color)
 
 def load_chat_history():
     """Load chat history, if it meets the conditions."""
@@ -2526,7 +3535,7 @@ def load_chat_history():
     initial_history = []
     
     # Check if the history file exist, and is not empty.
-    file_exist = os.path.exists(CHAT_HISTORY_JSON)
+    file_exist = path_exist(CHAT_HISTORY_JSON)
     empty, useful = None, None
     
     if file_exist:
@@ -2544,7 +3553,8 @@ def load_chat_history():
         
         while True:
             try:
-                if ALWAYS_LOAD_CHAT: load_history = 'y'
+                if LOAD_CHAT_MODE == 'load': load_history = 'y'
+                elif LOAD_CHAT_MODE == 'forget': load_history = 'n'
                 else: load_history = input(question).lower().strip()
                 
             except Interruption:
@@ -2618,7 +3628,7 @@ def setup_chat():
     global restarting, chat_saved
     if GEMINI_API_KEY == "YOUR_API_KEY_HERE":
         catch_no_api_key()
-        help(short=True)
+        help(mode='short')
         sys_exit(1)
     
     # Loading Screen.
@@ -2677,7 +3687,7 @@ def setup_chat():
         
         except ClientError as error:
             catch_client_error_startup(error)
-            help(short=True)
+            help(mode='short')
             sys_exit(1)
         
         except ServerError as error:
@@ -2708,7 +3718,7 @@ def setup_chat():
     
     # Start chat session with/out the system instructions (Implicit orders or saved info).
     config = None
-    if IMPLICIT_INSTRUCTIONS_ON or SAVED_INFO:
+    if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON or FILE_COMPRESSION:
         config = load_system_instructions()
     
     chat = client.chats.create(
@@ -2720,33 +3730,57 @@ def setup_chat():
     cprint()
     restarting = False
     return client, chat
-
-def interpret_commands(user_input: str):
+  
+def interpret_commands():
     """If the user input is a special command, execute it."""
-    global discarding, history, default_prompt
+    global discarding, history, should_compress, default_prompt, message_to_send
+        
+    command = user_input.strip()
+    if not CASE_SENSITIVITY: command = command.lower()
+    if command.startswith('/'): command = command.lstrip('/')
+    else: command = 'None'   # So that it doesn't accidentaly match one of the cases below before reaching other 'interpret' functions.
     
-    command = user_input.strip().lower()
-    if not command.startswith('/'): return True
-    else: command = command.lstrip('/')
+    # Check for high priority commands first:
+    cmd_finder = lambda cmd: command.startswith(cmd) and command[len(cmd):len(cmd)+1].isspace()
+    if cmd_finder('original'):
+        message_to_send = message_to_send.lstrip()[10:]
+        return True
     
+    elif cmd_finder('no-compress'):
+        message_to_send = message_to_send.lstrip()[13:]
+        should_compress = 'no'
+
+    elif cmd_finder('compress'):
+        message_to_send = message_to_send.lstrip()[10:]
+        should_compress = 'yes'
+
+    # Check for other commands.
     match command:
         case 'quit' | 'exit':
             cprint()
             farewell(confirmed=True)
     
-        case 'help' | 'help-2':
-            if command == 'help': help(short=True)
-            else: help()    # Long version.
-            clear_lines()    
+        case 'help' | 'help-2' | 'help-3':
+            if command == 'help': help(mode='short')
+            elif command == 'help-2': help(mode='regular')
+            else: help(mode='long')
 
         case 'clear':
             system(CLEAR_COMMAND)
+            # Change the prompt placeholder for a fresh start feeling.
+            update_placeholder()
     
         case 'open':
             open_path('.', clear=2, set_placeholder=user_input)
     
         case 'saved-info':
             open_path(SAVED_INFO_FILE, clear=2, set_placeholder=user_input)
+        
+        case 'saved-links' | 'saved-urls':
+            open_path(SAVED_LINKS_FILE, clear=2, set_placeholder=user_input)
+        
+        case 'recover':
+            recover_prompt()
     
         case c if c.startswith('remember ') and SAVED_INFO:
             manage_saved_info(user_input, 'remember')
@@ -2765,13 +3799,33 @@ def interpret_commands(user_input: str):
         
         case 'save-chat':
             save_chat_history_text()
+        
+        case  'last-links' | 'last-urls':
+            if last_urls:
+                msg = ''
+                color = GR
+                for path, url in last_urls.items():
+                    name = get_file_name(path)
+                    msg += f'\n[{name}]:\n{url}\n'
+                try:
+                    clip_copy(msg.strip())
+                    msg = f'{BL}Links of the last successfully uploaded files:\n{BL}(Already copied to clipboard)\n{msg}'
+                except:
+                    msg = f'{BL}Links of the last successfully uploaded files:{msg}'
+            else:
+                msg = "You've not successfully uploaded any files for now."
+                color = YLW
+            box(msg, title='LAST LINKS', border_color=color, text_color=color, secondary_color=color)
 
         case c if c.startswith('pop-last'):
-            if len(command) > 8: n_turns = int(float(command[8:]))
-            else: n_turns = 1
+            if command == 'pop-last': n_turns = 1
+            elif command.startswith('pop-last '):
+                try: n_turns = int(float(command[8:]))
+                except: return True
+            else: return True
             store_last_turn_for_exclusion(n_turns)  
         
-        case c if c.startswith('pop-all'):
+        case 'pop-all':
             store_last_turn_for_exclusion(remove_all=True)
     
         case 'restore-last' | 'restore-all':
@@ -2792,11 +3846,50 @@ def interpret_commands(user_input: str):
                 msg = f"An error occurred: {e}."
                 color = RED
             
-            box(msg, title='STATUS', border_color=color, text_color=color, clear_line=1)
+            box(msg, title='STATUS', border_color=color, text_color=color)
     
         case 'del-log':
             clear_log_files()
-    
+        
+        case 'del-links':
+            try:
+                os.remove(SAVED_LINKS_FILE)
+                msg = f"File '{SAVED_LINKS_FILE}' deleted successfully!"
+                color = GR
+            except FileNotFoundError:
+                msg = f"File '{SAVED_LINKS_FILE}' not found!"
+                color = YLW
+            except Exception as error:
+                if ERROR_LOG_ON: log_caught_exception()
+                msg = f"Error: {error}."
+                color = RED
+            box(msg, title='STATUS', border_color=color, text_color=color)
+        
+        case 'del-output':
+            try:
+                remove_dir('Output')
+                msg = 'All generated files were removed!'
+                color = GR
+            except Exception as error:
+                msg = f'Error: {error}.'
+                color = RED
+            box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
+        
+        case 'del-uploaded':
+            del_uploaded_files()
+        
+        case 'del-all':
+            del_all()
+        
+        case 'quick-chat':
+            quick_chat()
+        
+        case 'switch':
+            switch_chat_configuration()
+        
+        case 'restart':
+            raise SoftRestart
+        
         case 'discard' | 'kill':
             discarding = True
             try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
@@ -2805,21 +3898,12 @@ def interpret_commands(user_input: str):
             if command == 'discard':
                 if PROMPT_HISTORY_ON: load_prompt_history()
                 msg = 'Discarding current session & Restarting...'
-                box(msg, title='DISCARD', border_color=YLW, text_color=YLW, clear_line=1)
+                box(msg, title='DISCARD', border_color=YLW, text_color=YLW)
                 raise SoftRestart
             else:   # Kill.
                 msg = 'Clearing recent messages & Quitting...\nManually saved content & logs are kept!'
-                box(msg, title='KILL', border_color=YLW, text_color=YLW, clear_line=1)
+                box(msg, title='KILL', border_color=YLW, text_color=YLW)
                 raise SystemExit
-    
-        case 'del-all':
-            del_all()
-        
-        case 'quick-chat':
-            quick_chat()
-        
-        case 'restart':
-            raise SoftRestart
         
         case 'stats' | 'statistics':
             statistics()
@@ -2828,7 +3912,7 @@ def interpret_commands(user_input: str):
             msg_1 = "Do whatever you want using 'Gemini Py-CLI', wherever you want."
             msg_2 = "Half of it was written using AI itself, so I won't complain.\n"
             msg_3 = f"But as a polite programmer request, I'll be happy if you mention my name... for the efforts."
-            box(msg_1, msg_2, msg_3, title='LICENSE', border_color=GR, text_color=GR, clear_line=1)
+            box(msg_1, msg_2, msg_3, title='LICENSE', border_color=GR, text_color=GR)
         
         case 'about':
             msg_1 = "Title: Gemini Py-CLI.\nAuthor: Mohyeddine Didouna, with a major AI assistance."
@@ -2836,50 +3920,133 @@ def interpret_commands(user_input: str):
             msg_3 = f"Issues Page: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}"
             msg_4 = "\nMany thanks and credits to all the people who contributed, tutorials makers, "
             msg_4 += "and free content creators. Without their help, this project wouldn't be possible"
-            box(msg_1, msg_2, msg_3, msg_4, title='ABOUT', border_color=GR, text_color=GR, clear_line=1)     
+            box(msg_1, msg_2, msg_3, msg_4, title='ABOUT', border_color=GR, text_color=GR)     
             
         case 'version':
             msg = "Gemini Py-CLI, Version 1.0"
-            box(msg, title='VERSION', border_color=GR, text_color=GR, clear_line=1)
+            box(msg, title='VERSION', border_color=GR, text_color=GR)
             
         case _:
-            # Try the extra commands.
-            if interpret_extra_commands(command):
-                # No command. Return True as a flag to send a normal message to AI.
-                return True
+            # Try the extra & special commands.
+            if not interpret_extra_commands(command): return   # Command found, so there is no message to send.
+            if not interpret_special_commands(): return        # Error, prompt must be cancelled.
+            
+            # No command. Return True as a flag to send a normal message to AI.
+            return True
 
+def interpret_special_commands():
+    """
+    Execute special commands that can appear in prompt beginning, middle or end.
+    Those commands can be all executed in a row, since the user can use all of
+    them at once.
+    """
+    global converted_prompt
+    converted_prompt = user_input
+    cp = converted_prompt if CASE_SENSITIVITY else converted_prompt.lower()
+    cmd_finder = lambda cmd: cp.startswith(f'/{cmd} ') or (f' /{cmd} ' in cp) or (f'\n/{cmd} ' in cp) or (f'\t/{cmd} ' in cp)
+    to_return = True    # This becomes None upon an error.
+    
+    if cmd_finder('dir') or cmd_finder('folder'):
+        if not convert_folder_to_files(): to_return = None
+        # Update 'cp' variable because /dir commands has been replaced by /file.
+        converted_prompt = message_to_send
+        cp = converted_prompt if CASE_SENSITIVITY else converted_prompt.lower()
+        cmd_finder = lambda cmd: cp.startswith(f'/{cmd} ') or (f' /{cmd} ' in cp) or (f'\n/{cmd} ' in cp) or (f'\t/{cmd} ' in cp)
+    
+    if ('generativelanguage.googleapis.com/' in cp) and ('/files/' in cp):
+        if not convert_raw_urls(): to_return = None
+        
+    if cmd_finder('file') or cmd_finder('upload'):
+        if not upload_to_google(): to_return = None
+    
+    if cmd_finder('raw') or cmd_finder('content'):
+        if not upload_raw_file(): to_return = None
+
+    return to_return    # No command was found, so continue sending prompt.
+    
 def interpret_extra_commands(command: str):
     """
     A special function to interpret the extra-secret commands.
     This really should be in 'useless.py' module, but I faced a lot of issues to do that.
     """
     global user_input, default_prompt
+    
+    nice_try = f"{RED}Nice try, Zero Cool. The Gibson is secured. I'm not hurting or deleting myself today.{RS}"
+    cmd_finder = lambda cmd: command.startswith(cmd) and command[len(cmd):len(cmd)+1].isspace()
+    second_match = False
 
     match command:
         # This is only for testing, don't use it otherwise.
-        case c if c.startswith(('exec ', 'exec\n')):
-            try:
-                exec(user_input[6:])
-                cprint(f'{GR}(Code Executed Sucessfully!){RS}')
-            except Exception as error:
-                error_type = type(error).__name__
-                cprint(f'{RED}{error_type}: {error}{RS}')
+        case _ if not DEV_MODE:
+            # Gatekeeper/Switchgate if developper mode is OFF.
+            second_match = True
+            
+        case _ if cmd_finder('exec'):
+            if danger_finder(command):
+                cprint(nice_try)
+            else:
+                try:
+                    exec(user_input[6:])
+                    cprint(f'{GR}(Code Executed Sucessfully!){RS}')
+                except Exception as error:
+                    catch_exception(error)
         
-        case c if c.startswith('eval '):
+        case _ if cmd_finder('eval'):
             try:
+                # Trick: using '/eval user_input' will just show you the same thing that you just typed.
                 value = eval(user_input[6:])
                 cprint(f'{GR}Evaluation Result: {value}{RS}')
             except Exception as error:
-                error_type = type(error).__name__
-                cprint(f'{RED}{error_type}: {error}{RS}')
+                catch_exception(error)
 
-        case c if c.startswith('echo '):
+        case _ if cmd_finder('echo'):
             cprint(f'{GR}Echo Says: {user_input[6:]}{RS}')
+       
+        case _ if cmd_finder('inspect'):
+            try:
+                from useless import inspect_object
+                obj = eval(user_input[9:])
+                inspect_object(obj, cprint)
+            except Exception as error:
+                catch_exception(error)
         
+        case _ if cmd_finder('system'):
+            if danger_finder(command):
+                cprint(nice_try)
+            else:
+                from useless import run_system_command
+                order = user_input[8:]
+                run_system_command(order, cprint)
+        
+        case 'globals':
+            from useless import show_globals
+            show_globals(cprint)
+        
+        case 'modules':
+            from useless import show_loaded_modules
+            show_loaded_modules(cprint)
+        
+        case 'reload':
+            from useless import reload_custom_modules
+            reload_custom_modules(cprint)
+        
+        case 'test':
+            from useless import LOREM_IPSUM
+            print_response(LOREM_IPSUM.strip())
+            
+        case _:
+            second_match = True
+        
+    if not second_match: return  
+    match command:
         # CONGRATULATIONS! You found the secret: Extra useless commands :P
+        case _ if not FUN_MODE:
+            # Gatekeeper/Switchgate if fun mode is OFF.
+            return True
+            
         case 'mohyoo' | 'mohyeddine' | 'didouna' | 'mohyeddine didouna' | 'didouna mohyeddine':
             msg = "Data classified.\nYou didn't think it would be that easy, did you?"
-            box(msg, title='CLASSIFIED', border_color=CYN, text_color=CYN, clear_line=1)
+            box(msg, title='CLASSIFIED', border_color=CYN, text_color=CYN)
             
         case 'banana' | 'bananas':
             from useless import draw_ascii_image
@@ -2888,6 +4055,30 @@ def interpret_extra_commands(command: str):
         case 'dog':
             from useless import draw_ascii_image
             draw_ascii_image('DOG', 'SAY HI!', YLW2, console_width, visual_len, box)
+        
+        case 'fish':
+            from useless import draw_ascii_image
+            draw_ascii_image('FISH', 'SWIMMING...', BL, console_width, visual_len, box)
+        
+        case 'rabbit':
+            from useless import draw_ascii_image
+            draw_ascii_image('RABBIT', 'BUGS BUNNY!', GRY, console_width, visual_len, box)
+        
+        case 'deer':
+            from useless import draw_ascii_image
+            draw_ascii_image('DEER', 'DEER', BRW, console_width, visual_len, box)
+        
+        case 'cheetah':
+            from useless import draw_ascii_image
+            draw_ascii_image('CHEETAH', 'CHEETAH!', YLW, console_width, visual_len, box)
+       
+        case 'fox':
+            from useless import draw_ascii_image
+            draw_ascii_image('FOX', 'FOX', RED, console_width, visual_len, box)
+            
+        case 'raven':
+            from useless import draw_ascii_image
+            draw_ascii_image('RAVEN', 'RAVEN...', GRY, console_width, visual_len, box)
         
         case 'cat':
             from useless import draw_ascii_animation
@@ -2906,7 +4097,7 @@ def interpret_extra_commands(command: str):
         case 'quote':
             from useless import QUOTES
             quote = choice(QUOTES)
-            box(quote, title='QUOTE', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)      
+            box(quote, title='QUOTE', border_color=PURP, text_color=PURP, secondary_color=PURP)      
 
         case 'lang' | 'language':
             from useless import language
@@ -2920,28 +4111,28 @@ def interpret_extra_commands(command: str):
         case 'fact':
             from useless import FACTS
             fact = choice(FACTS).replace('Fact: ', '')
-            box(fact, title='FACT', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)
+            box(fact, title='FACT', border_color=PURP, text_color=PURP, secondary_color=PURP)
 
         case 'joke':
             from useless import JOKES
             joke = choice(JOKES)
-            box(joke, title='SMILE :P', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)
+            box(joke, title='SMILE :P', border_color=PURP, text_color=PURP, secondary_color=PURP)
 
         case 'nothing':
             from useless import NOTHING
             msg = choice(NOTHING)
-            box(msg, title="NOTHING", border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)        
+            box(msg, title="NOTHING", border_color=PURP, text_color=PURP, secondary_color=PURP)        
 
         case 'nonsense':
             from useless import NONSENSE
             title = choice(NONSENSE[0])
             msg = choice(NONSENSE[1:])
-            box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
+            box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP)
 
         case 'advice' | 'hint':
             from useless import ADVICES
             advice = choice(ADVICES).replace('Fact: ', '')
-            box(advice, title='ADVICE', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1, new_line=False)
+            box(advice, title='ADVICE', border_color=PURP, text_color=PURP, secondary_color=PURP)
 
         case 'math' | 'headache':
             from useless import mathematics
@@ -2958,7 +4149,41 @@ def interpret_extra_commands(command: str):
         case 'achieve' | 'achievement':
             from useless import ACHIEVEMENTS
             msg = "Achievement Unlocked: " + choice(ACHIEVEMENTS)
-            box(msg, title='ACHIEVEMENT', border_color=PURP, text_color=PURP, secondary_color=PURP, clear_line=1)
+            box(msg, title='ACHIEVEMENT', border_color=PURP, text_color=PURP, secondary_color=PURP)
+               
+        case 'admin':
+            from useless import ADMIN
+            quote = choice(ADMIN)
+            box(quote, title='SORRY', border_color=PURP, text_color=PURP, secondary_color=PURP)  
+            
+        case 'zen':
+            from useless import PYTHON_ZEN
+            zen = PYTHON_ZEN.strip()
+            box(zen, title='SORRY', border_color=PURP, text_color=PURP, secondary_color=PURP)  
+            
+        case 'tea' | 'coffee':
+            from useless import TEA
+            tea =  '旦~ ' + choice(TEA)
+            box(tea, title='Good Morning', border_color=PURP, text_color=PURP, secondary_color=PURP)  
+        
+        case 'matrix':
+            from useless import matrix
+            matrix(separator)
+        
+        case 'duck' | 'quack':
+            file = 'Data/Quack (' + str(randint(1, 3)) + ').mp3'
+            path = os.path.abspath(file)
+            if OPERATING_SYSTEM == "nt": os.startfile(path)
+            elif sys.platform == "darwin": os.system("afplay 'sound.wav' & || ffplay -nodisp -autoexit 'sound.wav' & || play 'sound.wav' &")
+            else: os.system(f"xdg-open '{path}'")   # Unix/Linux.
+            update_placeholder(command, temp=True)
+            clear_lines(2)
+       
+        case 'shrug' | 'tableflip':
+            from useless import SHRUG
+            emoji = choice(SHRUG.split('!')).strip()
+            update_placeholder(emoji, temp=True)
+            clear_lines(2)
         
         case c if c.startswith(('false-echo', 'f-echo')):
             from useless import false_echo
@@ -2968,11 +4193,12 @@ def interpret_extra_commands(command: str):
             random_cmd = choice([
                 'banana', 'dog', 'cat', 'horse', 'time-travel', 'quote','fact', 'joke', 'riddle', 'lang',
                 'nothing', 'nonsense', 'hint', 'math', 'scan', 'overthink', 'achieve', 'f-echo random', 'mohyoo',
+                'tea', 'admin', 'matrix', 'duck', 'shrug', 'zen',
             ])
             
             user_input = random_cmd
             interpret_extra_commands(random_cmd)
-            default_prompt = f"Last random command: '\{random_cmd}'"
+            default_prompt = f"Last random command: '/{random_cmd}'"
         
         # No command. Return True as a flag to send a normal message to AI.
         case _:
@@ -2982,7 +4208,9 @@ def get_user_input():
     """
     Handle prompt_toolkit input and catch Ctrl-C/Ctrl-D.
     NOTE: User input will never be stripped or modified, it'll be sent as-is,
-    we only use a stripped copy of it to beautify the output.
+    we only use a stripped copy of it to beautify the output. It might only
+    get a little modified when uploading files to remove the program commands
+    and personal files paths.
     """
     global last_prompt, default_prompt, prompt_placeholder
     
@@ -3066,7 +4294,7 @@ def get_user_input():
     finally:
         # If prompt options changed (because of open_path() function), restore them.
         if default_prompt: default_prompt = None
-        if 'Ask Gemini...' not in repr(prompt_placeholder): prompt_placeholder = FormattedText([(PROMPT_FG, 'Ask Gemini...')])
+        if prompt_placeholder != last_placeholder: update_placeholder(restore=True)
         
     # Return input.
     if user_input.strip():
@@ -3077,16 +4305,52 @@ def get_user_input():
 
 def get_response():
     """Send the user input to AI and wait to receive the response."""
+    global uploading, should_compress, message_to_send
+
+    # Compress the prompt.
+    if should_compress == 'yes': do_compress = True
+    elif should_compress == 'no': do_compress = False
+    else: do_compress = TEXT_COMPRESSION    # (should_compress) is None.
+    if do_compress:
+        if isinstance(message_to_send, str):
+            message_to_send = compress_text(message_to_send)
+        else:
+            for i, part in enumerate(message_to_send):
+                if isinstance(part, str):
+                    message_to_send[i] = compress_text(part)
+        
+        should_compress = None
+    
+    # Check 'message_to_send' pure text size one final time; in case of:
+    # 1) /file or /dir commands, it depeneds only on string size, URLs are negligeable.
+    # 2) /raw command, the size is caught at upload_preprocessor().
+    # 3) No command was found, only the pure string size matters.
+    if isinstance(message_to_send, str): final_bytes = len(message_to_send.encode('utf-8'))
+    else: final_bytes = sum(len(s.encode('utf-8')) for s in message_to_send if isinstance(s, str))  # (0) if no string.
+        
+    MAX_SIZE = 20    # MB (defined by google).
+    final_mb = final_bytes / (1024 * 1024)
+    
+    if final_mb > MAX_SIZE:
+        final_mb = round(final_mb, 3)
+        if final_mb == 20: final_mb = 20.001
+        msg = f"Message payload is {final_mb}MB, which exceeds the exact 20MB limit."
+        box(msg, title='MESSAGE TOO LARGE', border_color=RED, text_color=RED)
+        return
+    
+    # Start sending.
+    if not uploading: cprint()
+    else: uploading = False
+    
     try:
         # 1. Preparation.
-        cprint()
         status_messages = [
-            f'[bold {WAIT_1}]Sending message...[/bold {WAIT_1}]',
-            f'[bold {WAIT_1}]Analysis...[/bold {WAIT_1}]',
-            f'[bold {WAIT_1}]Thinking...[/bold {WAIT_1}]',
-            f'[bold {WAIT_1}]Generating response...[/bold {WAIT_1}]',
-            f'[bold {WAIT_1}]Receiving response...[/bold {WAIT_1}]',
-            f'[bold {WAIT_2}]Response is taking longer than usual...[/bold {WAIT_2}]',
+            f'[bold {STATUS_GR}]Sending message...[/bold {STATUS_GR}]',
+            f'[bold {STATUS_GR}]Analysis...[/bold {STATUS_GR}]',
+            f'[bold {STATUS_GR}]Thinking...[/bold {STATUS_GR}]',
+            f'[bold {STATUS_GR}]Generating response...[/bold {STATUS_GR}]',
+            f'[bold {STATUS_GR}]Receiving response...[/bold {STATUS_GR}]',
+            f'[bold {STATUS_CYN}]Response is taking longer than usual...[/bold {STATUS_CYN}]',
         ]
         
         response = None
@@ -3101,7 +4365,7 @@ def get_response():
                 # raise Exception('Test' * 25)
 
                 # Initialize the worker thread (A thread instance can only be started once, so we create it here).
-                worker = GeminiWorker(chat, user_input)
+                worker = GeminiWorker(chat, message_to_send)
                 active = worker.is_alive
                 worker.start()
 
@@ -3135,7 +4399,7 @@ def get_response():
                     raise
                 else:
                     failed = True
-                    status_messages = [f'[bold {WAIT_2}]Hold on, trying hard to get the response...[/bold {WAIT_2}]']
+                    status_messages = [f'[bold {STATUS_CYN}]Hold on, trying hard to get the response...[/bold {STATUS_CYN}]']
                     continue
             
             except:
@@ -3158,9 +4422,6 @@ def get_response():
     except Exception as error:
         catch_exception(error)
     
-    finally:
-        if not response: clear_lines()
-        
     return response
 
 def print_response(response, title='Gemini'):
@@ -3231,22 +4492,43 @@ def print_response(response, title='Gemini'):
         
         # Inform.
         msg = f'{GR}Response blocked (but saved!), skipping the rest of it...'
-        box(msg, title='KEYBOARD INTERRUPTION', border_color=GR, clear_line=1)
+        box(msg, title='KEYBOARD INTERRUPTION', border_color=GR)
 
     except Exception as error:
         catch_exception(error)
     
 def run_chat():
     """Handle the user prompts and Gemini responses."""
-    global user_input, response
+    global user_input, message_to_send, response, chat
     while True:
         try:
+            # Shrink the in-memory chat history if it exceeds the limit.
+            # We recreate the chat because there is no other way.
+            length = len(chat.get_history())
+            if (not NO_HISTORY_LIMIT) and (length > MAX_HISTORY_MESSAGES):
+                if MAX_HISTORY_MESSAGES > 0: trimmed_history = chat.get_history()[-MAX_HISTORY_MESSAGES:]
+                else: trimmed_history = None
+                config = None
+                if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON or FILE_COMPRESSION:
+                    config = load_system_instructions()
+                    
+                chat = client.chats.create(
+                    model=GEMINI_MODEL,
+                    history=trimmed_history,
+                    config=config,
+                )
+                
             # Get user input.
             user_input = get_user_input()
             if not user_input: continue
+            # REMINER!
+            # 1) user_input: is the original untouched user prompt, always kept this way.
+            # 2) cp (converted prompt): an intermediate format to manipulate commands in interpret_special_commands().
+            # 3) message_to_send: is the final, ready-to-send message.
+            message_to_send = user_input
             
             # Interpret commands.
-            if not interpret_commands(user_input): continue
+            if not interpret_commands(): continue
 
             # Get & Print Response.
             response = get_response()
@@ -3264,36 +4546,197 @@ def run_chat():
 
 
 
+
+
 # 7) Part VI: Remaining Global Objects & Starting Point --------------------------------------------
 def define_global_objects():
     """Define local variables and copy them directly into the global namespace."""
     # Define global variables.
-    glitching_text_width = min(console_width, 79)   # Width used for some messages like farewell and saved info, used to avoid glitches.
     confirm_separator = True                        # Before confirming to quit, print a separator only if no precedent one was already displayed.
     word_completer = None                           # Has a True value only if the WORDLIST_FILE is present and SUGGEST_FROM_WORDLIST is True.
     chat_saved = False                              # True after the chat has been saved.
     restarting = False                              # Session restart flag.
     discarding = False                              # Session discard flag.
+    uploading = False                               # A flag to signal that a file has been downloaded.
     messages_to_remove = []                         # Store selected messages for deletion at exit.
     messages_to_remove_steps = []                   # Used to undo messages deletion.
     default_prompt = None                           # An initial prompt the user gets when asked for input, mostly not used.
-    last_prompt = None                              # Used to store last user prompt, to copy it if requested.
     line_continuation = '....... '                  # Line break marker.
+    recovery_prompt = ''                            # Used to recover urls quickly after a failed upload.
+    should_compress = None                          # A flag used with /compress or /no-compress commands.
+    last_prompt = None                              # Used to store last user prompt, to copy it if requested.
+    last_urls = {}                                  # Last urls for successfully uploaded files: {name: url}
     if RESPONSE_EFFECT: current_response_line = 0   # Used to clean output upon blocking a response.
     if VIM_EMACS_MODE: editor_variable = None       # This will change to the current EDITOR variable in the system, if available.
+    if DEV_MODE:
+        DANGEROUS_PATTERNS = (                      # Used to make sure the user won't use harmful orders with developper commands.
+            "rm -rf", "del /F /Q /S C:\*", "mkfs", "dd if=", "format", "wipefs",
+            "cryptsetup luksFormat", ":(){"
+        )
+        
+        spaces = r'\s+'
+        danger_finder = lambda s: any(
+            f' {p.lower()} ' in rf" {re.sub(spaces, ' ', s).lower()} "
+            for p in DANGEROUS_PATTERNS
+        )
 
     # Define global constants.
-    CLEAR_COMMAND = 'cls' if os.name == 'nt' else 'clear'
-    ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')  # Used to clean a string from ANSI codes.
-    WORD_AND_SPACE_PATTERN = re.compile(r'(\s+)')   # Used to split lines into words, for word-by-word animation.
-    HISTORY_PATTERN = re.compile(                   # Used to shrink PROMPT_HISTORY_FILE to a valid history step.
-        r'^#\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+$',
-        re.MULTILINE
+    CLEAR_COMMAND = 'cls' if OPERATING_SYSTEM == 'nt' else 'clear'
+    ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')          # Used to clean a string from ANSI codes.
+    if RESPONSE_EFFECT == 'word': WORD_SPACE_PATTERN = re.compile(r'(\s+)')  # Used to split text into words for word-by-word animation.
+    STOP_WORDS = set(get_stop_words(COMPRESSION_LANGUAGE))  # If compression is ON, these stop words will be removed from the prompt.
+    SHORTCUT_WORDS = {                                      # If compression is ON, long expressions will be replaced by shorter ones.
+        # Common Connectors & Prepositions.
+        "and": "&",
+        "with": "w/",
+        "without": "w/o",
+        "because": "bc",
+        "between": "btwn",
+        "before": "b4",
+        "about": "abt",
+        "through": "thru",
+        "instead of": "i/o",
+        "okay": "ok",
+        "why": "y",
+        "two": "2",
+        "too": "2",
+        "for": "4",
+        
+        # Pronouns & People.
+        "you": "u",
+        "your": "ur",
+        "someone": "sm1",
+        "something": "sth",
+        "anyone": "any1",
+        "everyone": "evry1",
+        "people": "ppl",
+        "myself": "myslf",
+        "them": "'em",
+
+        # Common Verbs & Actions.
+        "are": "r",
+        "be": "b",
+        "see": "c",
+        "know": "knw",
+        "thanks": "thx",
+        "please": "plz",
+        "hello":  "hi",
+        "delete": "del",
+        "remove": "rm",
+        "receive": "rcv",
+        "message": "msg",
+        "going to": "gonna",
+        "want to": "wanna",
+        "got to": "gotta",
+        "do not": "don't",
+        "will": "'ll",
+        "will not": "won't",
+        "must not": "mustn't",
+        "can not": "can't",
+        "cannot": "can't",
+        "should": "shld",
+        "should not": "shouldn't",
+        "did not": "didn't",
+        "have not": "haven't",
+        "are not": "aren't",
+        "is not": "isn't",
+        "was not": "wasn't",
+        "could not": "couldn't",
+        "would not": "wouldn't",
+        "might not": "mightn't",
+        "shall not": "shan't",
+
+        # Nouns & Concepts.
+        "information": "info",
+        "example": "e.g.",
+        "question": "q?",
+        "answer": "ans",
+        "problem": "prblm",
+        "business": "bizns",
+        "government": "govt",
+        "difference": "diff",
+        "background": "bg",
+        "reference": "ref",
+        "homework": "hw",
+        "appointment": "appt",
+        "experience": "exp",
+        "favorite": "fav",
+        "error": "err",
+        "schedule": "sched",
+        "confirmation": "conf",
+        "priority": "prio",
+        "notification": "notif",
+        "address": "addr",
+        "website": "web",
+        "application": "app",
+        "document": "doc",
+        "password": "pwd",
+
+        # Adjectives & Adverbs.
+        "really": "rlly",
+        "good": "gd",
+        "great": "gr8",
+        "possible": "poss",
+        "probably": "probly",
+        "available": "avail",
+        "different": "diff",
+        "maximum": "max",
+        "minimum": "min",
+        "though": "tho",
+
+        # Time & Frequency.
+        "tomorrow": "tmrw",
+        "yesterday": "yest",
+        "tonight": "2nite",
+        "forever": "4eva",
+        "hour": "h",
+        "minute": "min",
+        "second": "sec",
+        "week": "wk",
+        "month": "mo",
+        "year": "yr",
+
+        # Conversational Fillers / Phrases.
+        "at the moment": "atm",
+        "as soon as possible": "asap",
+        "by the way": "btw",
+        "for what it's worth": "fwiw",
+        "in my opinion": "imo",
+        "to be honest": "tbh",
+        "i don't know": "idk",
+        "i don't care": "idc",
+        "never mind": "nvm",
+        "thank you": "ty",
+        "thank you so much": "tysm",
+        "in real life": "irl",
+        "for example": "e.g",
+        "that is": "i.e",
+        "thanks in advance": "tia"
+    }
+    
+    # Define custom exceptions tuples.
+    NetworkExceptions = (
+        ConnectionError,
+        ReadTimeout,
+        ConnectTimeout,
+        ConnectError,
+        RemoteProtocolError,
+        httpx.ReadTimeout,
+        httpx.HTTPError,
+        httpx.ConnectError,
+        httpx.RemoteProtocolError,
+    )
+
+    Interruption = (
+        KeyboardInterrupt,
+        EOFError,
     )
 
     # Assign modules functions (To avoid repeated name resolution/lookup).
     system = os.system                              # Send commands to the system.
     terminal_size = os.get_terminal_size            # Return terminal width & height.
+    get_file_name = os.path.basename                # Take a path & return file name only.
+    path_exist = os.path.exists
     sys_exit = sys.exit
     stdout_write = sys.stdout.write                 # Write to stdout.
     stdout_flush = sys.stdout.flush                 # Flush the stdout for immediate output displaying.
@@ -3324,19 +4767,15 @@ def define_global_objects():
         force_terminal=True,
     )
 
-    prompt_message = FormattedText([                       # User prompt message.
-        (f'bg:{PROMPT_BG} fg: black', '\n You > '),
+    prompt_message = FormattedText([                # User prompt message.
+        (f'bg:{PROMPT_CYN} fg: black', '\n You > '),
         ('', ' '), # Unstyled part                                 
     ])
-
-    prompt_placeholder = FormattedText([                   # User prompt placeholder.
-        (PROMPT_FG, 'Ask Gemini...')
-    ])
-
-    prompt_bottom_toolbar = None                           # User prompt toolbar.
+ 
+    prompt_bottom_toolbar = None                                  # User prompt toolbar.
     if BOTTOM_TOOLBAR:
         prompt_bottom_toolbar = '\n<b>[CTRL-SPACE]</b> new line | <b>[UP/DOWN]</b> history | <b>[CTRL-Z/CTRL-Y]</b> undo/redo'
-        prompt_bottom_toolbar += '\n<b>[F3]</b> restart | <b>[F4]</b> quit | <b>[CTRL-L]</b> clear | <b>[CTRL-C]</b> cancel | <b>[F7]</b> help'
+        prompt_bottom_toolbar += '\n<b>[F3]</b> upload | <b>[F5]</b> quit | <b>[CTRL-L]</b> clear | <b>[CTRL-C]</b> cancel | <b>[F7]</b> help'
         prompt_bottom_toolbar = HTML(prompt_bottom_toolbar)
 
     lexer = None
@@ -3349,9 +4788,9 @@ def define_global_objects():
         lexer = PygmentsLexer(lexer_class)
 
     prompt_style = Style.from_dict({                       # User prompt style.
-        'rprompt': PROMPT_FG, 
-        'prompt-continuation': PROMPT_FG, 
-        'bottom-toolbar': f'bg:{PROMPT_FG} fg: black',
+        'rprompt': PROMPT_GRY, 
+        'prompt-continuation': PROMPT_GRY, 
+        'bottom-toolbar': f'bg:{PROMPT_GRY} fg: black',
         'validation-error': 'fg:yellow bold',
         # 'completion-menu': 'bg: cyan fg: white',
     }) 
@@ -3372,8 +4811,14 @@ def define_global_objects():
     globals().update(locals())
 
 if __name__ == '__main__':
+    # Initialize the global logger.
+    if GLOBAL_LOG_ON:
+        # 'ignore_strings' is a list of substrings; if a line contains one, it is skipped.
+        setup_global_console_logger(ignore_strings=None)
+
     # Define global variables & Start console width updater.
     define_global_objects()   # Must be called out of the loop.
+    update_placeholder()
     if DYNAMIC_CONSOLE_WIDTH:
         width_updater = ConsoleWidthUpdater()
         width_updater.start()
@@ -3386,7 +4831,10 @@ if __name__ == '__main__':
             # Load & Start chat client & session.
             client, chat = setup_chat()
             if chat: run_chat()
-        
+            
+        except Interruption:
+            farewell()
+            
         except SoftRestart:
             if not discarding:
                 # A hidden chat save.
@@ -3396,11 +4844,11 @@ if __name__ == '__main__':
                 msg = 'Restarting chat session...'
                 box(msg, title='SESSION RESTART', border_color=CYN, text_color=CYN)
             
+            # Change the prompt placeholder for a fresh start feeling.
+            update_placeholder()
             restarting = True
+            
             continue
-                
-        except Interruption:
-            farewell()
         
         except SystemExit:
             break
