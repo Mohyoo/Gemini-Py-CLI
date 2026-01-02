@@ -59,6 +59,7 @@ Used for simple conversations (and for fun too :) <br>
 1. Press `Ctrl-Space` to add a new line to your prompt.
 2. Press `Ctrl-C` to clear/cancel a prompt, stop a response, or quit
 the program.
+3. Press `F3` to upload a file.
 3. Type `help` for more details (No *bla bla bla...* just 1 min reading).
 
 ## Wiki
