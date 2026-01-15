@@ -5,9 +5,9 @@
 # My honest opinion, your project feels like:
 # “A CLI written by someone who enjoys messing with others — in a good way.”
 
-from settings import *
 from time import sleep
 from random import random, randint, uniform, choice, shuffle
+from settings import *
 
 PYTHON_ZEN = """
 The Zen of Python is a set of guiding principles for writing Python code, \
@@ -40,12 +40,12 @@ Namespaces are one honking great idea -- let's do more of those!
 """
 
 LOREM_IPSUM = """
-This is just a testing response used with /test command.
+This is just a testing response, shown with /test command.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et 
-dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip 
-ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu 
-fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt 
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et \
+dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip \
+ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu \
+fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt \
 mollit anim id est laborum.
 """
 
@@ -220,15 +220,21 @@ V  \\
 SHRUG = r"""
 ¯\_(ツ)_/¯
 !
-(╯°□°）╯︵ ┻━┻
+(/°-°）/︵ ┻━┻
 !
-(╯°Д°）╯︵ ┻━┻
+(/°Д°）/︵ ┻━┻
 !
 (ง'̀-'́)ง
 !
+(g '-')g
+!
 (ง ͠° ͟ʖ ͡°)ง
 !
+(g o _ o )g
+!
 (ง •̀_•́)ง
+!
+(g * _ * )g
 """
 
 CAT = r"""
@@ -322,7 +328,7 @@ HORSE = r"""
 ~~~~( )___( /'  
    /|/_  _`/|   
      \    /       
-===================
+~~~~~~~~~~~~~~~~~~~
 !
               ,~ 
            ~~/(\\ 
@@ -330,7 +336,7 @@ HORSE = r"""
 ~~~~( )___( /'  
     |\_  _`/|   
      `    '       
-===================
+~~~~~~~~~~~~~~~~~~~
 !
               ,~ 
            ~~/(\\ 
@@ -338,7 +344,7 @@ HORSE = r"""
 ~~~~( )___( /'  
     |\_   `/|   
      `    //      
-===================
+~~~~~~~~~~~~~~~~~~~
 !
              ,~ 
            ~/(\\ 
@@ -346,7 +352,7 @@ HORSE = r"""
  ~~~( )___( |   
     |\     ` \   
      `\    '/     
-===================
+~~~~~~~~~~~~~~~~~~~
 !
              ,~ 
            ~/(\\ 
@@ -354,7 +360,7 @@ HORSE = r"""
 ~~~~( )___(_|_  
      \     _\/   
      `\           
-===================
+~~~~~~~~~~~~~~~~~~~
 !
              ,~ 
            ~/(\\ 
@@ -362,7 +368,7 @@ HORSE = r"""
  ~~~( )___(_|_  
    /|/     _\/   
    ` \            
-===================
+~~~~~~~~~~~~~~~~~~~
 !
              ,~ 
            ~/(\\ 
@@ -370,7 +376,7 @@ HORSE = r"""
  ~~~( )___(_|_  
    / /     _\ \   
   //          '   
-===================
+~~~~~~~~~~~~~~~~~~~
 !
              ,~ 
            ~/(\\ 
@@ -378,7 +384,7 @@ HORSE = r"""
  ~~~( )___(_|_  
    /|/_      \ \   
    `          \ ' 
-===================
+~~~~~~~~~~~~~~~~~~~
 !
              ,~  
            ~/('\
@@ -386,7 +392,7 @@ HORSE = r"""
 ~~~( )___(  |    
    |/|    \||   
    | /    -'|
-===================
+~~~~~~~~~~~~~~~~~~~
 !
            ~,
          /'/)'
@@ -394,10 +400,10 @@ HORSE = r"""
 ~~~( )___(  |    
    |/|    \||   
    | /    -'| 
-===================
+~~~~~~~~~~~~~~~~~~~
 """
 
-DOG = r"""
+PUP = r"""
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣤⣤⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⡏⣐⣤⡿⠿⠿⠿⠛⠛⠿⠿⠷⠶⣦⣤⣀⣤⣤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⠟⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⠛⠉⠁⠈⠙⣷⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
@@ -2115,9 +2121,9 @@ TIME_TRAVEL = [
     # Void.
     "25,000. The world had already come to its end. You are now floating in the void with no idea where your time-travel machine is. And yeah, you are running out of oxygen...",
     "13,797,000,000 BCE... (13.8 billion years ago). The universe is now getting created, step by step. You interfere with the creation, "
-    "so you just get squashed by the immense pressure of the vacuum of space. The journey is over; bad luck."
+    "so you just get squashed by the immense pressure of the vacuum of space. The journey is over; bad luck.",
     "26,700,000,000 BCE... (26.7 billion years ago). The universe wasn't yet created. Everything is like... it is not. "
-    "You are flying in nowhere hoping you can go back to present. Oh wait! you are vanishing..."
+    "You are flying in nowhere hoping you can go back to present. Oh wait! you are vanishing...",
     
     # Stories.
     "1368. Over the years, enemies occasionally attempted to bypass the Great Wall's defenses by offering bribes to guards. They were sometimes successful, allowing hostile forces to sneak through weak points. "
@@ -2162,7 +2168,7 @@ QUOTES = [
     "There are only two ways to live your life. One is as though nothing is a miracle. The other is as though everything is a miracle.",
     "Be yourself; everyone else is already taken.",
     "A successful man is one who can lay a firm foundation with the bricks others have thrown at him.",
-    "The most courageous act is still to think for yourself. Aloud.",
+    "The most courageous act is still to think for yourself.. Aloud.",
     "An expert is a person who has made all the mistakes that can be made in a very narrow field.",
     "The road to success is always under construction.",
     "A house divided against itself cannot stand.",
@@ -2186,44 +2192,40 @@ QUOTES = [
     "Push the limit until it pushes back...",
     "High stakes. Higher consequences...",
     "The road ends where you decide...",
+    "Some people graduate with honors. I am just honored to be here.",
+    "I plan things. Life laughs.",
+    "Confidence is knowing you’re right. Wisdom is knowing when to pretend you didn’t notice.",
+    "Be yourself. Unless you can be calm. Then please be calm.",
+    "Sometimes... all you need is just some peace of mind.",
+    "The only way to do great work is to love what you do.",
+    "The mind is everything. What you think you become.",
+    "The only journey is the one within.",   
 ]
 
 FACTS = [
+    # General Facts.
     "Fact: People are more creative in the shower :)",
     "Fact: The average person walks the equivalent of five times around the Earth in their lifetime.",
-    "Fact: There is a species of jellyfish that is considered immortal. It can revert back to "
-    "its juvenile (young) form after becoming an adult.",
-    "Fact: A cow gives nearly 200,000 glasses of milk in its lifetime.",
     "Fact: A group of flamingos is called a flamboyance.",
-    "Fact: Octopuses have three hearts! Two pump blood to the gills, and one circulates it to the rest of the body. Also, their blood is blue.",
     "Fact: Honey never spoils. Archaeologists have found pots of honey in ancient Egyptian "
     "tombs that are over 3,000 years old and still perfectly good to eat.",
     "Fact: The strongest muscle in your body is the masseter, which is the one you use to chew.",
-    "Fact: Bullfrogs do not sleep. They can rest, but they don't enter a true state of sleep like mammals do.",
     "Real: Boanthropy is a psychological disorder where a person believes they are a cow.",
     "Did you know that when you blush (your face turns red), your stomach lining also turns red?",
     "Did you know? The human nose can remember 50,000 different scents.",
-    "If you keep a goldfish in a dark room, it will eventually turn white.",
-    "Fact: Fainting Goats don't actually lose consciousness; they suffer from a condition called "
-    "myotonia congenita that causes their muscles to temporarily freeze when they are startled.",
-    "Did you know? A single cloud can weigh over a million pounds! That's because "
-    "it's made up of millions of tiny water droplets.",
+    "Did you know? A single cloud can weigh over a million pounds (about 500,000 kg)! "
+    "That's because it's made up of millions of tiny water droplets.",
     "Fact: The total weight of all the ants on Earth is roughly the same as the total weight of all the humans!",
     "Fact: In space, astronauts cannot cry properly. The tears just clump together and stick to "
     "their eye because of the lack of gravity.",
-    "Fact: Wombat poop is cube-shaped! No one is completely sure why, but it helps the animal mark its territory.",
-    "Real: The smell of freshly cut grass is actually a plant distress signal. The grass is SCREAMING that it's being hurt!",
-    "Real: There is a type of jellyfish called the Turritopsis Dohrnii that is considered immortal. "
-    "It can go back to its baby stage and start its life over again.",
-    "Fact: A cow can walk up the stairs but cannot walk down them. Their knees don't bend the right way!",
     "Real: A bolt of lightning is five times hotter than the surface of the sun! That's super, super hot!",
-    "Fact: There are more trees on Earth than there are stars in the Milky Way galaxy.",
+    "Fact: There are more trees on Earth than there are stars in the Milky Way galaxy. "
+    "Scientists estimate there are about 3 trillion trees on Earth and around 100-400 billion stars in our galaxy.",
     "Fact: The human stomach can dissolve a razor blade. It has very strong acid!",
     "Fact: It is impossible to sneeze with your eyes open. Try to keep them open next time "
     "(But please don't hurt yourself trying!)",
     "Fact: In the 16th century, the King of England had a job called the 'Groom of the Stool,' "
     "whose main duty was to assist the King with going to the bathroom.",
-    "Real: Cows have best friends! They get stressed if they are separated from their favorite pals.",
     "Fact: A single strand of spaghetti is called a 'spaghetto'.",
     "Fact: Vending machines kill more people each year than sharks do.",
     "Fact: The inventor of the Pringles can, Fredric Baur, was buried in one.",
@@ -2231,18 +2233,16 @@ FACTS = [
     "Fact: There are more possible iterations of a game of chess than there are atoms in the observable universe.",
     "Fact: Australia is wider than the moon. The moon is 3,400 km wide, while Australia's widest point is about 4,000 km.",
     "Fact: The electric chair was invented by a dentist named Alfred Southwick.",
-    "Fact: A 'jiffy' is an actual unit of time: 1/100th of a second.",
+    "Fact: A 'jiffy' is an actual unit of time: 1/100th of a second. It's the time it takes for light to travel one centimeter in a vacuum (approximately 33.3 picoseconds).",
     "Fact: All the world's diamonds are less than a teaspoon of mass.",
     "Real: Ketchup was sold in the 1830s as a medicine.",
     "Did you know? The Great Wall of China is not visible from space with the naked eye; it was just a myth.",
     "Did you know? A group of porcupines is called a prickle.",
-    "Fact: Otters hold hands when they sleep so they don't drift away from each other.",
     "Fact: The national animal of Scotland is the unicorn.",
     "Fact: The average person spends six months of their life waiting for red lights to change.",
-    "Fact: A flock of crows is called a 'murder.'",
+    "Fact: A flock of crows is called a 'murder'.",
     "Fact: There is a town in Norway called A, and a town in France also called Y.",
     "Fact: The fingerprints of a koala are so similar to a human's that they could contaminate a crime scene.",
-    "Fact: A crocodile cannot stick its tongue out.",
     "Real: The quietest room in the world is located at Microsoft's headquarters in Washington state. The background noise is measured in negative decibels.",
     "Real: You can't hum (Produce voice with your mouth closed) while holding your nose (it's physically impossible to sustain the airflow).",
     "Fact: The human body contains enough carbon to make 9,000 pencils.",
@@ -2256,16 +2256,65 @@ FACTS = [
     "Fact: A single bolt of lightning contains enough energy to power a 100-watt lightbulb for three months.",
     "Fact: The human eye can distinguish about 10 million different colors.",
     "Fact: There are more stars in the universe than there are grains of sand on all the beaches on Earth.",
-    "Fact: Butterflies taste with their feet :)",
     "Fact: It takes a sloth about two weeks to digest a meal.",
     "Farts contain flammable gases: Methane (CH₄), Oxygen (O₂), Hydrogen (H₂), Nitrogen (N₂), Carbon Dioxide (CO₂), Hydrogen Sulfide (H₂S). "
     "There is a risk of explosion if these gases accumulate in a confined space and then come into contact with an open flame or spark :1",
     "Math: the only subject where you can have problems and still be happy!",
     "If you stretch all the DNA in one human body, it would be about 200 billion km long! While the distance between Earth and Sun ≈ 150 million km. "
     "So DNA is enough to reach from Earth to the Sun and back about 670~1300 times!",
-    "Fact: Deer sleep for short periods throughout the day and night, often in a safe hidden spot. They enter a state called 'resting', where they remain alert to potential dangers while dozing.",
+    "The planet Jupiter is so big that all the other planets in our solar system could fit inside it.",
+    "Cleopatra lived closer in time to the building of the first Pizza Hut than to the building of the Great Pyramid of Giza.",
+    "Bananas are berries, but strawberries aren't.",
+    "The sound of a whip cracking is actually a sonic boom. The tip of the whip moves faster than the speed of sound.",
+    "There are more possible ways to arrange a deck of 52 playing cards than there are atoms in the Earth.",
+    "The world's largest desert is Antarctica. Deserts are defined by their low rainfall, not temperature.",
+    "The tiny pocket on the right side of your jeans was originally designed to hold a pocket watch.",
+    "If you try to say the alphabet without moving your lips or tongue, you can't say the letter 'B' or 'P'.",
+    "Humans share about 50% of their DNA with bananas.",
+    "The most common element in the universe is hydrogen."
+    "The Hawaiian alphabet only has 12 letters: A, E, I, O, U, H, K, L, M, N, P, and W.",
+
+    # Creatures Facts.
+    "Fact: Octopuses have a blue blood and three hearts! Two pump blood to the gills, and one circulates it to the rest of the body.",
+    "Fact: A cow gives nearly 200,000 glasses of milk in its lifetime.",
+    "Fact: A cow can walk up the stairs but cannot walk down them. Their knees don't bend the right way!",
+    "Real: Cows have best friends! They get stressed if they are separated from their favorite pals.",
+    "Fact: Bullfrogs do not sleep. They can rest, but they don't enter a true state of sleep like mammals do.",
+    "If you keep a goldfish in a dark room, it will eventually turn white.",
+    "Fact: Wombat poop is cube-shaped! No one is completely sure why, but it helps the animal mark its territory.",
+    "Real: The smell of freshly cut grass is actually a plant distress signal. The grass is releasing chemicals and SCREAMING that it's being hurt!",
+    "Fact: Otters hold hands when they sleep so they don't drift away from each other.",
+    "Fact: A crocodile cannot stick its tongue out.",
+    "Fact: Butterflies taste with their feet :)",
+    "Dolphins have names for each other and can recognize themselves in mirrors, demonstrating self-awareness.",
+    "Elephants can recognize themselves in mirrors, and have been observed mourning their dead.",
+    "Crows are highly intelligent and can use tools, solve problems, and remember human faces.",
+    "Tardigrades, also known as water bears, can survive extreme conditions like space vacuum, radiation, and dehydration.",
+    "Cats have a specialized collarbone (clavicle) that allows them to always land on their feet when they fall.",
+    "Honeybees communicate with each other through a series of dances called 'waggle dances' to share information about food sources.",
+    "Some species of parrots can live for over 80 years, making them some of the longest-living birds.",
+    "Salmon can return to the exact stream where they were born to spawn, navigating using Earth's magnetic field and celestial cues.",
+    "A shrimp's heart is in its head.",
+    "Slugs have four noses.",
+    "A cat has 32 muscles in each ear, allowing them to rotate 180 degrees independently.",
+    "An ostrich's eye is bigger than its brain.",
+    
+    "Fact: Deer sleep for short periods throughout the day and night, often in a safe hidden spot. "
+    "They enter a state called 'resting', where they remain alert to potential dangers while dozing.",
+
     "Horses sleep both lying down and standing up. They rest in short naps throughout the day and night, but they need to lie down for deeper REM (Rapid Eye Movement) sleep, "
     "during which their eyes move while sleeping (This phase happens to humans too); horses typically do it for a few hours at a time.",
+    
+    "Real: There is a species of jellyfish called the Turritopsis Dohrnii that is considered biologically immortal. "
+    "It can go back to its juvenile (young) stage after reaching maturity, and start its life over again.",
+    
+    "Fact: Fainting Goats don't actually lose consciousness; they suffer from a condition called "
+    "myotonia congenita that causes their muscles to temporarily freeze when they are startled.",
+    
+    "Octopuses have multiple brains. They have a central brain that controls their main functions and "
+    "additional mini-brains located in each of their eight arms. These arm brains allow the arms to "
+    "perform complex movements and tasks independently of the central brain, giving octopuses remarkable "
+    "dexterity and problem-solving abilities.",
     
     "Crows and ravens possess a sophisticated social intelligence rooted in long-term memory, enabling them to recognize individual human faces and harbor grudges against "
     "perceived threats—information they even pass down to subsequent generations, and - if needed - respond defensively. This memory also extends to gratitude; consistent "
@@ -2314,6 +2363,56 @@ FACTS = [
     
     "Ants are capable of forming 'living bridges' and rafts by linking their bodies together, using specialized claws and "
     "adhesive pads on their feet to create structures strong enough to transport the entire colony across water or gaps.",
+    
+    "Wolves are highly intelligent animals known for their complex social behaviors and strong communication skills. "
+    "They live in organized packs with hierarchical structures, requiring cooperation, social learning, "
+    "and effective communication through vocalizations, body language, and scent marking. Their hunting strategies "
+    "demonstrate teamwork and strategic planning, allowing them to take down prey larger than themselves. "
+    "They also exhibit problem-solving abilities, adaptability, and the capacity to learn from experience, "
+    "making them some of the most intelligent wild animals—qualities they share with domesticated dogs, "
+    "reflecting their close evolutionary relationship.",
+
+    # Gratitude Facts.
+    "If you have clean drinking water at home, you are better off than about 25% of people in the world.",
+    "If you have hot water in your house, you are better off than roughly 40% of the world's population.",
+    "If you have enough food to eat every day, you are better off than nearly 30% of people globally.",
+    "If you can eat three meals a day, you are wealthier than millions of people worldwide.",
+    "If you have electricity in your home, you live better than around 15% of the world.",
+    "If you own a refrigerator, you are richer than a significant portion of humanity.",
+    "If you have access to the internet, you are more privileged than over 45% of people on Earth.",
+    "If you can afford a smartphone, you are among the more fortunate half of the world.",
+    "If you sleep in a safe place every night, you are better off than millions who do not.",
+    "If you have a roof that does not leak, you are ahead of many people globally.",
+    "If you can read and write, you are more educated than about 14% of the world.",
+    "If you finished high school, you are more educated than most humans who ever lived.",
+    "If you have health insurance or access to healthcare, you are better off than billions.",
+    "If you can see a doctor when you are sick, you are more privileged than many worldwide.",
+    "If you have clean clothes to wear, you live better than a large portion of the planet.",
+    "If you can take a shower whenever you want, you are living a luxury life by global standards.",
+    "If you own more than one pair of shoes, you are richer than millions of people.",
+    "If you have a bed to sleep in, you are ahead of those who sleep on the ground every night.",
+    "If you have a toilet in your home, you are better off than nearly 40% of humanity.",
+    "If you can flush your toilet, you live more comfortably than billions of people.",
+    "If you have a steady job or income, you are more secure than many around the world.",
+    "If you can save even a small amount of money, you are among the globally fortunate.",
+    "If you can travel freely within your country, you have more freedom than millions.",
+    "If you live without fear of war or violence, you are better off than many populations.",
+    "If you can choose what career or studies you want, you have rare freedom globally.",
+    "If you can express your opinions openly, you enjoy privileges many do not have.",
+    "If you have access to education, you are wealthier than entire generations before you.",
+    "If you can turn on a light at night, you live better than those without electricity.",
+    "If you have access to medicine, you are more fortunate than billions worldwide.",
+    "If you can buy fresh fruits and vegetables, you are better off than many families.",
+    "If you can afford meat or protein regularly, you live above global average standards.",
+    "If you have clean air to breathe indoors, you are ahead of millions using unsafe fuels.",
+    "If you can heat your home in winter, you are better off than many across the globe.",
+    "If you can cool your home in extreme heat, you are living in relative comfort.",
+    "If you have access to public transportation or a car, you are more mobile than most.",
+    "If you can afford entertainment or hobbies, you are globally privileged.",
+    "If you can take days off to rest, you live better than many workers worldwide.",
+    "If you can drink coffee or tea regularly, you are enjoying a luxury for many.",
+    "If you can afford healthcare for your children, you are more fortunate than millions.",
+    "If you can plan for the future, you live with stability many people lack.",
 ]
 
 JOKES = [
@@ -2366,7 +2465,14 @@ JOKES = [
     "Manager: 'We’re looking for someone who is responsible'. Applicant: 'I am your guy! At my last job, whenever something went wrong, they always said I was responsible'.",
     "When you google your symtoms and now it's time to pass away...\n(×_×)",
     "How to become poor in 3 seconds:\nAs if you are genuinely rich?",
+    "I tried being productive today.\nIt didn’t load.\nI refreshed.\nStill unavailable.\nMust be a server issue.",
+    "I put my phone down to focus.\nFive minutes later I picked it up to see if anyone had texted me about my strong focus.",
+    "I love how my brain says “don’t forget this important thing”, and then immediately deletes the file without asking.",
+    "My life is basically just doing things that future me will be mad about.",
+    "I started eating healthier.\nThen I remembered I have free will.",
+    "I hate when I walk into a room and forget why I’m there.\nLike… I came here with a mission.\nI was chosen.",
     
+    "I love how programmers say: “this will only take 5 minutes.”\nThe same way geologists say: “this volcano is mostly inactive.”",
     "Therapist: I want you to write letters to everyone who hurts you then burn them.\nMe: okay but what do I do with the letters?",
     "Someone: just don't be sad.\nDepression: *leaves my body immediately.*",
     "Virus: *enters my body.*\nMy immune system: either the invader leaves or we all leave.",
@@ -2390,6 +2496,24 @@ JOKES = [
     "I have a lot of jokes about unemployed people, but it doesn't matter. None of them work.",
     "My grandfather has the heart of a lion and a lifetime ban from the local zoo.",
     
+    "A man walks into a restaurant and orders a pizza. The waiter asks, 'Do you "
+    "want it cut into 8 or 12 slices?' The man says, '8 please, I don't think I can eat 12.'",
+    
+    "A tourist is visiting a museum and stops in front of a famous painting. He asks the guard, 'Is this painting worth a lot of money?' "
+    "The guard replies, 'It's priceless.' The tourist then asks, 'So, does that mean I can steal it?'",
+    
+    "A man is walking through a forest when he sees a frog sitting on a log. The frog says, 'If you kiss me, I'll turn into a beautiful princess.' "
+    "The man picks up the frog, looks at it, and puts it in his pocket. The frog croaks, 'Hey! Aren't you going to kiss me?' "
+    "The man replies, 'Honestly, I'd rather have a talking frog than a princess.'",
+    
+    "A guy is having trouble with his memory. He goes to the doctor and says, "
+    "'Doctor, I think I'm losing my memory.' The doctor asks, 'How long has this been "
+    "going on?' The guy replies, 'How long has what been going on?'",
+
+    "An engineer, a physicist, and a statistician are out hunting. The engineer "
+    "shoots at a deer and misses 5 feet to the left. The physicist shoots and misses 5 "
+    "feet to the right. The statistician yells, 'We got him!'",
+
     "A guy is hiking in the deep woods when he finds an old, rusted lamp. He rubs it, and a genie appears. 'I will grant you one wish,' the genie says. "
     "The man pulls out a map of the world and says, 'I want peace in all of the countries.' The genie sighs, 'That's too hard. Look at the history, the borders... pick something else.' "
     "The man thinks and says, 'Okay, I want to understand the logic of my wife.' The genie looks at the man for a long silence and says, 'Let me see that map again.'",
@@ -2419,6 +2543,12 @@ JOKES = [
     "An elite commando is captured behind enemy lines. The enemy general sits him down in a cold interrogation room and says, 'We have ways of making you talk.' "
     "The commando stares at him, silent and stone-faced. The general brings in a small, fuzzy kitten and a laser pointer. After five minutes of "
     "watching the kitten chase the red dot, the commando breaks down and yells, 'Fine! I'll tell you everything! Just let me hold the laser for five seconds!'",
+      
+    "A penguin walks into a car dealership and says, 'I'd like to buy a car.' The salesman asks, 'What kind of car are you looking for?' "
+    "The penguin replies, 'I don't know, surprise me!' The salesman thinks for a moment and says, 'I've got just the thing. "
+    "It's a brand new, top-of-the-line model with all the latest features.' The penguin says, 'Great! I'll take it!' "
+    "The salesman asks, 'How will you be paying?' The penguin replies, 'Cash or charge?' The salesman, confused, asks, 'Cash or charge?' "
+    "The penguin says, 'Look, just put it on my bill.'",
     
     "A world-class spy is caught infiltrating a secret base. The villain ties him to a chair and says, 'Before I finish you, tell me: "
     "how did you get past my laser-grid, my 50 guards, and the shark tank?' The spy looks him in the eye and whispers, 'I walked through the front door. "
@@ -2482,6 +2612,11 @@ JOKES = [
     "Done. The rabbit says: 'I wish for a tiny motorcycle helmet.' Done. The bear’s second wish: 'I wish all the bears in the next forest were female, too.' Done. "
     "The rabbit wishes for a tiny motorcycle. Done. For the final wish, the bear says, 'I wish every other bear in the whole world was female.' Done. "
     "The rabbit puts on his helmet, hops on his motorcycle, revs the engine, and yells over his shoulder: 'I wish the bear was female!' then speeds off.",
+    
+    "A girl was walking through the forest when she saw a knight behind a rock. She went up to him and asked, 'Are you the Prince of my dreams?' The man immediately left. "
+    "A bit further on, she saw him again behind a tree. She asked, 'Are you the Prince of my dreams?' Again, he just left. "
+    "Finally, she found him down by the river and asked once more, 'Are you the Prince of my dreams?' "
+    "The knight finally snapped and said: 'Look, lady, just let me take a leak in peace! You’ve followed me everywhere!'",
     
     "# The Two Hunters\n"
     "Two hunters are out in the woods when one of them suddenly collapses. He doesn't seem to be breathing and his eyes are rolled back in his head. "
@@ -2576,7 +2711,8 @@ ADVICES = [
     "Advice: At night, consider enabling dark mode & night light (warmth) mode to protect your eyes, "
     "you'll get used to them over time believe me ;)",
     "There are many settings that cannot be listed here; consider setting them to your preference.",
-    "Using /upload command should work for most file types; but if you struggle, tell me which file types failed and I'll fix them."
+    "Using /upload command should work for most file types; but if you struggle, tell me which file types failed and I'll fix them.",
+    f"Having trouble? Please let me know in: {UL}https://github.com/Mohyoo/Gemini-Py-CLI{RS}\n(Just me, not a robot)",
 ]
 
 MATH = [
@@ -2649,6 +2785,12 @@ ACHIEVEMENTS = [
     "You are now like anyone else.",
     "Being alive.",
     f"You are the first one to read this after ({randint(2, 100)}) people.",
+    "You have officially wasted time better spent elsewhere.",
+    "You managed not to crash the app today.",
+    "You are reading achievements instead of doing something productive.",
+    "You are a living being somewhere in this lonely massive universe.",
+    "You are the master of minimal effort.",
+    "You are officially bored... but still here.",
 ]
 
 LANGS = [
@@ -3123,7 +3265,7 @@ NOTHING = [
     "All quiet on the western front (You should watch this movie ;)\nAnyway, nothing happened.",
     "Nothing to report.",
     "No news is good news, right?",
-    "The universe is so... I don't know how to express it..... so normal.",
+    "The universe is so... I don't know how to express it.....\nSo normal.",
     "Nothing to see here.",
 ]
 
@@ -3253,8 +3395,8 @@ NONSENSE = [
 
     "# Definition of 'Glarp':\n"
     "Glarp (verb/noun):\n"
-    "The specific sound a wet sponge makes when it realizes "
-    "it’s being used to dig something it fundamentally disagrees with on a rock.",
+    "The specific sound a wet sponge makes when it realizes it’s being"
+    "used to dig something it fundamentally disagrees with on a rock.",
     
     "# Survival Guide for School:\n"
     "- Bring your backpack full of snacks, and a machine gun.\n"
@@ -3262,7 +3404,7 @@ NONSENSE = [
     "- Count the ceiling tiles during math class.\n"
     "- Memorize the old vacation times; sadness can help.\n"
     "- Count the tiles again in british accent; they know what they did.\n"
-    "- Exit through the basement (or use the window).",
+    "- Exit through the basement (or use the top floor window).",
     
     "# Guide to Visiting Hell:\n"
     "- Find the staircase made of melted ice cream.\n"
@@ -3277,12 +3419,12 @@ ADMIN = [
     "Access Denied. Also, I'm judging your typing speed.",
     "Access Denied. Nice try though.",
     "You don't have admin rights, or self-confidence, or even luck.",
-    "Permission denied. The admin is watching you.",
+    "Permission denied. The admin is watching you 0-0",
     "Admin access required. You brought snacks, right?",
     "Nope. This button is for adults only.",
     "Access denied. Please reflect on your life choices.",
     "You are not the chosen one.",
-    "You are not the king in waiting, you know?.",
+    "You are not the king in waiting, you know?",
     "You are not the sword man, buddy.",
     "Sorry, not today :1",
     "Not this time...",
@@ -3291,7 +3433,7 @@ ADMIN = [
     "Trying to hack me huh?",
     "Permission granted. Yet the electrical door stuck. Sorry.",
     "You know I'm the admin, right?",
-    "I am -His Majesty- the King! If you are trying to defeat me, then try harder!",
+    "I am, His Majesty, the King. If you are trying to defeat me, then try harder!",
     "You can't change the rules, I'm the law here.",
 ]
 
@@ -3553,7 +3695,7 @@ def riddle(box: callable, wrapper: callable, open_path: callable, show_solution=
     from os import path
     
     # Show the solution of previous riddle.
-    text_file = 'riddle_answer.txt'
+    text_file = path.join(USER_DATA_DIR, 'riddle_answer.txt')
     app_dir = path.dirname(path.abspath(__file__))
     full_path = path.join(app_dir, text_file)
     
@@ -3568,7 +3710,7 @@ def riddle(box: callable, wrapper: callable, open_path: callable, show_solution=
     if answer == 'No logic':
         answer = 'There is no logic in this puzzle :P'
     
-    # Hide the answer in a file.  
+    # Hide the answer in a file.
     with open(text_file, 'w', encoding='utf-8') as f:
         content = '# Query:\n' + question + '\n\n# Answer:\n' + answer
         content = wrapper(content, width=90)
@@ -4026,14 +4168,25 @@ def time_travel(command: str, box: callable):
     user_year = command[12:].upper().strip()
     user_year_int = int(''.join(c for c in user_year if c.isdigit()))
     user_year_era = ''.join(c for c in user_year if c.isalpha())
-    user_year_era = user_year_era if user_year_era in indicators else None
+    # user_year_era = user_year_era if user_year_era in indicators else None
     fallback_user_era = indicator_map.get(user_year_era, user_year_era)
 
     # Create a list of years & their era indicators.
     years = []
+    
+    def finder(word, sentence):
+        sentence = sentence[:20]
+        a = sentence.find(word)
+        if a == -1: return
+        b = sentence[a-1].isalpha()
+        if b: return
+        c = sentence[a+len(word)].isalpha()
+        if c: return
+        return True
+    
     for event in TIME_TRAVEL:
         year_digits = ''
-        clean_event = event.replace(',', '').replace(';', '').replace('.', '')
+        clean_event = ''.join(c for c in event if c.isdigit() or c.isalpha() or c.isspace())
         for c in clean_event:
             if c.isdigit(): year_digits += c
             else: break
@@ -4042,19 +4195,17 @@ def time_travel(command: str, box: callable):
         found = False
         for i in indicators:
             length = 0
-            i = ' ' + i  + '.'
-            j = '.'.join(i)  + '.'
-            if i in event[:20]: length = year_digits + len(i)
-            elif j in event[:20]: length = year_digits + len(j)
+            j = '.'.join(i)
+            if finder(i, clean_event): length = year_digits + len(i) + 1
+            elif finder(j, clean_event): length = year_digits + len(j) + 1
             else: continue
-            
             years.append(event[:length])
             found = True
             break
 
         if not found: years.append(event[:year_digits])
         
-    years = [year.replace('.', '').upper().strip() + ' ' for year in years]
+    years = [''.join(c for c in year if c.isdigit() or c.isalpha() or c.isspace()).upper().strip() + ' ' for year in years]
 
     # Get the nearest year number to the user's entered year, while prioritizing the indicated era.
     years_int = []
@@ -4070,9 +4221,9 @@ def time_travel(command: str, box: callable):
                 years_int.append(inf)
 
     else:
-        # User didn't specify the era, so get only years of common era.
+        # User didn't specify the era, or made it wrong, so get only years of common era.
         for year in years:
-            clean_year = year.replace('.', '')
+            clean_year = ''.join(c for c in year if c.isalpha())
             era_found = False
             for i in ['BC', 'BCE']:
                 if i in clean_year:
@@ -4084,16 +4235,18 @@ def time_travel(command: str, box: callable):
                 years_int.append(integer)
                 
     top_match = nsmallest(1, years_int, key=lambda x: abs(user_year_int - x))[0]
-
+    print([y for y in years if y.startswith('15')])
+    print([y for y in years_int if str(y).startswith('15')])
+    
     # Track the result & find its original string in TIME_TRAVEL list.
     i = years_int.index(top_match)
     result = TIME_TRAVEL[i]
     note = ''
-    if user_year_int != top_match:
+    if user_year_int != top_match or user_year_era not in result:
         year = command[12:].strip()
         meant_year = ''.join(c for c in year if c.isdigit() or c.isalpha() or c.isspace()).upper()
         corrected_year = (''.join(c for c in year if c.isdigit()) + ' ' + ''.join(c for c in year if c.isalpha())).upper().strip()
-        if corrected_year != meant_year: correction = f' assuming you meant ({corrected_year}),'
+        if corrected_year != meant_year: correction = f' assuming you meant ({corrected_year.lstrip("0")}),'
         else: correction = ''
         note = f"\n\nCouldn't travel to ({year}),{correction} so instead went to the nearest year is that era ;)"
 
@@ -4113,7 +4266,7 @@ def matrix(separator: callable):
         for _ in range(10240):
             # Choose a random number.
             if randint(0, 10) == 0:
-                n = RED + choice("ABCDEF") + GR
+                n = RED + choice("23456789ABCDEF") + GR
             else:
                 n = randint(0, 1)
               
@@ -4125,14 +4278,70 @@ def matrix(separator: callable):
             if length == glitching_text_width:
                 print()
                 length = 0
+                sleep(0.01)
     
     except KeyboardInterrupt:
-        pass
+        print(n, end='')
         
     finally:
         print('', flush=True)
         separator(color=GR)
+        
+def chaos_keybindings(default_keys: 'KeyBindingsInstance', game_state: bool, exit_key: str, box: callable):
+    """
+    Randomize input keybindings to confuse the user in a chaotic game mode :)
+    Used with /chaos command.
+    """
+    if game_state:
+        msg = "You are already in 'Chaos Mode'; though your efforts are appreciated till now. "
+        msg += f"You still have to type /{exit_key} & press ENTER, or press CTRL-C to give up & quit."
+        box(msg, title='CHAOS', border_color=PURP, text_color=PURP, secondary_color=PURP)
+        return None
     
+    else:
+        from prompt_toolkit.key_binding import KeyBindings
+        from prompt_toolkit.key_binding import merge_key_bindings
+        chaos_keys = KeyBindings()
+        
+        # Prepare & Randomize keys lists.
+        lower_alphabet = list('abcdefghijklmnopqrstuvwxyz')
+        upper_alphabet = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+        digits = list('0123456789')
+        shuffle(lower_alphabet)
+        shuffle(upper_alphabet)
+        shuffle(digits)
+        exit_key = choice(lower_alphabet + upper_alphabet + digits)
+        
+        def bind_random_key(characters: list):
+            """Bind a random key to another random key."""
+            for char in characters.copy():
+                equivalent = choice(characters)
+                characters.remove(equivalent)
+                @chaos_keys.add(char)
+                def _(event, equivalent=equivalent):   # We use default arg so that it gets updated in each loop.
+                    """Insert a random lower-case character."""
+                    event.cli.current_buffer.insert_text(equivalent)
+        
+        # Bin the keys.
+        bind_random_key(lower_alphabet)
+        bind_random_key(upper_alphabet)
+        bind_random_key(digits)
+        keys_bindings = merge_key_bindings([     # Merge our default keys with the chaotic ones.
+            default_keys,
+            chaos_keys,
+        ])
+        
+        # Inform the user.
+        msg = "# Welcome to 'Chaos Game'!\nYou are now in a mode where "
+        msg += "keyboard hotkeys have been randomized; and the only way to win & exit the game is to type "
+        if exit_key.isdigit(): msg += f"/{exit_key} (backslash + digit)"
+        elif exit_key.islower(): msg += f"/{exit_key} (in lower case)"
+        else: msg += f"/{exit_key} (in upper case)"
+        msg += " & press ENTER.\n\nNOTES: Only the program hotkeys changed, your system wasn't touched. "
+        msg += "Also, the only second way to exit is to quit the program with CTRL-C & launch it again. Copy-paste trick won't work :)"
+        box(msg, title='CHAOS', border_color=PURP, text_color=PURP, secondary_color=PURP)
+        return (keys_bindings, exit_key)
+
 def draw_ascii_image(str_name: str, title:str, color: str, console_width: int, visual_len: callable, box: callable):
     """Display a static & random ASCII art, based on a string of ascii images."""
     # Get the string of ascii images.
@@ -4197,24 +4406,27 @@ def inspect_object(obj: any, cprint: callable):
     
     # For modules.
     if obj_type == 'module':
-        functions = [name for name, obj in vars(obj).items() if isfunction(obj)] or ['/']
-        variables = {k: v for k, v in vars(obj).items() if not isfunction(v)} or ['/']
+        sub_objects = {k: v for k, v in vars(obj).items() if not k.startswith('__')}.items()
+        functions = [name for name, obj in sub_objects if isfunction(obj)] or ['/']
+        variables = {k: v for k, v in sub_objects if not isfunction(v)} or ['/']
         cprint(f'{GR}Internal Variables: {RS}{", ".join(v for v in variables)}')
         cprint(f'{GR}Internal Functions: {RS}{", ".join(f for f in functions)}')
     
     # For functions.
-    elif obj_type in ['function', 'method']:
-        arguments = signature(obj).parameters.keys() or ['/']
+    elif 'function' in obj_type or 'method' in obj_type:
+        arguments = list(signature(obj).parameters.keys()) or ['/']
         cprint(f'{GR}Arguments: {RS}{", ".join(a for a in arguments)}')
     
     # For classes, instances & other python types.
     else:
-        try: parameters = [param for param in obj.__init__.__code__.co_varnames if param != 'self']
+        try: parameters = [param for param in signature(obj.__init__).parameters.keys() if not param.startswith('__')] or ['/']
         except: parameters = ['/']
+        sub_objects = [i for i in dir(obj) if not i.startswith('__')]
         cprint(f'{GR}Constructor Parameters: {RS}{", ".join(p for p in parameters)}')
-        attributes = [attr for attr in dir(obj) if not callable(getattr(obj, attr))] or ['/']
-        methods = [method for method in dir(obj) if callable(getattr(obj, method))] or ['/']
+        attributes = [attr for attr in sub_objects if not callable(getattr(obj, attr))] or ['/']
+        methods = [method for method in sub_objects if callable(getattr(obj, method))] or ['/']
         cprint(f'{GR}Attributes: {RS}{", ".join(a for a in attributes)}')
+        cprint(f'{YLW}(There may be some other attributes inside the __init__ method, but they are not intiialized yet)')
         cprint(f'{GR}Methods: {RS}{", ".join(m for m in methods)}')
         
 def show_globals(cprint: callable):
@@ -4234,16 +4446,18 @@ def show_globals(cprint: callable):
         elif isinstance(obj, str):
             obj = repr(obj)
             if len(obj) > 48:
-                obj = obj[:43].rstrip() + ' [...]'
+                n = obj.count('\\n')
+                obj = obj[:43].rstrip() + f' [+{n} lines...]'
             
             if obj.count('\n') > 0:
                 obj = obj.splitlines()[0]
         
         # Show a brief title of lists content.
-        elif isinstance(obj, list):
-            obj_type = type(obj[0]).__name__
+        elif isinstance(obj, (list, tuple, set, dict)):
+            obj_type = type(obj).__name__
+            item_type = type(obj[0]).__name__
             length = len(obj)
-            obj = f'[a list of {length} {obj_type}...]'
+            obj = f'[a {obj_type} of {length} {item_type}...]'
         
         variables[name] = obj
     
@@ -4318,18 +4532,28 @@ def run_system_command(command: str, cprint: callable):
     
     # Run command & capture the text.
     result = run(command, shell=True, capture_output=True, text=True)
-    output = result.stdout.strip()
+    output = result.stdout.lstrip('\n').strip()
     
     # Check if the command actually failed (Return Code != 0).
     if result.returncode != 0:
         # Use stderr to see the actual error message from the system
-        error_msg = result.stderr.strip() or "Unknown system error."
-        cprint(f"{RED}System Error (Code {result.returncode}):\n{RS}{error_msg}\n")
+        error_msg = result.stderr.lstrip('\n').strip() or "Unknown system error."
+        cprint(f"{RED}System Error (Code {result.returncode}):\n{RS}{error_msg}")
         return
     
     # If we reach here, it was successful. Now check for output.
     if output: 
-        cprint(f"{GR}System Responded:\n{RS}{output}\n")
+        cprint(f"{GR}System Responded:\n{RS}{output}")
     
     else:
         cprint(f"{GR}(Command executed successfully by the system, but no output received){RS}")
+
+if __name__ == '__main__':
+    # Just to check that the fun isn't consuming memory.
+    # Don't forget: pip install psutil
+    import psutil
+    import os
+    process = psutil.Process(os.getpid())
+    mem_bytes = process.memory_info().rss
+    mem_mb = mem_bytes / (1024 * 1024)
+    print(f"Memory usage before exit: {mem_mb:.2f} MB")

@@ -1,6 +1,6 @@
 <div align="center">
   <h3 style="margin: 0; font-family: Arial, sans-serif; color: red">Palestine Children, Women and Men are dying...</h3>
-  <img src="Palestine.jpg" alt="Palestine Flag" style="width: 475px; border-radius: 3%;">
+  <img src="Assets/Palestine.jpg" alt="Palestine Flag" style="width: 475px; border-radius: 3%;">
 </div>
 
 <p align="center">
@@ -45,7 +45,8 @@ Used for simple conversations (and for fun too :) <br>
 ## Quick Start
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
-2. Install required libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary tksvg resvg_py`
+2. Install needed libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary stop_words tksvg resvg_py markdown tkinterweb json_repair` <br>
+([Here](https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Libraries) is a brief about required/optional libraries.
 3. Clone this repository; or download the [ZIP](https://github.com/Mohyoo/Gemini-Py-CLI/archive/refs/heads/main.zip) file, extract it, and enter the extracted folder.
 4. Unleash Gemini Py-CLI! open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading)
 
@@ -59,7 +60,7 @@ Used for simple conversations (and for fun too :) <br>
 1. Press `Ctrl-Space` to add a new line to your prompt.
 2. Press `Ctrl-C` to clear/cancel a prompt, stop a response, or quit
 the program.
-3. Press `F3` to upload a file.
+3. Press `F3` to upload file(s).
 3. Type `help` for more details (No *bla bla bla...* just 1 min reading).
 
 ## Wiki

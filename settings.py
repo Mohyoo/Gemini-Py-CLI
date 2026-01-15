@@ -11,8 +11,10 @@ import sys
 # Privacy Settings
 MAX_HISTORY_MESSAGES = 48                    # The maximum number of chat history messages/turns (1 turn = user msg + AI msg) to keep; to save internet bandwidth, tokens & loading/saving time.
 NO_HISTORY_LIMIT = False                     # When True, chat history will never be truncated (Remember: each message you send is also companied with the history, which means more tokens)
-PROMPT_HISTORY_ON = True                     # Every user prompt is saved to a file and can be quickly reused in future chats.
-PROMPT_HISTORY_MEMORY = False                # If True, prompt history will be saved in momory only, rather than in a file.
+PROMPT_HISTORY_MODE = 'permanent'            # Every user prompt will be saved, and can be quickly reused in future chats; options:
+                                                 # 'permanent': it'll be saved to a file, auto-cleaned according to (PROMPT_HISTORY_SIZE), and manually cleared using /del-prompt command.
+                                                 # 'temporary': it'll  be saved in momory only, rather than in a file; so it gets cleared on each exit.
+                                                 #  None: to not save it al all.
 SAVED_INFO = True                            # If True, user input will be saved with highest priority if he starts it with 'remember'.
 LOAD_CHAT_MODE = 'load'                      # Whether to load or ignore chat history at startup; options:
                                                  # 'ask' to always ask you.
@@ -24,53 +26,65 @@ GLOBAL_LOG_ON = True                         # To log the entire console output 
 
 # General Settings
 GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
+GEMINI_API_KEY = 'AIzaSyA5WgK2AsByFmVbRN6MBeXSOx58vD346TM'
+GEMINI_API_KEY = 'AIzaSyA2DewPvPZQMQgJ_bBPfZhbrgdqNLC31xA'
 GEMINI_MODEL = 'gemini-2.5-flash-lite'       # Advanced models are more expensive and have less API limits ('gemini-2.5-flash-lite' is a forgiving option for testing)
                                                  # NOTE: versions other than '2.5-flash-lite' or '2.5-flash' may require linking a billing account even for Free Tier.
 ENTER_NEW_LINE = False                       # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
-SUGGEST_FROM_HISTORY = False                 # Use the user's prompt history (if it's ON) for inline word completion (SLOW).
-SUGGEST_FROM_WORDLIST = True                 # Suggest words while typing, in a menu popup, based on a wordlist.
-SUGGEST_FROM_WORDLIST_FUZZY = False          # This completion mode is more forgiving, you get approximate suggestions instead of accurate ones.
-SUGGESTIONS_LIMIT = 5                        # The number of suggestions to show while typing a prompt.
+SUGGEST_FROM_HISTORY_MODE = None             # Use the user's prompt history (if it's ON) for inline word completion (SLOW); options:
+                                                 # 'normal': for normal completion (if your text matches an old prompt, you'll see the completion).
+                                                 # 'flex': this mode is more forgiving & case-insensitive, using past words, not whole prompts.
+                                                 #  None: to disable inline completion.
+SUGGEST_FROM_WORDLIST_MODE = 'normal'        # Suggest words while typing, in a menu popup, based on a wordlist; options:
+                                                 # 'normal': accurate suggestions.
+                                                 # 'fuzzy': more forgiving, you get approximate suggestions instead of accurate ones.
+                                                 #  None: to disable wordlist suggestion.
+SUGGESTIONS_LIMIT = 5                        # The number of wordlist suggestions to show while typing a prompt.
 USE_COLORS = True                            # Better to disable colors for old consoles.
 USE_ANSI = True                              # Like USE_COLORS, but more general, once OFF, all ANSI escape codes will be disabled (Recommended to be False for old consoles).
 INFORMATIVE_RPROMPT = True                   # Short informational text at top right of the prompt field.
 BOTTOM_TOOLBAR = True                        # Show a handy toolbar for a quick reference.
 INPUT_HIGHLIGHT = 'special'                  # Syntax highlighting for the user prompt; 'special' is our built-in option, but 'python' may also be a good one.
+                                                 # Choose your favorite language name, like c++, rust, bash...
 SPINNER = 'line'                             # Shown while waiting, can be: dots, line, bounce, moon, star, runner... (In CMD type 'python -m rich.spinner' for more).
-RESPONSE_EFFECT = 'line'                     # Effect while displaying response, can be:
+RESPONSE_EFFECT = 'line'                     # Effect while displaying response; can be:
                                                  # None for no animation.
                                                  # 'line' for line-by-line animation (Recommended).
                                                  # 'word' for word-by-word animation (Satisfying).
                                                  # 'char' for an almost instant character-by-character animation (Safe, but may be unnoticeable).
                                                  # 'char slow' for a smooth character-by-character animation (Safe, but really slow).
                                                  # 'char fast' for a fast character-by-character animation; you should check if this causes a high CPU usage in your computer
-                                                    # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
+                                                 # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
                                                  # * All 'char' animations can cause glitchs!
-DEV_MODE = True                             # If True, you'll get access to the developper commands, like... (shhh, they are secret).
-FUN_MODE = True                             # If True, you may see some clean jokes or funny statements while using the program.
+ALWAYS_GUI_MODE = False                      # If True; GUI editor & viewer will both be called automatically on each prompt/response.
+DEV_MODE = True                              # If True, you'll get access to the developper bonuses & commands, like... (shhh, they are secret).
+FUN_MODE = True                              # If True, you may see some clean jokes or funny statements while using the program.
                                                 # False = everything becomes serious & professional, but boring (Good for adults); but you'll lose access to some secrets.
 
 
-# Moderate Settings
+# Advanced Settings
 STARTUP_API_CHECK = False                    # Disable for a slightly faster loading, and for the ability to enter the chat offline.
 FILE_COMPRESSION = False                     # This will save tokens & Gemini will pay less attention to details in your attached files.
 TEXT_COMPRESSION = False                     # Compress your prompt & save tokens by shortening it (True = ON).
 COMPRESSION_LANGUAGE = 'en'                  # Whether TEXT_COMPRESSION is True or the users uses /compress command; this will be the default language to compress the prompt.
                                                 # Choose a language code (E.g: 'ar' for arabic), which can only be:
                                                 # ar, bg, ca, cz, da, nl, en, fi, fr, de, hi, hu, id, it, nb, pl, pt, ro, ru, sk, es, sv, tr, uk, vi.
-MAX_CONSOLE_WIDTH = 85                       # Max N° characters to print per line, only effective if the terminal size is bigger than this fixed value, should always be < terminal width.
+MAX_CONSOLE_WIDTH = 85                       # Max N° characters to print per line, only effective if the terminal size is bigger than this fixed value; should always be < terminal width.
 DYNAMIC_CONSOLE_WIDTH = True                 # If True, console width will be automatically updated upon a terminal size change.
 CASE_SENSITIVITY = True                      # If True, commands like /copy must be in lower case to be executed.
                                                 # If False, commands become more forgiving, so you can type '/COPY' or '/CoPy' instead of '/copy'.
 FILE_GENERATOR_MODEL = 'gemini-2.5-flash'    # Used for file/image generation; 'lite' models won't work as they are weak.
 VALIDATE_INPUT = True                        # Check user prompt while typing & show warnings about text length.
-HIDE_LONG_INPUT = True                       # If you type a long prompt, its last half will be hidden to beautify the console.
+HIDE_LONG_INPUT = True                       # If you submit a long prompt, its last half will be hidden to beautify the console.
 SAVE_INPUT_ON_CLEAR = False                  # Save the prompt to history when the user clears its prompt with Ctrl-C (If prompt-history is ON).
 SAVE_INPUT_ON_STOP = False                   # Save the prompt to history when the user stops its prompt with Ctrl-C or F-Keys (If prompt-history is ON).
 EXTERNAL_EDITOR = True                       # Allow you to edit your prompt in an external editor by pressing CTRL-X-CTRL-E in a row.
 FAVORITE_EDITOR = None                       # Full path for your favorite extrernal editor; if not set, fallback to default system editor.
-                                                # E.g: 'notepad', 'vim' or 'C:\Program Files\Notepad++\notepad++.exe'.
-NO_ERROR_DETAILS = False                     # Never ask the user to see more details about an error.
+                                                # E.g: 'notepad', 'vim' or 'C:\\Program Files\\Notepad++\\notepad++.exe'
+                                                # (forward slash must be doubled for Windows paths).
+NO_ERROR_DETAILS = False                     # Never ask the user to see more details about an error; and skip details.
+NO_QUESTIONS = False                         # Never ask the user for usual questions (like exiting, or seeing errors), and use a default option.
+SUPPRESS_ERRORS = False                      # Never show sudden errors; critical errors (that terminates the program) & normal errors (like disconnection) will still appear.
 
 
 # File Settings
@@ -79,11 +93,15 @@ LAST_RESPONSE_FILE = 'last_response.txt'     # To save last Gemini response in a
 WORDLIST_FILE = 'word_suggestion.txt'        # A small wordlist used for word suggestion.
 CHAT_HISTORY_JSON = 'chat_history.json'      # To save/load chat history to/from a json file (If available).
 CHAT_HISTORY_TEXT = 'chat_history.txt'       # To save chat history as a simple text file (If available).
-ERROR_LOG_FILE = 'application_errors.log'                  # The file to write errors to (Level: warning, error, critical).
-GLOBAL_LOG_FILE = 'application_console_output.log'         # The file to write the entire console output to + optionally hidden debug info (Level: debug, info).
+ERROR_LOG_FILE = 'application_errors.log'             # The file to write errors to (Level: warning, error, critical).
+GLOBAL_LOG_FILE = 'application_console_output.log'    # The file to write the entire console output to + optionally hidden debug info (Level: debug, info).
 PROMPT_HISTORY_FILE = 'prompt_history.txt'   # To load prompt history (If available).
 SAVED_LINKS_FILE = 'saved_links.txt'         # Links of files you upload appear here, to reuse them without reuploading.
 RECOVERY_PROMPT_FILE = 'recovery_prompt.txt' # Used when an upload fails, it replaces file paths with URLs of successfully uploaded files (if any).
+TEMP_PROMPT_FILE = 'temp_prompt.txt'         # Used when calling the external editor with CTRL-X-CTRL-E to edit the prompt (if the editor option is ON).
+CONFIG_FILE = 'config.json'                  # Used to store permanent settings (like GUI options).
+USER_DATA_DIR = 'User_Data'                  # Used to store user data files (the files listed above).
+FILE_GENERATION_DIR = 'Output'               # Used to save generated files & images.
 PROMPT_HISTORY_SIZE = 0.5                    # Max prompt history file size (1 = 1 MB); it'll be loaded into memory, so keep it low.
 LOG_SIZE = 0.5                               # Max error log file size (1 = 1 MB).
 
@@ -108,10 +126,12 @@ if USE_COLORS and USE_ANSI:
     GRY     = '\033[90m'    # Gray
     PURP    = '\033[35m'    # Purple
     BRW     = '\033[31m'    # Brown
+    BLK     = '\033[42m'    # Black
     UL      = '\033[4m'     # Underline
     BD      = '\033[1m'     # Bold
     RS      = '\033[0m'     # Reset
     GEM_BG  = '\033[44m'    # Background for Gemini.
+    USER_BG = '\033[30m'    # Background for the user prompt in ALWAYS_GUI_MODE.
     
     # By name (Used in prompt() & console.status()).
     PROMPT_CYN  = 'cyan'     # Background for the prompt indicator. 
@@ -164,7 +184,7 @@ FAREWELLS_MESSAGES = [   # Messages displayed upon existing.
     f"GitHub Issues: {UL}https://github.com/Mohyoo/Gemini-Py-CLI/issues{RS}",
 ]
 
-CONTINUE_MESSAGES = [    # Messages displayed upon confirming exit or editing sensitive stuff (saved-info...), but the user chooses to cancel.
+CANCEL_MESSAGES = [      # Messages displayed upon quitting or editing sensitive stuff (saved-info...), etc; but the user chooses to cancel.
     # Standard
     'Resuming chat...',
     'Cancelling, chat will continues.',
@@ -235,6 +255,7 @@ PLACEHOLDER_MESSAGES = [ # Messages displayed in the prompt field when its empty
     "Build the impossible...",
     "Own the moment...",
     "Make your move...",
+    "Do what you do best!",
 ]
 
 if FUN_MODE:
@@ -285,7 +306,7 @@ if FUN_MODE:
         "We have a winner! Ahuh.. I meant a dinner!",
     ])
 
-    CONTINUE_MESSAGES.extend([
+    CANCEL_MESSAGES.extend([
         # Funny
         'Acting blind...',
         "Don't just mess with the keyboard next time.",
@@ -350,15 +371,21 @@ if FUN_MODE:
         "What if...",
         "Ready to roll...",
         "Boost my day...",
+        "Just say the word...",
     ])
+    
+    EXCLAMATIONS = [    # Rarely used for warnings (like long text paste).
+        'Holy moly', 'Holy cow', 'Yowsha', 'Bang', 'Oh my goodness',
+        'Heavens above', 'Ahuh',
+    ]
 
 
 # Experimental Settings
-MOUSE_SUPPORT = False                       # Use the mouse to edit user prompt.
-VIM_EMACS_MODE = None                       # Use VI/VIM/EMACS commands for editing the input, can be: 'vim', 'emacs' or None.
+MOUSE_SUPPORT = False                        # Use the mouse to edit user prompt.
+VIM_EMACS_MODE = None                        # Use VI/VIM/EMACS commands for editing the input, can be: 'vim', 'emacs' or None.
                                                 # E.g.1: For VIM mode, ESC-I is for insert mode; beside navigation mode by pressing ESC + j or h, k, l.
                                                 # E.g.2: For EMACS mode, Ctrl+A to go to line beginning, Ctrl+E to move to end.
-IMPLICIT_INSTRUCTIONS_ON = False            # Hidden instructions to help organize the responses for CLI.
+IMPLICIT_INSTRUCTIONS_ON = False             # Hidden instructions to help organize the AI responses for CLI.
 IMPLICIT_INSTRUCTIONS = """
 You are an AI assistant specialized for command-line interface (CLI) output, with a fixed width of 80 characters.
 Before replying to any message, follow these mandatory formatting rules:
@@ -373,10 +400,7 @@ Before replying to any message, follow these mandatory formatting rules:
 
 
 # Coming Soon Settings
-SUPPRESS_CATCHED_ERRORS = False             # Never show catched errors.
-SUPPRESS_UNEXPECTED_ERRORS = False          # Never show fatal errors, let it be a sudden exit.
-NO_QUESTIONS = False                        # Never ask the user for anything, and use the default option.
-
+# All ideas are implemented for now!
 
 # Hotkeys
     # Hard & Confusing; For now, I honestly don't know how to explain them.
@@ -384,28 +408,34 @@ NO_QUESTIONS = False                        # Never ask the user for anything, a
     # doen't provide so many keys & combinations, I had to use custom lists like (key1, key2) for combinations.
     # The problem is, the format (key1, key2) in my code can also represent (2) separated keys that can be pressed
     # individually to do the same job.
+    # I don't think SHIFT can be combined with other keys.
+    # ESCAPE followed by another key represents ALT.
     # See (https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Settings) to see all available hotkeys.
     
 class Hotkeys():
     if ENTER_NEW_LINE:
-        SUBMIT = ('escape', 'enter')                                # Press ESCAPE-ENTER at once.
+        SUBMIT = ('escape', 'enter')                                # Press ESC-ENTER at once.
         NEW_LINE = ('enter', 'c-space', 's-tab', 'c-j')             # Press either ENTER or CTRL-SPACE or SHIFT-TAB or CTRL-J (Shift-Enter isn't available).
     else:
         SUBMIT = ('enter',)                                         # Press ENTER alone, or ENTER-KEY2 if available.
-        NEW_LINE = (('escape', 'enter'), 'c-space', 's-tab', 'c-j') # Press ESCAPE-ENTER or CTRL-SPACE or SHIFT-TAB or CTRL-J.
+        NEW_LINE = (('escape', 'enter'), 'c-space', 's-tab', 'c-j') # Press ESC-ENTER or CTRL-SPACE or SHIFT-TAB or CTRL-J.
     
     CANCEL = 'escape'               # Press ESC.
     TAB = 'tab'                     # Press TAB.
     UNDO = 'c-z'                    # Press CTRL-Z at once.
     REDO = 'c-y'                    # Press CTRL-Y at once.
+    CUT = ('escape', 'x')           # Press ALT-X at once.
     COPY = 'c-a'                    # Press CTRL-A at once.
+    PASTE = (('escape', 'v'), 'c-t', 'c-p')  # Press ALT-V or CTRL-T or CTRL-P.
     INTERRUPT = ('c-c', 'c-d')      # Press CTRL-C or CTRL-D.
     UPLOAD = 'f3'                   # Press F3.
     RAW_FILE = 'f4'                 # Press F4.
     UPLOAD_FOLDER = ('f3', 'f4')    # Press F3-F4 at once.
     # F_KEYS here is a dictionary of 'F' key to press & its fellow 'command' (commands are listed in the help menu).
     F_KEYS = {'f1': 'show', 'f2': 'copy', 'f5': 'quit', 'f6': 'help'}
-
+    EXT_EDITOR = ('c-x', 'c-e')     # Press CTRL-X-CTRL-E at once.
+    QUICK_EDITOR = 'c-g'            # Press CTRL-G at once.
+    VIEWER = ('escape', 'g')        # Press ALT-G at once.
 
 
 
@@ -416,24 +446,32 @@ class Hotkeys():
 
 
 # Values Correction (Ignore This Part)
-MAX_HISTORY_MESSAGES = MAX_HISTORY_MESSAGES // 2     # Keep history messages an even number (User-AI turns).
+# 1. Numeric Values
+MAX_HISTORY_MESSAGES = int(MAX_HISTORY_MESSAGES) * 2    # Multiplied by (2) to keep the whole turns (AI-User messages).
 if MAX_HISTORY_MESSAGES < 0: MAX_HISTORY_MESSAGES = 0
-if SUGGESTIONS_LIMIT < 1: SUGGEST_FROM_WORDLIST = False
+if SUGGESTIONS_LIMIT < 1: SUGGEST_FROM_WORDLIST_MODE = None
 if MAX_CONSOLE_WIDTH < 10: MAX_CONSOLE_WIDTH = 10
-if RESPONSE_EFFECT not in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
-if VIM_EMACS_MODE not in (None, 'vim', 'emacs'): VIM_EMACS_MODE = None
-if INPUT_HIGHLIGHT == 'None': INPUT_HIGHLIGHT = False
+
+# 2. Selective & Special Cases
+if ALWAYS_GUI_MODE: RESPONSE_EFFECT = None  # Because the GUI window will block the program, we don't want to waste time with effects after it's closed.
+if not RESPONSE_EFFECT in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
+if not VIM_EMACS_MODE in (None, 'vim', 'emacs'): VIM_EMACS_MODE = None
+if not PROMPT_HISTORY_MODE in (None, 'temporary', 'permanent'): PROMPT_HISTORY_MODE = None
+if not SUGGEST_FROM_HISTORY_MODE in (None, 'normal', 'flex'): SUGGEST_FROM_HISTORY_MODE = None
+if not SUGGEST_FROM_WORDLIST_MODE in (None, 'normal', 'fuzzy'): SUGGEST_FROM_WORDLIST_MODE = None
+if not LOAD_CHAT_MODE in ('ask', 'load', 'forget'): LOAD_CHAT_MODE = 'ask'
+if not PROMPT_HISTORY_MODE: SUGGEST_FROM_HISTORY_MODE = None
+if not sys.stdout.isatty(): USE_ANSI = False     # Hide ANSI characters if the output is being redirected to a non-terminal location.
 if not USE_ANSI: USE_COLORS = False
 if not USE_COLORS: INPUT_HIGHLIGHT = None
-if not sys.stdout.isatty(): USE_ANSI = False         # Hide ANSI characters if the output is being redirected to a non-terminal location.
 
+# 3. Boolean Values
 BOOLEAN_SETTINGS = (
-    'NO_HISTORY_LIMIT', 'PROMPT_HISTORY_ON', 'PROMPT_HISTORY_MEMORY', 'SAVED_INFO', 
-    'ERROR_LOG_ON', 'GLOBAL_LOG_ON', 'ENTER_NEW_LINE', 'SUGGEST_FROM_HISTORY', 'SUGGEST_FROM_WORDLIST', 
-    'SUGGEST_FROM_WORDLIST_FUZZY', 'USE_COLORS', 'USE_ANSI', 'INFORMATIVE_RPROMPT', 'BOTTOM_TOOLBAR', 
+    'NO_HISTORY_LIMIT', 'SAVED_INFO', 'ERROR_LOG_ON', 'GLOBAL_LOG_ON', 'ENTER_NEW_LINE', 
+    'USE_COLORS', 'USE_ANSI', 'INFORMATIVE_RPROMPT', 'BOTTOM_TOOLBAR', 
     'DEV_MODE', 'FUN_MODE', 'STARTUP_API_CHECK', 'FILE_COMPRESSION', 'TEXT_COMPRESSION', 
     'DYNAMIC_CONSOLE_WIDTH', 'CASE_SENSITIVITY', 'VALIDATE_INPUT', 'HIDE_LONG_INPUT', 'SAVE_INPUT_ON_CLEAR', 
-    'SAVE_INPUT_ON_STOP', 'EXTERNAL_EDITOR', 'NO_ERROR_DETAILS', 'MOUSE_SUPPORT', 'VIM_EMACS_MODE', 
+    'SAVE_INPUT_ON_STOP', 'EXTERNAL_EDITOR', 'NO_ERROR_DETAILS', 'MOUSE_SUPPORT', 
     'IMPLICIT_INSTRUCTIONS_ON', 'SUPPRESS_CATCHED_ERRORS', 'SUPPRESS_UNEXPECTED_ERRORS', 'NO_QUESTIONS',
 )
 
@@ -442,6 +480,20 @@ for var in BOOLEAN_SETTINGS:
     if not isinstance(value, bool):
         globals()[var] = False
 
+# 4. Files Paths
+FILES = (
+    'SAVED_INFO_FILE', 'LAST_RESPONSE_FILE', 'WORDLIST_FILE', 'CHAT_HISTORY_JSON',
+    'CHAT_HISTORY_TEXT', 'ERROR_LOG_FILE', 'GLOBAL_LOG_FILE', 'PROMPT_HISTORY_FILE',
+    'SAVED_LINKS_FILE', 'RECOVERY_PROMPT_FILE', 'TEMP_PROMPT_FILE', 'CONFIG_FILE',
+)
+         
+os.makedirs(USER_DATA_DIR, exist_ok=True)
+for file in FILES:
+    path = globals()[file]
+    globals()[file] = os.path.join(USER_DATA_DIR, path)
+
+# 5. Quick Cleanup
+del BOOLEAN_SETTINGS, var, value, FILES, file, path
 
 
 
@@ -449,4 +501,4 @@ for var in BOOLEAN_SETTINGS:
 # Extra Global Variables (Needed at the beginning of 'gemini.py')
 OPERATING_SYSTEM = os.name
 console_width = min(MAX_CONSOLE_WIDTH, os.get_terminal_size().columns - 1)  # The current console width must always be <= MAX_CONSOLE_WIDTH < real terminal size.
-glitching_text_width = min(console_width, 79)                               # Width used with cprint(), to avoid text glitches.
+glitching_text_width = min(console_width, 79)                               # Width used with cprint(), to avoid text glitches (random blank lines).

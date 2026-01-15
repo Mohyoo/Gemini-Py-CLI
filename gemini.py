@@ -22,8 +22,10 @@ try:
     if GLOBAL_LOG_ON: from global_logger import setup_global_console_logger, in_time_log
 
 except (ImportError, ModuleNotFoundError) as error:
-    print(f'\nError: {error}.')
+    print('\n' + '─' * console_width)
+    print(f'Error: {error}.')
     print('Reinstall the program to restore the missing file.')
+    print('─' * console_width)
     quit(1)
     
 except (KeyboardInterrupt, EOFError):
@@ -39,24 +41,21 @@ try:
     import httpx
     import textwrap
     import traceback
-    from tkinter import filedialog
-    from stop_words import get_stop_words
+    from time import sleep
     from shlex import split as shlex_split
     from webbrowser import open as browser_open
     from random import randint, choice, uniform
     from mimetypes import guess_type as guess_mime_type
-    from time import sleep, perf_counter, time as now_time
-    from pyperclip import PyperclipException, copy as clip_copy
     from threading import Thread, Event as ThreadEvent, Lock as ThreadLock
     from shutil import rmtree as remove_dir, copy as copy_file, move as move_file
-    from subprocess import Popen as NewProcess, CREATE_NEW_CONSOLE as NEW_CONSOLE_FLAG
     from httpcore import RemoteProtocolError, ConnectError, ConnectTimeout, ReadTimeout
     from prompt_toolkit import prompt
-    from prompt_toolkit.styles import Style
-    from prompt_toolkit.filters import has_completions
+    from prompt_toolkit.styles import Style, merge_styles
+    from prompt_toolkit.shortcuts import ProgressBar
     from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.filters import has_completions, has_selection, has_focus
     from prompt_toolkit.formatted_text import FormattedText
-    from prompt_toolkit.validation import Validator, ValidationError
+    from prompt_toolkit.validation import ValidationError
     from google.genai import Client as GemClient
     from google.genai.types import Content, Part
     from google.genai.errors import ClientError, ServerError
@@ -65,6 +64,12 @@ try:
     from rich.markdown import Markdown
     
     # Conditional.
+    try: from pyperclip import PyperclipException, copy as clip_copy, paste as clip_paste
+    except: clip_copy, clip_paste = None, None
+    
+    try: from stop_words import get_stop_words
+    except: get_stop_words = None
+    
     if OPERATING_SYSTEM == 'posix':
         import termios
         
@@ -78,19 +83,22 @@ try:
         import difflib
         import heapq
     
-    if SUGGEST_FROM_WORDLIST and SUGGEST_FROM_WORDLIST_FUZZY:
+    if SUGGEST_FROM_WORDLIST_MODE == 'fuzzy':
         from prompt_toolkit.completion import FuzzyWordCompleter as WordCompleter
         
-    elif SUGGEST_FROM_WORDLIST:
+    elif SUGGEST_FROM_WORDLIST_MODE == 'normal':
         from prompt_toolkit.completion import WordCompleter
             
-    if SUGGEST_FROM_HISTORY:
+    if SUGGEST_FROM_HISTORY_MODE == 'flex':
+        from prompt_toolkit.auto_suggest import AutoSuggest, Suggestion
+        
+    elif SUGGEST_FROM_HISTORY_MODE == 'normal':
         from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
     
-    if PROMPT_HISTORY_ON and PROMPT_HISTORY_MEMORY:
+    if PROMPT_HISTORY_MODE == 'temporary':
         from prompt_toolkit.history import InMemoryHistory as PromptHistory
     
-    elif PROMPT_HISTORY_ON:
+    elif PROMPT_HISTORY_MODE == 'permanent':
         from prompt_toolkit.history import FileHistory as PromptHistory
         
     if RESPONSE_EFFECT:
@@ -100,6 +108,7 @@ try:
     
     if RESPONSE_EFFECT == 'char fast':
         from math import isclose as math_isclose
+        from time import perf_counter
 
     if INPUT_HIGHLIGHT == 'special':
         from prompt_toolkit.lexers import PygmentsLexer
@@ -122,10 +131,15 @@ try:
     if DYNAMIC_CONSOLE_WIDTH: 
         from functools import partial
       
+    if VALIDATE_INPUT:
+        from prompt_toolkit.validation import Validator
+      
 except (ImportError, ModuleNotFoundError) as error:
-    print(f'\nError: {error}.')
+    print('\n' + '─' * console_width)
+    print(f'Error: {error}.')
     print("Use 'pip' to install the missing modules.")
     print("E.g: open CMD & type: pip install httpx rich")
+    print('─' * console_width)
     quit(1)
     
 except (KeyboardInterrupt, EOFError):
@@ -146,33 +160,41 @@ class Keys():
     Define & implement keyboard shortcuts for user prompt.
     Hotkeys() class is in 'settings.py'.
     """
-    # Define constants at the class level.
-    if ENTER_NEW_LINE:
-        SUBMIT = Hotkeys.SUBMIT
-        NEW_LINE = Hotkeys.NEW_LINE
-    else:
-        SUBMIT = Hotkeys.SUBMIT
-        NEW_LINE = Hotkeys.NEW_LINE
-
+    # Define hotkeys at the class level.
+    SUBMIT = Hotkeys.SUBMIT
+    NEW_LINE = Hotkeys.NEW_LINE
     TAB = Hotkeys.TAB
     CANCEL = Hotkeys.CANCEL
     INTERRUPT = Hotkeys.INTERRUPT
     UNDO = Hotkeys.UNDO
     REDO = Hotkeys.REDO
+    CUT = Hotkeys.CUT
     COPY = Hotkeys.COPY
+    PASTE = Hotkeys.PASTE
     UPLOAD = Hotkeys.UPLOAD
     RAW_FILE = Hotkeys.RAW_FILE
     UPLOAD_FOLDER = Hotkeys.UPLOAD_FOLDER
     F_KEYS = Hotkeys.F_KEYS
+    EXT_EDITOR = Hotkeys.EXT_EDITOR
+    QUICK_EDITOR = Hotkeys.QUICK_EDITOR
+    VIEWER = Hotkeys.VIEWER
 
     # Define variables.
     redo_fallback_stack = []
+    hide_threshold = 256
     
     def get_key_bindings(self):
-        """Create and return the KeyBindings object with all custom bindings."""
+        """
+        Create and return the KeyBindings object with all custom hotkeys.
+        We must avoid conflicts between terminal keys & ours; and amongs ours
+        themselves.
+        * Each key can be set with (eager=True) to give it max priority; e.g:
+          if CTRL-X is set with (eager=True), it will take over even if the user
+          presses CTRL-X-CTRL-E in a row.
+        """
         key_bindings = KeyBindings()
-             
-        @key_bindings.add(*self.SUBMIT, eager=True)
+           
+        @key_bindings.add(*self.SUBMIT, filter=has_focus('DEFAULT_BUFFER'), eager=True)
         def _(event):
             """
             - Copy the original non-stripped input.
@@ -180,60 +202,65 @@ class Keys():
             - Save prompt to history.
             - Submits the original input.
             - Hide some of the input if it's too long.
-            * 'eager=True' ensures this binding takes precedence.
+            * 'eager=True' ensures this binding takes precedence, no matter if
+               it's a part of another hotkey combination or not.
             """
-            original_text = event.cli.current_buffer.text
+            buffer = event.app.current_buffer
+            original_text = buffer.text
+            if not original_text.strip():
+                self.inform(event, "You can't send an empty prompt!", color='yellow')
+                return
+            
             self.trim_input_buffer(event)
             self.wrap_input_buffer(event)
-            if HIDE_LONG_INPUT: self.hide_long_text(event)
+            self.hide_long_text(event)
             self.save_history(original_text)
-            event.cli.exit(result=original_text)
+            event.app.exit(result=original_text)
             
-        # @key_bindings.add('c-v', eager=True)
-        # def _(event):
-            # """
-            # Handle text paste instead of the terminal.
-            # To avoid long text lag and help show long paste warning.
-            # """
-            # # Stop the terminal from also handling Ctrl+V
-            # event.prevent_default()
-    
-            # # Access the clipboard.
-            # clipboard = event.cli.clipboard
-            # text = clipboard.get_data().text
-            # if not text: return
+        @key_bindings.add(self.QUICK_EDITOR)
+        def _(event):
+            """Cab a quick graphical editor for easier typing."""
+            # Inform the user.
+            buffer = event.app.current_buffer
+            current_text = buffer.text
+            self.instant_inform(event, 'Now using the quick text editor...')
             
-            # # Insert it into the current buffer, split it to avoid lag.
-            # j = 100
-            # chunks = [text[i:i+j] for i in range(0, len(text), j)]
-            # for chunk in chunks: event.current_buffer.insert_text(chunk)
+            # Call the editor.
+            original_text = quick_text_editor(current_text)
+            if not original_text.strip():
+                buffer.text = current_text
+                buffer.cursor_position = len(current_text)
+                return
+            
+            # Handle & Submit the text.
+            edited_text = ltrim(original_text).rstrip()
+            to_show_text = edited_text if len(edited_text) < self.hide_threshold else edited_text[:self.hide_threshold-6].rstrip() + ' [...]'
+            buffer.text = to_show_text
+            buffer.cursor_position = len(to_show_text)
+            self.wrap_input_buffer(event)
+            self.save_history(original_text)
+            
+            # Submit & Exit.
+            event.app.exit(result=edited_text)
         
-        # @key_bindings.add('c-x')
-        # def _(event):
-            # """Handle CTRL-X to cut the whole current line if there is no selected text."""
-            # buffer = event.cli.current_buffer
+        @key_bindings.add(*self.VIEWER)
+        def _(event):   
+            """Call a quick markdown viewer to render last AI response."""
+            # Inform the user.
+            buffer = event.app.current_buffer
+            current_text = buffer.text
+            self.instant_inform(event, 'Now using the quick markdown viewer...')
             
-            # # 1. If user has selected text, do the normal 'Cut'
-            # if buffer.selection_state:
-                # data = buffer.cut_selection()
-                # event.cli.clipboard.set_data(data)
-                # return
-
-            # # 2. If no selection, cut the last line
-            # lines = buffer.text.splitlines()
-            # if lines:
-                # last_line = lines.pop()
-                # # Copy to clipboard
-                # clip_copy(last_line)
-                # # Update buffer
-                # buffer.text = "\n".join(lines)
-                # # Move cursor to end
-                # buffer.cursor_position = len(buffer.text)  
-        
+            # Show the response & return.
+            response = get_last_response('return')
+            quick_markdown_viewer(response)
+            buffer.text = current_text
+            buffer.cursor_position = len(current_text)
+            
         @key_bindings.add(self.TAB)
         def _(event):
             """Insert a tab (4 spaces)."""
-            event.cli.current_buffer.insert_text('    ')        
+            event.app.current_buffer.insert_text('    ')      
         
         @key_bindings.add(self.UNDO)
         def _(event):
@@ -241,8 +268,14 @@ class Keys():
             Undo the last change.
             Only pushes a state to the REDO stack if the text actually changes.
             """
+            # Note: On Windows, suspend_to_background doesn't behave the same way as on Unix/Linux (where 
+            # it sends SIGTSTP). If you are on Windows, enable_suspend often appears to do nothing because 
+            # the OS doesn't support the same job control.
+            # event.app.suspend_to_background()
+            # return
+            
             # Undo.
-            buffer = event.cli.current_buffer
+            buffer = event.app.current_buffer
             before_undo = buffer.text
             buffer.undo()
             
@@ -260,7 +293,7 @@ class Keys():
             Use a manual method if the original one fails.
             """
             # Try the original method.
-            buffer = event.cli.current_buffer
+            buffer = event.app.current_buffer
             before_redo = buffer.text
             buffer.redo()
             after_redo = buffer.text
@@ -271,31 +304,11 @@ class Keys():
                 buffer.text = restored_text
                 buffer.cursor_position = self.first_diff_index(before_redo, restored_text) + 1
         
-        @key_bindings.add(self.COPY)
-        def _(event):
-            """Copy the current buffer text."""
-            buffer = event.cli.current_buffer
-            text = buffer.text
-            if not text: return
-            if not text[-1].isspace(): buffer.insert_text(' ')        
-            
-            try:
-                # Copy (pyperclip handles the OS-specific details).
-                clip_copy(text)
-                buffer.insert_text('[Prompt Copied!]')        
-                    
-            except:
-                if ERROR_LOG_ON: log_caught_exception()
-                buffer.insert_text('[Copy Error!]')         
-
         @key_bindings.add(self.CANCEL, filter=has_completions, eager=True)
         def _(event):
             """Hides the autocompletion menu when ESC is pressed."""
-            buffer = event.cli.current_buffer
-
-            # If the suggestion menu is currently open/active, cancel & close the menu.
-            if SUGGEST_FROM_WORDLIST and buffer.complete_state:
-                buffer.cancel_completion()
+            buffer = event.app.current_buffer
+            buffer.cancel_completion()
         
         @key_bindings.add(self.UPLOAD)
         def _(event):
@@ -312,7 +325,84 @@ class Keys():
             paths = select_files_dialog('file')
             if not paths: return
             self.file_dialog_helper(event, paths, 'raw')
+
+        @key_bindings.add(*self.CUT, filter=~has_selection)
+        def _(event):
+            """Cut the whole current line if there is no selected text."""
+            # Acces current buffer.
+            buffer = event.app.current_buffer
+            text = buffer.text
+            if not text: return
+            
+            # Get cursor position (column, not row).
+            doc = buffer.document
+            col = doc.cursor_position_col
+            
+            # Find line limits (visually, not logically).
+            # Exceeding 'AFTER' value is fine, but not for 'BEFORE' (to avoid weird behavior like text duplication).
+            width = terminal_size().columns - len(line_continuation) - 1
+            before = col % width
+            if before == 0 and col != 0: before = width
+            before = max(before, 0)
+            after = min(len(doc.current_line_after_cursor), width - before) + 1
+            after = max(after, 0)
+            
+            # Delete it.
+            if before > 0: buffer.delete_before_cursor(count=before)
+            if after > 0: buffer.delete(count=after)
+            
+            # Copy it to clipboard (using old DOC).
+            line = doc.current_line[col - before : col + after]
+            copy_to_clipboard(line, hidden=True)
         
+        @key_bindings.add(self.COPY)
+        def _(event):
+            """Copy the current buffer text."""
+            buffer = event.app.current_buffer
+            text = buffer.text
+            if not text: return
+            
+            # Copy (pyperclip handles the OS-specific details).
+            if copy_to_clipboard(text, hidden=True):
+                msg = 'Prompt Copied!'
+                color = 'green'
+            else:
+                msg = 'Copy Failed!'
+                color = 'red'
+                
+            self.inform(event, msg, color=color)         
+
+        for key in self.PASTE:
+            if not isinstance(key, tuple): key = (key,)
+            @key_bindings.add(*key)
+            def _(event):
+                """
+                Handle the long text pasted from the clipboard.
+                Change the buffer text quickly to avoid overheat (lexer highlight,
+                undo steps, history saving, etc...). 
+                """
+                buffer = event.app.current_buffer
+                success, pasted = paste_from_clipboard()
+                
+                # Warn if 'Pyperclip' failed.
+                if not success:
+                    self.inform(event, 'Paste Failed!', color='red')
+                    return
+                
+                # Reject mega paste (2MB limit).
+                size = len(pasted.encode('utf-8'))  / 1024**2
+                if size > 2:
+                    if FUN_MODE: what = choice(EXCLAMATIONS)
+                    else: what = 'Wait'
+                    warning = f'{what}! That was a huge {int(size)}MB text! Use CTRL-G instead'
+                    self.inform(event, warning, color='yellow')
+                    return
+                    
+                # Start Pasting.
+                pasted = pasted.replace('\r\n', '\n').replace('\r', '\n')
+                buffer.lexer = None                            # Disable syntax highliting.
+                buffer.insert_text(pasted, fire_event=False)   # Prevent other buffer change events.
+                     
         for combination in (self.UPLOAD_FOLDER, self.UPLOAD_FOLDER[::-1]):   # F3+F4 or F4+F3; we use the reversed tuple so the pressing order doesn't matter.
             @key_bindings.add(*combination)
             def _(event):
@@ -330,44 +420,96 @@ class Keys():
                 * 'command=command': This captures the value (F-Key command) immediately
                                      and fix it for this function.
                 """
-                original_text = event.cli.current_buffer.text
+                original_text = event.app.current_buffer.text
                 if SAVE_INPUT_ON_STOP: self.save_history(original_text)
                 command = '/' + command
-                event.cli.current_buffer.text = command
-                event.cli.exit(result=command)
+                event.app.current_buffer.text = command
+                event.app.exit(result=command)
 
         for key in self.NEW_LINE:
             if not isinstance(key, tuple): key = (key,)
             @key_bindings.add(*key)
             def _(event):
                 """Inserts a newline character."""
-                event.cli.current_buffer.insert_text('\n')
+                event.app.current_buffer.insert_text('\n')
                 
         for key in self.INTERRUPT:
             @key_bindings.add(key)
             def _(event):
                 """Handle interruption/termination signal, by either: clear or quit."""
-                buffer = event.cli.current_buffer
+                buffer = event.app.current_buffer
                 text = buffer.text
                 if text:
                     # If there is a text, clear it.
                     if SAVE_INPUT_ON_CLEAR: self.save_history(text)
-                    buffer.reset()
-                    buffer.save_to_undo_stack()
+                    buffer.text = ''
+                    # buffer.save_to_undo_stack()
+                    # Copy it - just in case.
+                    # copy_to_clipboard(text, hidden=True)
                 else:
                     # If empty, quit input.
                     self.trim_input_buffer(event)
                     if SAVE_INPUT_ON_STOP: self.save_history(text)
-                    event.cli.exit(exception=KeyboardInterrupt())
+                    event.app.exit(exception=KeyboardInterrupt())
+
+        if EXTERNAL_EDITOR:
+            @key_bindings.add(*self.EXT_EDITOR)
+            def _(event):
+                """Open the external editor; continue editing current prompt; then submit."""
+                # event.app.current_buffer.open_in_editor(validate_and_handle=False)
+                # Inform the user.
+                buffer = event.app.current_buffer
+                current_text = buffer.text
+                self.instant_inform(event, 'Now using the external text editor...')
+                
+                # Start the editor.
+                original_text = external_editor(current_text)
+                if original_text is False or not original_text.strip():
+                    buffer.text = current_text
+                    buffer.cursor_position = len(current_text)
+                    if original_text is False: self.inform(event, "The external editor couldn't be found!", color='red')
+                    return
+                
+                # Handle the text before pasting it to avoid lag.
+                edited_text = ltrim(original_text).rstrip()
+                to_show_text = edited_text if len(edited_text) < self.hide_threshold else edited_text[:self.hide_threshold-6].rstrip() + ' [...]'
+                buffer.text = to_show_text
+                buffer.cursor_position = len(to_show_text)
+                self.wrap_input_buffer(event)
+                self.save_history(original_text)
+                
+                # Submit & Exit.
+                event.app.exit(result=edited_text)
+          
+        if DEV_MODE:
+            @key_bindings.add('escape', '!')
+            def _(event):
+                event.app.layout.focus('SYSTEM_BUFFER')
+
+            @key_bindings.add('enter', filter=has_focus('SYSTEM_BUFFER'), eager=True)
+            def _(event):
+                app = event.app
+                system_buffer = app.layout.get_buffer_by_name('SYSTEM_BUFFER')
+                cmd = system_buffer.text
+                
+                if cmd.strip():
+                    # Executes cmd in system shell - in background (it's an asynchronous function).
+                    print('\n')
+                    task = app.run_system_command(cmd)
+                    app.create_background_task(task)
+                    
+                # Move focus back to the main input area.
+                system_buffer.reset() # Clear the buffer after running
+                app.layout.focus('DEFAULT_BUFFER')
         
         return key_bindings
     
     def trim_input_buffer(self, event):
         """Strip/trim leading & trailing whitespaces."""
         # Get the input text & trim it.
-        buffer = event.cli.current_buffer
+        buffer = event.app.current_buffer
         current_text = buffer.text
-        stripped_text = current_text.lstrip('\n').rstrip() 
+        stripped_text = ltrim(current_text).rstrip() 
         
         # Replace the entire text content.
         if current_text != stripped_text:
@@ -375,7 +517,7 @@ class Keys():
 
     def wrap_input_buffer(self, event):
         """Wrap the input & Break it into shorter lines."""
-        buffer = event.cli.current_buffer
+        buffer = event.app.current_buffer
         WRAP_WIDTH = console_width - 8
         wrapped_segments = []
 
@@ -391,14 +533,21 @@ class Keys():
  
     def hide_long_text(self, event):
         """If user prompt is too long, only show some of it."""
-        buffer = event.cli.current_buffer
+        if not HIDE_LONG_INPUT: return
+        buffer = event.app.current_buffer
         text = buffer.text
-        if len(text) > 256:
-            buffer.text = text[:253].rstrip() + ' [...]'
-        
-    def save_history(self, prompt):
+        i = self.hide_threshold
+        if len(text) > i:
+            buffer.text = text[:i-6].rstrip() + ' [...]'
+    
+    @staticmethod
+    def save_history(prompt):
         """Save the current prompt to history, if conditions are met."""
+        # Check if it's not empty & not bigger than max size.
+        if PROMPT_HISTORY_MODE not in ['temporary', 'permanent']: return
         if not prompt.strip(): return
+        if len(prompt.encode('utf-8'))  / 1024**2 > PROMPT_HISTORY_SIZE: return
+        
         history_prompts = list(history.get_strings())
         if not history_prompts:
             # Prompt history is empty, save directly.
@@ -420,7 +569,7 @@ class Keys():
     def file_dialog_helper(self, event, selected: list, cmd: str):
         """Upon selecting files or folders, insert them."""
         # Insert a new line for readability.
-        buffer = event.cli.current_buffer
+        buffer = event.app.current_buffer
         text = buffer.text.strip()
         line_start = buffer.document.cursor_position_col == 0
         if text and not line_start: buffer.insert_text('\n')
@@ -432,15 +581,59 @@ class Keys():
         # Insert the command-path pairs.
         formatted_commands = '\n'.join([f"/{cmd} {q}{path}{q}" for path in selected])
         buffer.insert_text(formatted_commands)
-
-class GeminiWorker(Thread):
+    
+    def inform(self, event, msg, inline=False, color='blue'):
+        """Inform the user of something happened in this class (error, warning, success...)."""
+        buffer = event.app.current_buffer
+        text = buffer.text
+        
+        # Simple style.
+        if inline and msg not in text[-100:]:
+            s = '' if not text or text[-1:].isspace() else ' '
+            buffer.insert_text(f'{s}[{msg}]')
+        
+        # Notification style.
+        else:
+            # Update style.
+            # app = event.app
+            # old_style = app.style
+            # new_style = merge_styles([
+                # old_style,
+                # Style.from_dict({'validation-toolbar': f'bg:{color}'}),
+            # ])
+            # app.style = new_style
+            
+            # Show the message.
+            msg = ' ' + msg + ' '
+            buffer.validation_error = ValidationError(message=msg)
+            
+            # Force refresh, then restore the old style later.
+            # app.renderer.render(app, app.layout)
+            # def reset_style():
+                # buffer.validation_error = None
+                # app.style = old_style
+            # app.loop.call_later(2.0, reset_style)
+            return
+    
+    def instant_inform(self, event, msg):
+        """
+        Unlike inform(); this will force an immediate text refresh.
+        You'll need to manually save & restore buffer text after this.
+        """
+        app = event.app
+        buffer = app.current_buffer
+        buffer.text = ''
+        buffer.insert_text(f'[{msg}]')
+        app.renderer.render(app, app.layout)    # Force refresh.
+            
+class MessageSender(Thread):
     """
-    - A worker thread to run & control the asynchronous (unblockable) API call when sending a message.
+    - A thread to run & control the asynchronous (unblockable) API call when sending a message.
     - Set to 'daemon' so the thread is terminated automatically on main program
       exit or on exception (like KeyboardInterrupt).
     """
     def __init__(self, chat_session, message_to_send, *args, **kwargs):
-        """initialize worker attributes."""
+        """initialize sender attributes."""
         super().__init__(*args, **kwargs)
         self.daemon = True
         self.send_message = chat_session.send_message
@@ -464,7 +657,7 @@ class GeminiWorker(Thread):
 
 class FileUploader(Thread):
     """
-    - A worker thread to run & control the asynchronous (unblockable) API call when uploading a file.
+    - An uploader thread to run & control the asynchronous (unblockable) API call when uploading a file.
     - Set to 'daemon' so the thread is terminated automatically on main program
       exit or on exception (like KeyboardInterrupt).
     """
@@ -501,12 +694,16 @@ class SoftRestart(Exception):
     """Custom exception to signal a safe restart of the chat session."""
     pass
 
-if SUGGEST_FROM_WORDLIST:
+if SUGGEST_FROM_WORDLIST_MODE in ['normal', 'fuzzy']:
     class LimitedWordCompleter(WordCompleter):
-        """Override WordCompleter to enforce a limit on the number of returned completions."""
+        """
+        Override WordCompleter to enforce a limit on the number of returned completions.
+        Work with both normal or fuzzy modes.
+        """
         def get_completions(self, document, complete_event):
             # Do not complete after whitespaces.
-            if document.text.endswith((' ', '\t', '\n', '\r', '\x0b', '\x0c')):
+            text = document.text
+            if not text or text[-1].isspace():
                 return
                 
             # Call the base class's method to get all completions.
@@ -586,37 +783,52 @@ if DYNAMIC_CONSOLE_WIDTH:
             self._stop_event.set()
 
 if VALIDATE_INPUT:
-    class LengthValidator(Validator):
+    class PromptValidator(Validator):
         """A class used to check/validate user input while typing."""
+        # Define our attributes.
         last_length = 0
-        last_diff = 0
+        pasted_length = 0
+        long_prompt_threshold = 4096
+        long_paste_threshold = 4096
         
         def validate(self, document):
             """
-            Warn the user if he types a very long prompt, but still allow him to submit.
+            Warn the user, especially if he types a very long prompt; but always allow him to submit.
             Warn only for a short while to avoid annoyance & glitches.
+            * One problem: warning will blink if it's triggered while pasting a long text.
+            * We don't use 'elif' or 'else' because warn() method will just exit.
             """
-            # Get terminal size & text length.
-            columns, rows = terminal_size()
-            marker = len(line_continuation)
-            x = columns - marker - 1    # (x) = length of one line in the text field, without the margins.
+            # Calculate added chars since last time.
             text = document.text
             characters = len(text)
+            diff = characters - self.last_length
+            self.last_length = characters
             
-            # Warn about long paste.
-            # difference = characters - self.last_length
-            # self.last_length = characters
-            # self.last_diff = difference
-            # if difference > 48 and self.last_diff > 48:
-                # self.warn('Long paste! Might feel slow & hide upper text...')
+            # # Inform/warn about text paste.
+            # if diff > 1:
+                # self.pasted_length += diff
+                # if self.pasted_length > self.long_paste_threshold:
+                    # self.warn('Long paste! Use CTRL-P next time!')
+                # else:
+                    # self.warn('Pasting text...')
+            
+            # # No paste or paste done; reset.
+            # if self.pasted_length:
+                # self.pasted_length = 0
             
             # Warn about dangerous developper commands.
-            if DEV_MODE and text.startswith(('/system ', '/exec ')):
-                self.warn("Use the command at your own risk! Beware of self-destruction!")
+            if DEV_MODE and text.startswith(('/system ', '/exec ', '/eval ')):
+                self.warn('Use the command at your own risk! Beware of self-destruction!')
+            
+            # Get terminal available size.
+            columns, rows = terminal_size()
+            margin = len(line_continuation)
+            x = columns - margin - 1    # (x) = length of one line in the text field, without the margins.
             
             # Warn about N° of characters.
-            if 4096 <= characters <= 4256:
-                self.warn('WARNING! You typed more than 4000 characters!')
+            i = self.long_prompt_threshold
+            if i <= characters <= i + 256:
+                self.warn(f'You typed more than {i} characters! You can use CTRL-G.')
 
             # Calculate occupied terminal rows (text lines + rprompt + toolbar).
             used_rows = 0
@@ -630,11 +842,12 @@ if VALIDATE_INPUT:
    
             # Warn if terminal space isn't enough for text.
             if 0 <= used_rows - rows <= 3:
-                self.warn('Long prompt! Some text is now hidden (You can use CTRL+X-CTRL+E)')
+                self.warn('Long prompt! Some text is now hidden (You can use CTRL-G)')
         
-        def warn(self, message):
+        def warn(self, msg):
             """Leave this validator & Show a warning."""
-            raise ValidationError(message=message)
+            msg = ' ' + msg + ' '
+            raise ValidationError(message=msg)
 
 if INPUT_HIGHLIGHT == 'special':
     class CustomLexer(RegexLexer):
@@ -809,7 +1022,7 @@ if INPUT_HIGHLIGHT == 'special':
             # 🚀 Awe / Power Words.
             'amazing', 'awesome', 'fantastic', 'incredible', 'mindblowing',
             'jawdropping', 'unstoppable', 'dominant','great', 'brilliant',
-            'beautiful', 'wonderful',
+            'beautiful', 'wonderful', 'holy',
             
             # Plural Form of Previous Words.
             'warnings', 'alerts', 'dangers', 'hazards', 'threats', 'risks', 'emergencies',
@@ -864,6 +1077,70 @@ if INPUT_HIGHLIGHT == 'special':
                     (r'.', WHITE),
                 ]
             }
+
+if SUGGEST_FROM_HISTORY_MODE == 'flex':
+    class AutoSuggestFromHistory(AutoSuggest):
+        """A custom but advanced AutoSuggest class, used in FLEX mode."""
+        # Set a memory cache, to avoid recompiling the regex in case the user re-typed a previous word.
+        cached_words = {}
+        MAX_CACHE = 24
+        MAX_HISTORY = 100
+        MAX_CHARS = 256
+        
+        def get_suggestion(self, buffer, document):
+            """
+            Loop through history & return a suggestion object with a text.
+            The returned text is always the remainder of the matched history prompt.
+            """
+            history = buffer.history.get_strings()
+            text = document.text.lower()
+            if not text or text[-1].isspace(): return None
+            text = text.strip()
+            
+            # Take last typed word, revert history, and search backwards (most recent first).
+            last_word = text.split()[-1].lower().strip()
+            history = tuple(h.strip() for h in reversed(history[-self.MAX_HISTORY:]))   # Tuples are faster.
+            
+            # Accurate suggestion.
+            for h in history:
+                if h.lower().startswith(text):
+                    i = len(text)
+                    remainder = self.trim_suggestion(h[i:])
+                    if remainder: return Suggestion(remainder)
+                        
+            # Forgiving suggestion (Use cached pattern if available).
+            if len(last_word) < 2: return
+            if last_word in self.cached_words:
+                pattern = self.cached_words[last_word]
+            else:
+                pattern = re.compile(rf'\b{re.escape(last_word)}', re.IGNORECASE)
+                self.cached_words[last_word] = pattern
+                if len(self.cached_words) > self.MAX_CACHE:
+                     first_key = next(iter(self.cached_words))
+                     del self.cached_words[first_key]
+                
+            for h in history:
+                match = re.search(pattern, h)
+                if match:
+                    i = match.start() + len(last_word)
+                    remainder = self.trim_suggestion(h[i:])
+                    if remainder: return Suggestion(remainder)
+            
+        def trim_suggestion(self, text):
+            """Take the text to suggest and return only the first line shrinked to a fixed size."""
+            if not text.strip(): return
+            i = self.MAX_CHARS
+            
+            if text[0].isspace():   # Avoid extra leading spaces.
+                text = f' {text.strip()}'
+            
+            if text.count('\n') > 0:
+                text = text.splitlines()[0]
+                
+            if len(text) > i:
+                text = text[:i-3]
+                
+            return text
 
 
 
@@ -965,17 +1242,17 @@ def catch_server_error_in_chat():
     for attempt in range(SERVER_ERROR_ATTEMPTS):
         try:
             # raise ServerError(code=403, response_json={'status': 'Test', 'reason': 'Test', 'message': 'Test' * 25})
-            worker = GeminiWorker(chat, user_input)
-            worker.start()
+            sender = MessageSender(chat, user_input)
+            sender.start()
 
-            # Loop while the worker thread is still running & Update the status at random intervals.
+            # Loop while the sender thread is still running & Update the status at random intervals.
             with console.status(status=f'[bold {STATUS_GR}]Waiting for response...[/bold {STATUS_GR}]',
                                 spinner=SPINNER):
-                while worker.is_alive(): worker.join(SLEEP_INTERVAL)
+                while sender.is_alive(): sender.join(SLEEP_INTERVAL)
             
-            if worker.exception: raise worker.exception            
+            if sender.exception: raise sender.exception            
             cprint(GR + 'Response received!' + RS)
-            response = worker.response
+            response = sender.response
             break
                     
         except ServerError:
@@ -1044,7 +1321,13 @@ def catch_network_error():
 
 def catch_exception(error):
     """Used to catch any generic exception that can be forgiven during a chat."""
+    global default_prompt
     if ERROR_LOG_ON: log_caught_exception()
+    if SUPPRESS_ERRORS:
+        clear_lines(2)
+        default_prompt = user_input
+        return
+        
     separator('\n', color=RED)
     
     # Show error & ask the user to see details (If details aren't disabled).
@@ -1055,7 +1338,8 @@ def catch_exception(error):
     if not NO_ERROR_DETAILS:
         try:
             if GLOBAL_LOG_ON: in_time_log("See the details? (y/n): ...")
-            see_error = input("See the details? (y/n): ").strip().lower()
+            if NO_QUESTIONS: see_error = 'y'
+            else: see_error = input("See the details? (y/n): ").strip().lower()
         except Interruption:
             see_error = 'n'
             cprint()
@@ -1086,7 +1370,8 @@ def catch_fatal_exception(error):
     # Ask to see details if the details options isn't OFF.
     if not NO_ERROR_DETAILS:
         if GLOBAL_LOG_ON: in_time_log("See the details? (y/n): ...")
-        see_error = input("See the details? (y/n): ").strip().lower()
+        if NO_QUESTIONS: see_error = 'y'
+        else: see_error = input("See the details? (y/n): ").strip().lower()
         if see_error == 'y':
             cprint(RED + traceback.format_exc().strip() + RS)
         else:
@@ -1108,6 +1393,34 @@ def catch_keyboard_interrupt():
     msg_2 = f'Rest assured, Google has no idea about what you just sent (probably ;-;).'
     box(msg_1, msg_2, title='KEYBOARD INTERRUPTION', border_color=GR, text_color=GR, secondary_color=GR)
 
+def catch_json_error(error, file_name, file_content):
+    """
+    Used to catch JSON decoding exceptions when parsing a string/file.
+    Attempot to repair if possible.
+    """
+    if ERROR_LOG_ON: log_caught_exception()
+    try:
+        # Try to repair the file_content.
+        # raise
+        from json_repair import repair_json
+        repaird_json = repair_json(file_content)
+        content = json.loads(repaird_json)
+        return (True, content)
+    
+    except:
+        # Declare failure.
+        line = error.lineno
+        msg = error.msg
+        col = error.colno
+        line_content = file_content.splitlines()[line-1].strip()    # Lines are (0) indexed.
+            
+        msg = f"{RED}JSON Error: {msg}: line {line}, column {col}\nExact line content: {line_content}\n\n"
+        msg += f"Given that {YLW}'{file_name}'{RED} file has a mistake, either:\n"
+        msg += "- Install 'json_repair' to repair it automatically: pip install json_repair\n"
+        msg += "- Open it and correct it manually.\n"
+        msg += f"- Delete it to reset it to default.{RS}"
+        return (False, msg)
+
 
 
 
@@ -1118,6 +1431,28 @@ def catch_keyboard_interrupt():
 
 
 # 4) Part IV: Helper Functions ---------------------------------------------------------------------
+def welcome_screen():
+    """Display a short welcoming screen."""
+    gemini_logo = (
+        f"{BD}"
+        f"{BL}G"
+        f"{RED}o"
+        f"{YLW}o"
+        f"{BL}g"
+        f"{GR}l"
+        f"{RED}e"
+        f"{RS} | "
+        f"{PURP}♊ "
+        f"{BD}"
+        f"{BL}GEMINI"
+        f"{RS}"
+    )
+
+    system(CLEAR_COMMAND)
+    separator()
+    cprint(f"{GR}Welcome to {gemini_logo}{GR} Py-CLI! (API-based chat)", wrap=False)
+    cprint(f"Chat initialized (Type '{UL}/help{RS}{GR}' for a quick start){RS}\n", wrap=False)
+
 def wrapper(text: str, width=console_width-1, joiner='\n'):
     """Wrap a given text to a given line width."""
     lines = text.split('\n')
@@ -1133,7 +1468,11 @@ def wrapper(text: str, width=console_width-1, joiner='\n'):
     
     text = joiner.join(wrapped_lines)
     return text
-    
+
+def ltrim(text: str):
+    """Remove all leading empty lines, even if they contain spaces."""
+    return re.sub(LTRIM_PATTERN, '', text)
+            
 def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=glitching_text_width, wrap_joiner='\n'):
     """
     - A custom print function that writes directly to stdout and guarantees an
@@ -1146,7 +1485,7 @@ def cprint(text='', end='\n', flush=True, wrap=True, wrap_width=glitching_text_w
         text = wrapper(text, width=wrap_width, joiner=wrap_joiner)
     
     # Print.
-    stdout_write(text + end)
+    stdout_write(f'{text}{end}')
     if flush: stdout_flush()
 
 def print_status(action: callable, text='Waiting...', color='green'):
@@ -1208,10 +1547,11 @@ def control_cursor(command: str):
     elif command == 'hide':
         cprint('\033[?25l\r', end='')
  
-def visual_len(text_with_ansi: str):
+def visual_len(text: str):
     """Return the length of the longest line, ignoring ANSI codes."""
-    if not text_with_ansi.strip(): return 0
-    lines = text_with_ansi.splitlines()
+    if not text.strip(): return 0
+    if not USE_ANSI: return len(text)
+    lines = text.splitlines()
     lines_length = [len(ANSI_ESCAPE.sub('', line)) for line in lines]
     return max(lines_length)
 
@@ -1281,6 +1621,16 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     if USE_COLORS: console.print(box_string, style=None, markup=False, highlight=False, soft_wrap=True, no_wrap=True, overflow='ignore')
     else: console.print(box_string)
     cprint('\r', end='')    # To prevent any extra blank line from appearing.
+    
+    # Show in GUI if requested.
+    if ALWAYS_GUI_MODE:
+        if len(message) < 128: return   # Don't bother show with short messages.
+        with ProgressBar(bottom_toolbar=' Now using the quick markdown viewer... ', cancel_callback=lambda: None):
+            if USE_ANSI: message = ANSI_ESCAPE.sub('', message)
+            message = re.sub(r'(?m)^# ', '## ', message)
+            message = message.replace('\n', '\n\n')
+            content = f'<h1 style="text-align: center;">{title}</h1>\n\n{message}'
+            quick_markdown_viewer(content)
     
 def upload_preprocessor(mode: str):
     """
@@ -1406,7 +1756,7 @@ def upload_preprocessor(mode: str):
         if total_size > MAX_SIZE:
             total_size = round(total_size, 3)
             if total_size == 20: total_size = 20.001
-            error = f'# NOTE! the data size you tried to send is {total_size}MB, but max allowed size is exactly {MAX_SIZE}MB.'
+            error = f'# NOTE! the data size you tried to send is {total_size} MB, but max allowed size is exactly {MAX_SIZE} MB.'
             errors_list.append(error)
         
     # Return our variables.
@@ -1477,48 +1827,28 @@ def update_placeholder(text=None, temp=False, restore=False):
     """
     global prompt_placeholder, last_placeholder
     
-    # Restore to initial state.
+    # Restore to initial state & return.
     if restore:
         prompt_placeholder = last_placeholder
         return
     
-    # Update (temporarily or permanently).        
+    # Update it.
+    if text: text = text.strip()
     if not text: text = choice(PLACEHOLDER_MESSAGES)
     placeholder = FormattedText([                   
         (PROMPT_GRY, text)
     ])
     
+    # Don't change the last state if this is a temporary change.
     prompt_placeholder = placeholder
     if not temp: last_placeholder = placeholder
-
-def welcome_screen():
-    """Display a short welcoming screen."""
-    gemini_logo = (
-        f"{BD}"
-        f"{BL}G"
-        f"{RED}o"
-        f"{YLW}o"
-        f"{BL}g"
-        f"{GR}l"
-        f"{RED}e"
-        f"{RS} | "
-        f"{PURP}♊ "
-        f"{BD}"
-        f"{BL}GEMINI"
-        f"{RS}"
-    )
-
-    system(CLEAR_COMMAND)
-    separator()
-    cprint(f"{GR}Welcome to {gemini_logo}{GR} Py-CLI! (API-based chat)", wrap=False)
-    cprint(f"Chat Initialized (Type '{UL}/help{RS}{GR}' for a quick start){RS}\n", wrap=False)
 
 def compress_text(text: str):
     """
     Return a compressed version of a text by removing stop words & replacing
     long expressions with shortcuts.
-    * Used always if (TEXT_COMPRESSION is True), unless the user uses 'no-compress' command.
-    * Skipped if (TEXT_COMPRESSION is False), unless the user uses 'compress' command.
+    * Used always if (TEXT_COMPRESSION is True), unless the user uses /no-compress command.
+    * Skipped if (TEXT_COMPRESSION is False), unless the user uses /compress command.
     """
     # Create a sorted list of keys (longest first).
     # We use a list because we only need the keys to build the pattern.
@@ -1529,7 +1859,7 @@ def compress_text(text: str):
     
     def replacer(m):    # m -> match.
         base_word = m.group(1).lower()
-        suffix = m.group(2) if m.group(2) else ""
+        suffix = m.group(2) if m.group(2) else ''
         return SHORTCUT_WORDS[base_word] + suffix
     
     text = pattern.sub(replacer, text)
@@ -1537,6 +1867,91 @@ def compress_text(text: str):
     # Remove stop words and clean up spacing
     text = ' '.join([w for w in text.split() if w.lower() not in STOP_WORDS])
     return text
+
+def clear_log_files():
+    """
+    Open log files, clear them, close :)
+    Used with /del-log command.
+    """
+    error_log = 0
+    global_log = 0
+    
+    try:
+        with open(ERROR_LOG_FILE, 'w', encoding='utf-8'): pass
+    except:
+        error_log += 1
+    
+    try:
+        with open(GLOBAL_LOG_FILE, 'w', encoding='utf-8'): pass
+    except:
+        global_log += 1
+    
+    if error_log and global_log:
+        msg = "Couldn't delete log files!"
+        color = RED
+        
+    elif error_log:
+        msg = f"File '{ERROR_LOG_FILE}' was deleted.\nBut '{GLOBAL_LOG_FILE}' wasn't!"
+        
+    elif global_log:
+        msg = f"File '{GLOBAL_LOG_FILE}' was deleted.\nBut '{ERROR_LOG_FILE}' wasn't!"
+        
+    else:
+        msg = 'Log files cleared!'
+        color = GR
+        
+    box(msg, title='LOG CLEANUP', border_color=color, text_color=color)
+
+def load_config_file():
+    """Load permanent settings from CONFIG_FILE."""
+    global config_options, INITIAL_CONFIG
+    
+    # Load existing configuration, or start with default options.
+    if os.path.exists(CONFIG_FILE):
+        # raise PermissionError(13, 'Permission denied', 'protected_data.json')
+        # raise OSError(13, 'Permission denied', 'secret_file.txt')
+        with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+            content = f.read()
+        try:
+            # raise json.JSONDecodeError(msg='hi', doc='hi2', pos=2)
+            config = json.loads(content)
+            config['repaired'] = False
+        except json.JSONDecodeError as error:
+            repaired, content = catch_json_error(error, CONFIG_FILE, content)
+            if repaired:
+                config = content
+                config['repaired'] = True
+            else:
+                box(content, title='JSON ERROR', border_color=RED, text_color=RED)
+                quit(1)
+            
+    else:
+        config = DEFAULT_CONFIG.copy()
+
+    # Add missing options.
+    del content
+    for key, value in DEFAULT_CONFIG.items():
+        if key not in config:
+            config[key] = value
+    
+    # Save loaded configuration.
+    INITIAL_CONFIG = config
+    config_options = config.copy()
+    
+def save_config_file():
+    """Save permanent settings to CONFIG_FILE - if there was a change."""
+    try: conditions = config_options['repaired'] or (config_options != INITIAL_CONFIG)
+    except (NameError, KeyError): return
+    
+    if conditions:
+        del config_options['repaired']
+        try:
+            with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(config_options, f, indent=2)
+                
+        except:
+            if ERROR_LOG_ON: log_caught_exception()
+            pass
 
 if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON or FILE_COMPRESSION:
     def load_system_instructions():
@@ -1578,14 +1993,13 @@ if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON or FILE_COMPRESSION:
                 
         return config
 
-if PROMPT_HISTORY_ON:
+if PROMPT_HISTORY_MODE in ['temporary', 'permanent']:
     def load_prompt_history():
         """Load prompt history, either from memory or from file, depending on settings."""
         global history
-        history = None
         
         # From memory.
-        if PROMPT_HISTORY_MEMORY:
+        if PROMPT_HISTORY_MODE == 'temporary':
             history = PromptHistory()
             
         # From file.
@@ -1594,51 +2008,51 @@ if PROMPT_HISTORY_ON:
             except: pass
             history = PromptHistory(PROMPT_HISTORY_FILE)  
 
-if PROMPT_HISTORY_ON and not PROMPT_HISTORY_MEMORY:
-    def prune_prompt_history():
-        """
-        Check the history file size. If > PROMPT_HISTORY_SIZE, this prunes the
-        file to the nearest history block (timestamp).
-        """
-        if not path_exist(PROMPT_HISTORY_FILE):
+    if PROMPT_HISTORY_MODE == 'permanent':
+        def prune_prompt_history():
+            """
+            Check the history file size. If > PROMPT_HISTORY_SIZE, this prunes the
+            file to the nearest history block (timestamp).
+            """
+            if not path_exist(PROMPT_HISTORY_FILE):
+                return
+            
+            # Check file size.
+            MAX_SIZE = PROMPT_HISTORY_SIZE * 1024 * 1024
+            file_size = os.path.getsize(PROMPT_HISTORY_FILE)
+            if file_size <= (MAX_SIZE):
+                return
+            
+            # Split file.
+            # cprint(GR + 'Shrinking the prompt history file...' + RS)
+            limited_size  = MAX_SIZE * 0.66
+            
+            start_seek_position = int(file_size - limited_size)
+            with open(PROMPT_HISTORY_FILE, 'rb') as f:
+                f.seek(start_seek_position)
+                content_last_half = f.read().decode(sys.getdefaultencoding(), 'ignore')
+            
+            # Discard the broken content, keep the rest intact, and remove unwanted characters.
+            pattern = re.compile(
+                r'^#\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+\r?\n\+',
+                re.MULTILINE
+            )
+            
+            match = pattern.search(content_last_half)
+            if match:
+                i = match.start()
+                content_last_half = content_last_half[i:]
+            
+            # Write the kept file content.
+            with open(PROMPT_HISTORY_FILE, 'w', encoding='utf-8') as f:
+                content_last_half = content_last_half.replace('\r\n', '\n').replace('\r', '\n')
+                f.write(content_last_half)
+            
+            # cprint(GR + 'Done!' + RS)
+            # separator()
             return
-        
-        # Check file size.
-        MAX_SIZE = PROMPT_HISTORY_SIZE * 1024 * 1024
-        file_size = os.path.getsize(PROMPT_HISTORY_FILE)
-        if file_size <= (MAX_SIZE):
-            return
-        
-        # Split file.
-        # cprint(GR + 'Shrinking the prompt history file...' + RS)
-        limited_size  = MAX_SIZE * 0.66
-        
-        start_seek_position = int(file_size - limited_size)
-        with open(PROMPT_HISTORY_FILE, 'rb') as f:
-            f.seek(start_seek_position)
-            content_last_half = f.read().decode(sys.getdefaultencoding(), 'ignore')
-        
-        # Discard the broken content, keep the rest intact, and remove unwanted characters.
-        pattern = re.compile(
-            r'^#\s\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+\r?\n\+',
-            re.MULTILINE
-        )
-        
-        match = pattern.search(content_last_half)
-        if match:
-            i = match.start()
-            content_last_half = content_last_half[i:]
-        
-        # Write the kept file content.
-        with open(PROMPT_HISTORY_FILE, 'w', encoding='utf-8') as f:
-            content_last_half = content_last_half.replace('\r\n', '\n').replace('\r', '\n')
-            f.write(content_last_half)
-        
-        # cprint(GR + 'Done!' + RS)
-        # separator()
-        return
 
-if SUGGEST_FROM_WORDLIST:
+if SUGGEST_FROM_WORDLIST_MODE in ['normal', 'fuzzy']:
     def load_word_completer():
         """
         Read a list of words from a file, one word per line.
@@ -1647,23 +2061,45 @@ if SUGGEST_FROM_WORDLIST:
         global word_completer
         
         try:
-            # Read the words.
-            with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
-                words = [line.strip() for line in f if line.strip()][4:]
+            # Add vars names in developper mode.
+            words = []
+            file_missing = False
+            file_empty = False
+            
+            if DEV_MODE:
+                words.extend([name for name in globals()])
+                
+            # Read the words from file.
+            try:
+                with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
+                    words.extend([line.strip() for line in f if line.strip()][4:])
+            except FileNotFoundError:
+                file_missing = True
+            
+            if not words:
+                file_empty = True
+            
+            # Load the word completer instance according to user settings.
             if words:
-                # Load the word completer instance according to user settings.
-                if SUGGEST_FROM_WORDLIST_FUZZY:
+                # Sort & remove duplicates.
+                words = sorted(set(words), key=len)
+                if SUGGEST_FROM_WORDLIST_MODE == 'fuzzy':
                     word_completer = LimitedWordCompleter(words)
                 else:
+                    # This regex defines what characters are part of a "word".
+                    # '\w' matches letters/numbers, and we add '-' for our commands & custom wordlist.
+                    # word_pattern = re.compile(r'[\w-]+')
                     word_completer = LimitedWordCompleter(words, ignore_case=True)
-        
+            
         except FileNotFoundError:
             pass
         
         finally:
-            if not word_completer:
-                # Don't ask why clean then print, I personally don't know, but it works to avoid glitches.
-                cprint('\033[2K')
+            if file_missing or file_empty:
+                cprint()  # Because load_chat_history() doesn't add a line break after its separator.
+                clear_lines()
+                # if LOAD_CHAT_MODE == 'ask': cprint()    # Perfection.
+                cprint()
                 warning = f"{YLW}Suggestions from a wordlist is ON, but '{WORDLIST_FILE}' file is "
                 if path_exist(WORDLIST_FILE): warning += "empty!"
                 else: warning += "missing!"
@@ -1677,6 +2113,7 @@ if RESPONSE_EFFECT:
         assemble it into a single styled Text object, and return it splitted into 
         a list of styled lines. This is the shared core logic for all typewriter effects.
         * If you didn't understand this, fine, nor did I.
+        * This is needed for all typing animations.
         """
         # 1. Render the Markdown object to internal segments.
         segments: RenderResult = list(console.render(
@@ -1703,133 +2140,102 @@ if RESPONSE_EFFECT:
         output_lines = full_text.split('\n')
         return output_lines
 
-    def print_markdown_line(markdown: Markdown, delay_seconds: float = 0.05):
-        """Print fully formatted Markdown content line-by-line with a delay."""
-        global current_response_line
-        output_lines = get_styled_lines(markdown)
-        console.show_cursor(False)
-        current_response_line = 0
-        
-        # Print the styled lines one by one with a delay.
-        for line in output_lines:
-            console.print(line)
-            current_response_line += 1
-            sleep(delay_seconds)
+    if RESPONSE_EFFECT == 'line':
+        def print_markdown_line(markdown: Markdown, delay_seconds: float = 0.05):
+            """Print fully formatted Markdown content line-by-line with a delay."""
+            global current_response_line
+            output_lines = get_styled_lines(markdown)
+            console.show_cursor(False)
+            current_response_line = 0
+            
+            # Print the styled lines one by one with a delay.
+            for line in output_lines:
+                console.print(line)
+                current_response_line += 1
+                sleep(delay_seconds)
 
-    def print_markdown_word(markdown: Markdown, delay_seconds: float = 0.09):
-        """
-        Print fully formatted Markdown content word-by-word with a delay.
-        Use slicing and regex to preserve formatting and correct spacing.
-        """
-        global current_response_line
-        output_lines = get_styled_lines(markdown)
-        console.show_cursor(False)
-        current_response_line = 0
+    elif RESPONSE_EFFECT == 'word':
+        def print_markdown_word(markdown: Markdown, delay_seconds: float = 0.09):
+            """
+            Print fully formatted Markdown content word-by-word with a delay.
+            Use slicing and regex to preserve formatting and correct spacing.
+            """
+            global current_response_line
+            output_lines = get_styled_lines(markdown)
+            console.show_cursor(False)
+            current_response_line = 0
 
-        # Print the styled content word by word.
-        for line in output_lines:
-            if not str(line).strip():
-                # If the line contains only whitespace or is empty, print a newline and continue.
+            # Print the styled content word by word.
+            for line in output_lines:
+                if not str(line).strip():
+                    # If the line contains only whitespace or is empty, print a newline and continue.
+                    console.print()
+                    continue
+                    
+                # Use regex to split text into [word, space, word, space, ...].
+                parts = WORD_SPACE_PATTERN.split(str(line))
+                current_pos = 0
+                
+                for part in parts:
+                    if not part: continue
+                    part_length = len(part)
+                    
+                    # Use slicing to get the styled segment.
+                    styled_part_segment = line[current_pos : current_pos + part_length]
+                    
+                    # Print the part (could be a word or a space block), without a final newline.
+                    console.print(styled_part_segment, end='')
+                    if not current_pos: current_response_line += 1
+                    
+                    # Apply delay only if it's a word (non-whitespace).
+                    if part.strip(): sleep(delay_seconds)
+                    
+                    current_pos += part_length
+
+                # Print a final newline after the full line's content is printed.
                 console.print()
-                continue
-                
-            # Use regex to split text into [word, space, word, space, ...].
-            parts = WORD_SPACE_PATTERN.split(str(line))
-            current_pos = 0
-            
-            for part in parts:
-                if not part: continue
-                part_length = len(part)
-                
-                # Use slicing to get the styled segment.
-                styled_part_segment = line[current_pos : current_pos + part_length]
-                
-                # Print the part (could be a word or a space block), without a final newline.
-                console.print(styled_part_segment, end='')
-                if not current_pos: current_response_line += 1
-                
-                # Apply delay only if it's a word (non-whitespace).
-                if part.strip(): sleep(delay_seconds)
-                
-                current_pos += part_length
 
-            # Print a final newline after the full line's content is printed.
-            console.print()
-        
-    def print_markdown_char(markdown: Markdown, delay_ms: float = 2.5):
-        """Print fully formatted Markdown content character-by-character with a delay."""
-        global current_response_line
-        output_lines = get_styled_lines(markdown)
-        console.show_cursor(False)
-        current_response_line = 0
-        
-        # Set the delay according to user settings.
-        if 'fast' in RESPONSE_EFFECT: wait = lambda: sleep_precise(delay_ms)
-        elif 'slow' in RESPONSE_EFFECT: wait = lambda: sleep(0.01)
-        else: wait = lambda: None
+    elif 'char' in RESPONSE_EFFECT:      
+        def print_markdown_char(markdown: Markdown, delay_ms: float = 2.5):
+            """Print fully formatted Markdown content character-by-character with a delay."""
+            global current_response_line
+            output_lines = get_styled_lines(markdown)
+            console.show_cursor(False)
+            current_response_line = 0
+            
+            # Set the delay according to user settings.
+            if 'fast' in RESPONSE_EFFECT: wait = lambda: sleep_precise(delay_ms)
+            elif 'slow' in RESPONSE_EFFECT: wait = lambda: sleep(0.01)
+            else: wait = lambda: None
 
-        # Print the styled content character by character.
-        for line in output_lines:
-            # Iterate over the length of the styled line object.
-            current_response_line += 1
-            for i in range(len(line)):
-                # Create a copy of the line and truncate it to just the current character (i to i+1).
-                char_segment = line[i:i + 1]
-                
-                # Print the single, styled character without a final newline.
-                console.print(char_segment, end='')
-                wait()
-                
-            # After printing all characters in the line, print a newline.
-            console.print()
-    
-    def sleep_precise(milliseconds):
-        """
-        High precision sleep function at the cost of high CPU usage.
-        Using busy-wait loop via time.perf_counter(), the CPU is constantly
-        running the loop instead of sleeping.
-        """
-        end_time = perf_counter() + (milliseconds / 1000.0)
-        while perf_counter() < end_time:
-            current_time = perf_counter()
-            # Use math.isclose() due to float inaccuracies.
-            if math_isclose(current_time, end_time): break
-            pass
-
-if ERROR_LOG_ON and GLOBAL_LOG_ON:
-    def clear_log_files():
-        """
-        Open log files, clear them, close :)
-        Used with 'del-log' command.
-        """
-        error_log = 0
-        global_log = 0
+            # Print the styled content character by character.
+            for line in output_lines:
+                # Iterate over the length of the styled line object.
+                current_response_line += 1
+                for i in range(len(line)):
+                    # Create a copy of the line and truncate it to just the current character (i to i+1).
+                    char_segment = line[i:i + 1]
+                    
+                    # Print the single, styled character without a final newline.
+                    console.print(char_segment, end='')
+                    wait()
+                    
+                # After printing all characters in the line, print a newline.
+                console.print()
         
-        try:
-            with open(ERROR_LOG_FILE, 'w', encoding='utf-8'): pass
-        except:
-            error_log += 1
-        
-        try:
-            with open(GLOBAL_LOG_FILE, 'w', encoding='utf-8'): pass
-        except:
-            global_log += 1
-        
-        if error_log and global_log:
-            msg = "Couldn't delete log files!"
-            color = RED
-            
-        elif error_log:
-            msg = f"File '{ERROR_LOG_FILE}' was deleted.\nBut '{GLOBAL_LOG_FILE}' wasn't!"
-            
-        elif global_log:
-            msg = f"File '{GLOBAL_LOG_FILE}' was deleted.\nBut '{ERROR_LOG_FILE}' wasn't!"
-            
-        else:
-            msg = 'Log files cleared!'
-            color = GR
-            
-        box(msg, title='LOG CLEANUP', border_color=color, text_color=color)
+        if RESPONSE_EFFECT == 'char fast':
+            def sleep_precise(milliseconds):
+                """
+                High precision sleep function at the cost of high CPU usage.
+                Using busy-wait loop via time.perf_counter(), the CPU is constantly
+                running the loop instead of sleeping.
+                """
+                end_time = perf_counter() + (milliseconds / 1000.0)
+                while perf_counter() < end_time:
+                    current_time = perf_counter()
+                    # Use math.isclose() due to float inaccuracies.
+                    if math_isclose(current_time, end_time): break
+                    pass
 
 if ERROR_LOG_ON:
     def shrink_log_file():
@@ -1872,9 +2278,12 @@ if ERROR_LOG_ON:
         collected_lines.reverse()
         
         # Write the shrunk content to the new file.
-        with open(ERROR_LOG_FILE, 'w', encoding='utf-8') as f:
-            f.writelines(collected_lines)
-
+        try:
+            with open(ERROR_LOG_FILE, 'w', encoding='utf-8') as f:
+                f.writelines(collected_lines)
+        except:
+            if ERROR_LOG_ON: log_caught_exception()
+            return
 
 
 
@@ -1886,7 +2295,7 @@ if ERROR_LOG_ON:
 
 # 5) Part VI: Command Handlers ---------------------------------------------------------------------
 def help(mode: str):
-    """Display a quick cheat sheet with the commands 'help' or 'help-2'."""
+    """Display guides with the commands /help, /help-2, /help-3 or /cheat."""
     # Long version.
     LONG = f"""
     1) First Thing First:
@@ -1906,8 +2315,15 @@ def help(mode: str):
         or to accept word suggestions.
        -CTRL-A to copy your current prompt text to clipboard.
        -CTRL-Z/CTRL-Y to undo/redo.
+       -ALT-X to cut current prompt line.
+       -CTRL-P (Remember P = Paste) or CTRL-T or ALT-V to paste long
+        text & avoid lag (CTRL-V will cause lag with long paste).
+       -CTRL-G to call our graphical text editor, quick & handy.
+        (Hotkeys may vary slightly)
+       -ALT-G to call our graphical markdown viewer & see last AI response.
        -CTRL-X-CTRL-E to call external editor - if its option is ON.
         (Once the editor is closed, changes are registered & submitted)
+       -And even more if you enable (VIM_EMACS_MODE) in settings.
     
     3) Special Commands (While in Prompt):
        /clear to clear the screen.
@@ -1940,7 +2356,7 @@ def help(mode: str):
        -F3-F4: /dir (Press them at once)
     
     5) More Commands:
-       /quick-chat to open a new window with another chat mode.
+       /quick-chat to open a new console window with a different chat mode.
        /save-chat to save the whole chat to a readable text file.
        /last-links or /last-urls to see the links of your last successfully
         uploaded files.
@@ -1962,6 +2378,12 @@ def help(mode: str):
         affected (useless if TEXT COMPRESSION setting is ON).
        /no-compress to skip compression for ur prompt text once; attached files
         won't be affected (useless if TEXT COMPRESSION setting is OFF).
+       /editor or /gui to open our graphical text editor.
+       /viewer, /preview or /markdown to open the quick markdown viewer and
+        see the last AI response.
+       /external to call the external editor.
+       /switch to temporarily switch your API key or the current Gemini model
+        quickly in chat; useful if you exceeds your API limits.
        /pop-last to remove the last message pair from history; you can use
         it multiple times to remove messages in a row, or type '/pop-last 3'
         for example to remove last (3) messages pairs.
@@ -1982,20 +2404,22 @@ def help(mode: str):
        /stats or /statistics to show total N° of message in current chat.
        /about for program information.
        /license for copyright.
+       /version for the program's release number.
+       /secret to start solving our puzzle.
     
     6) More Shortcuts (System / Terminal Dependent):
        -CTRL-L to clear screen.
-       -CTRL-U to clear current line in prompt
+       -CTRL-U to clear current line in prompt.
        -CTRL-R (Reverse Search) to search backward & find the most recent
         match in prompt history, keep pressing to move, press ESC to cancel
         or confirm (ESC to confirm, not ENTER!).
        -CTRL-S (Forward Search) used after CTRL-R to find older matches,
         keep pressing to move.
-       -And even more if you enable (VIM_EMACS_MODE) in settings.
 
     7) Limitations:
        -Tables with many columns will appear chaotic.
        -Special characters (Like LaTeX syntax) will appear as a plain text.
+       -You are a prisonner of your own terminal's limitations.
        -Some other bugs I didn't discover yet :/
     
     8) Notes:
@@ -2025,8 +2449,8 @@ def help(mode: str):
        -UP/DOWN arrows to navigate between input lines / history prompts,
         or to accept word suggestions.
        -CTRL-Z/CTRL-Y to undo/redo.
-       -CTRL-X-CTRL-E to call external editor - if its option is ON.
-        (Once the editor is closed, changes are registered & submitted)
+       -CTRL-G to call our graphical editor, quick & handy.
+        (Hotkeys may vary)
     
     3) Special Commands (While in Prompt):
        /clear to clear the screen.
@@ -2067,6 +2491,7 @@ def help(mode: str):
     2) Hotkeys:
        -ENTER to send.
        -CTRL-SPACE to add a new line to your prompt.
+       -F3 to upload file(s).
        -CTRL-C to clear / cancel a prompt, stop a response, or quit.
        -UP/DOWN arrows to navigate between input lines / history prompts,
         or to accept word suggestions.
@@ -2078,29 +2503,61 @@ def help(mode: str):
        /help for this guide menu.
        {GR}/help-2 for a longer version of this guide.{RS}
        {GR}/help-3 for the full guide (No yada yada).{RS}
+       {GR}/cheat for a short cheat sheet.{RS}
     """
     
+    # Cheat Sheet version.
+    CHEAT = """
+    - If you cancel a sent prompt earlier, Google will not receive it at all
+      (Yeah, privacy!).  
+    
+    - Avoid huge files & long prompts; program may refuse them to avoid
+      Google's tokens errors.
+    
+    - Avoid long text paste, it'll cause lag; use CTRL-P to paste it safely,
+      or use CTRL-G or CTRL-X-CTRL-E to edit it.
+    
+    - Set options in 'settings.py' to your preferences (Default isn't always
+      the best).
+          
+    - Explore the useful commands in the help menu; c'mon type '/help', you'll
+      feel like a programmer!
+      
+    - Solve our puzzle in the 'Secret' folder to gain access to the...
+      (Shhhh... it's secret).
+    """
+    
+    title = 'HELP MENU'
     if mode == 'short': message = SHORT
     elif mode == 'regular': message = REGULAR
-    else: message = LONG
-    message = textwrap.dedent(message).lstrip('\n').rstrip()
-    box(message, title='HELP MENU', border_color=YLW, text_color=YLW, secondary_color=YLW)
+    elif mode == 'long': message = LONG
+    else:
+        title = 'CHEAT SHEET'
+        message = CHEAT
+        
+    message = ltrim(textwrap.dedent(message)).rstrip()
+    box(message, title=title, border_color=YLW, text_color=YLW, secondary_color=YLW)
 
 def farewell(confirmed=False):
     """
     Display a random but beautiful farewell message upon quitting.
     Also give the user a chance to go back.
-    Used with /quit or /exit command, or any other exit door.
+    Used with /quit or /exit command, or any other exit door (or window :).
     """
-    global FAREWELLS_MESSAGES, CONTINUE_MESSAGES, confirm_separator
-
-    # Confirm.
+    global FAREWELLS_MESSAGES, CANCEL_MESSAGES, confirm_separator
+    
+    # If the user is supressing questions; then exit is confirmed.
     cprint(RS, end='')
+    if NO_QUESTIONS and (not confirmed):
+        cprint()
+        confirmed = True
+    
+    # If not confirmed by /quit command, and not supressed; then ask.
+    wrong_answer = 0
     if not confirmed:
         cprint()
         if confirm_separator: separator()
         confirm_separator = True
-        wrong_answer = 0
         text = f"{YLW}Are you sure you want to quit? (y/n): {RS}"
         if GLOBAL_LOG_ON: in_time_log(text + '...')
         
@@ -2120,7 +2577,7 @@ def farewell(confirmed=False):
                     text = f"\r{YLW}Are you sure you want to quit? (y/n):\nEither 'Yes' or 'No' (y/n): {RS}"
         
         if confirm != 'y':
-            cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+            cprint(GR + choice(CANCEL_MESSAGES) + RS)
             separator()
             return
         else:
@@ -2138,9 +2595,12 @@ def farewell(confirmed=False):
     else:
         from useless import QUOTES, ADVICES
         messages = [*FAREWELLS_MESSAGES, *QUOTES, *ADVICES]    # Unpacking with (*) is faster than copying with (+).
-        
+    
+    messages = [m for m in messages if len(m) < 256]
     msg = choice(messages)
-    if (not saved) and (not confirmed) and msg.count('\n') == 0 and len(msg) <= glitching_text_width: clear_lines()
+    if (not wrong_answer) and (not saved) and (not confirmed) and \
+        msg.count('\n') == 0 and len(msg) <= glitching_text_width:
+        clear_lines()
     cprint(GR + msg + RS)
     
     # Exit.
@@ -2172,7 +2632,12 @@ def get_last_response(command: str):
             if last_model_message:
                 last_response = last_model_message.parts[0].text
     
-    if command == 'save-last' and last_response:
+    if not last_response:
+        # This is just a guard.
+        if command == 'return':
+            return msg
+    
+    elif command == 'save-last':
         # Save the last response & Show the file.
         try:
             with open(LAST_RESPONSE_FILE, "w", encoding='utf-8') as f:
@@ -2188,16 +2653,19 @@ def get_last_response(command: str):
             msg = f"Failed to save last response!\n{error}"
             color = RED
     
-    elif command == 'show' and last_response:
+    elif command == 'show':
         # Display the last response.
         print_response(last_response, title='Last Gemini Response')
         return
     
-    elif command == 'copy' and last_response:
+    elif command == 'copy':
         # Copy the response to clipboard.
         msg = 'Last response was copied to clipboard!'
         copy_to_clipboard(last_response, msg)
         return
+    
+    elif command == 'return':
+        return last_response
     
     box(msg, title='STATUS', border_color=color, text_color=color)
 
@@ -2205,7 +2673,7 @@ def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
     """
     Retrieve the last user message and model reply and store them globally.
     Then use them inside serialize_history() for elimnination.
-    Used with 'pop-last' or 'pop-all' commands.
+    Used with /pop-last or /pop-all commands.
     """
     global messages_to_remove
     history = chat.get_history()
@@ -2276,7 +2744,8 @@ def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
                 msg += f'\n{YLW}Found a small problem in chat history, but it should have been fixed.'
                 msg += f"\n{YLW}You can check '{CHAT_HISTORY_JSON}' file later to eliminate doubt."
     
-        msg += "\nChanges will take effect at next session, you can type /restart for a quick refresh."
+        msg += "\nChanges will take effect at next session, you can type /restart for a quick refresh; "
+        msg += "or type /restore-last or /restore-all to cancel."
         
     box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
 
@@ -2284,7 +2753,7 @@ def restore_removed_messages(command: str):
     """
     Restore either every deleted message pair. Or restore only the last
     popped/removed messages, so earlier removed ones will not be restored.
-    Used with 'restore-last' or 'restore-all' commands.
+    Used with /restore-last or /restore-all commands.
     """
     global messages_to_remove, messages_to_remove_steps
     
@@ -2315,11 +2784,56 @@ def restore_removed_messages(command: str):
         color = YLW
         
     box(msg, title='STATUS', border_color=color, text_color=color)
+
+def save_chat_history_text():
+    """
+    Save the chat history as a readable text file, without json formatting.
+    Used with /save-chat command.
+    """
+    history = chat.get_history()
+    chat_lines = []
     
+    if history:
+        # Retrieve sender + text from chat history.
+        for msg in history:
+            sender = 'You' if msg.role == 'user' else 'Gemini'
+
+            # Loop through all parts in the message.
+            text_parts = []
+            for part in msg.parts:
+                if part.text: text_parts.append(part.text)
+                
+            # Join the text parts with a newline, if multiple parts exist.
+            content = '\n'.join(text_parts)
+            chat_lines.append(f'>>> {sender}:\n{content}')
+        
+        # Save the chat.
+        try:
+            delimiter = '\n' + '─' * 90 + '\n'
+            chat_text = delimiter.join(chat_lines)
+            with open(CHAT_HISTORY_TEXT, 'w', encoding='utf-8') as f:
+                f.write(chat_text)
+            
+            open_path(CHAT_HISTORY_TEXT)
+            msg = f"Chat successfully saved to '{CHAT_HISTORY_TEXT}'.\n"
+            msg += "Long lines were saved as-is to preserve formatting; you may need to use 'word-wrap' feature in your text viewer/editor." 
+            color = GR
+        
+        except Exception as error:
+            if ERROR_LOG_ON: log_caught_exception()
+            msg = f"Failed to save chat!\n{error}"
+            color = RED
+    
+    else:
+        msg = "Current conversation is empty!"
+        color = YLW
+    
+    box(msg, title='STATUS', border_color=color, text_color=color)
+
 def del_all():
     """
     Nuclear option, perform a factory reset for the program data (Doesn't affect settings).
-    Used with 'del-all' command.
+    Used with /del-all command.
     """
     global discarding
     
@@ -2329,10 +2843,10 @@ def del_all():
     to_remove_files = [
         CHAT_HISTORY_JSON, CHAT_HISTORY_TEXT, LAST_RESPONSE_FILE, SAVED_INFO_FILE,
         SAVED_LINKS_FILE, PROMPT_HISTORY_FILE, RECOVERY_PROMPT_FILE,
-        ERROR_LOG_FILE, GLOBAL_LOG_FILE,
+        TEMP_PROMPT_FILE, ERROR_LOG_FILE, GLOBAL_LOG_FILE,
     ]
     
-    to_remove_dirs = ['Output']
+    to_remove_dirs = [FILE_GENERATION_DIR]
     
     cprint(f'{YLW}WARNING! The program will exit & wipe the following:')
     for file in to_remove_files: cprint('- ' + file)
@@ -2351,7 +2865,7 @@ def del_all():
     
     # Cancel.
     if confirm != 'y':
-        cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+        cprint(GR + choice(CANCEL_MESSAGES) + RS)
         separator(color=YLW)
         return
     
@@ -2407,7 +2921,7 @@ def del_uploaded_files():
             confirm = None
             
         if confirm != 'y':
-            cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+            cprint(GR + choice(CANCEL_MESSAGES) + RS)
             separator()
             return
         
@@ -2437,7 +2951,7 @@ def del_uploaded_files():
 def statistics():
     """
     Inform the user of his data statistics.
-    Used with 'stats' or 'statistics' commands.
+    Used with /stats or /statistics commands.
     """
     # Check chat history.
     length = len(chat.get_history())
@@ -2463,19 +2977,19 @@ def statistics():
         if not SAVED_INFO: msg += f'\n{YLW}(Saved info are disabled, but the file exists)'
     
     # Check prompt-history.
-    if PROMPT_HISTORY_ON:
+    if PROMPT_HISTORY_MODE in ['temporary', 'permanent']:
         prompts = list(history.get_strings())
         n = len(prompts)
         msg += f'\nTotal N° of prompts in prompt-history: ({n}).'
     
-    if path_exist(PROMPT_HISTORY_FILE) and (PROMPT_HISTORY_MEMORY or not PROMPT_HISTORY_ON):
+    if path_exist(PROMPT_HISTORY_FILE) and PROMPT_HISTORY_MODE != 'permanent':
         with open(PROMPT_HISTORY_FILE, 'r', encoding='utf-8') as f:
             content = f.read()
         
         prompts = content.split('\n\n# 20')
         prompts = [p for p in prompts if p.strip()]
         n = len(prompts)
-        msg += f"\n{YLW}(In-file prompt history is disabled, but the file still contains: ({n}) entries)"
+        if n: msg += f"\n{YLW}(In-file prompt history is disabled, but the file still contains: ({n}) entries)\n"
     
     # Check wordlist suggestion.
     if path_exist(WORDLIST_FILE):
@@ -2485,7 +2999,7 @@ def statistics():
         words = [w for w in content if w.strip()]
         n = len(words)
         msg += f'\nTotal N° of words in the suggestion wordlist: ({n}).'
-        if not SUGGEST_FROM_WORDLIST: msg += f'\n{YLW}(Suggestions are disabled, but the file exists)'
+        if not SUGGEST_FROM_WORDLIST_MODE: msg += f'\n{YLW}(Suggestions are disabled, but the file exists)'
     
     # Show it.
     msg = msg.strip() + f'\n\n{CYN}(Remember, You have the commands to control your data)'
@@ -2494,25 +3008,34 @@ def statistics():
 def quick_chat():
     """
     Launch a specific chat mode in a new console.
-    Used with 'quick-chat' command.
+    Used with /quick-chat command.
     """
+    from subprocess import Popen, CREATE_NEW_CONSOLE
+    
     # Choose a mode.
     separator(before='\n', color=GR)
-    prompt = GR + 'Quick Chat Modes:\n'
+    prompt = GR + 'Quick chat modes (simple, focused, but less featured):\n\n'
     prompt += '1) Momentary: Single-turn (no memory between messages).\n'
     prompt += '2) Temporary: At exit, history is forgotten.\n'
     prompt += '3) File Generator: Generate simple files (no memory).\n'
-    prompt += '4) Image Generator: Generate simple images (no memory).\n\n'
-    prompt += 'Choose 1-4: ' + RS
+    prompt += '4) Image Generator: Generate simple images (no memory).\n'
+    prompt += '5) Researcher: For online info & events (temporary).\n\n'
+    prompt += 'Choose 1-5: ' + RS
     
     if GLOBAL_LOG_ON: in_time_log(prompt + '...')
-    mode = input(prompt).strip()
+    try:
+        mode = input(prompt).strip()
+    except Interruption:
+        cprint(f'\n{YLW}{choice(CANCEL_MESSAGES)}')
+        separator(color=GR)
+        return
     
     match mode:
-        case '1': file = 'gemini_momentary.py'
-        case '2': file = 'gemini_temporary.py'
-        case '3': file = 'gemini_file_generator.py'
-        case '4': file = 'gemini_image_generator.py'
+        case '1': file = 'momentary_chat.py'
+        case '2': file = 'temporary_chat.py'
+        case '3': file = 'file_generator.py'
+        case '4': file = 'image_generator.py'
+        case '5': file = 'google_searcher.py'
         case _:
             cprint(RED + 'Invalid option; aborting...')
             separator(color=GR)
@@ -2520,15 +3043,16 @@ def quick_chat():
     
     # Use current python interpreter to execute another '.py' file.
     cprint(GR + 'Opening the new chat...' + RS)
-    NewProcess([sys.executable, file], creationflags=NEW_CONSOLE_FLAG)
+    file = os.path.join('Modes', file)
+    Popen([sys.executable, file], creationflags=CREATE_NEW_CONSOLE)
     separator(color=GR)
 
 def open_path(path_to_open, clear=0, restore_prompt='', set_placeholder=''):
     """
-    - Open a file or folder using the default OS application/file explorer.
-    - Used with 'open', 'saved-info' and other file commands.
+    - Open a file or a folder using the default OS application/file manager.
     - Add a quick cleanup if requested.
     - Work reliably across Windows, macOS, and Linux.
+    - Used with /open, /saved-info and other file commands.
     """
     global default_prompt, prompt_placeholder
     
@@ -2539,54 +3063,80 @@ def open_path(path_to_open, clear=0, restore_prompt='', set_placeholder=''):
         return
 
     # webbrowser.open() handles both files and directories.
+    # It doesn't raise errors; it only returns True or False.
     browser_open(path_to_open)
     if GLOBAL_LOG_ON: in_time_log(' ')
     if clear: clear_lines(clear)
     if restore_prompt: default_prompt = restore_prompt
     elif set_placeholder: update_placeholder(set_placeholder, temp=True)
 
-def copy_to_clipboard(text: str, msg='Text copied to clipboard!', color=GR):
+def copy_to_clipboard(text: str, msg='Text copied to clipboard!', color=GR, hidden=False):
     """
     Copies a string to the system clipboard using pyperclip library.
-    Used with 'copy' command.
+    Used with /copy command or CTRL-A.
     Works seamlessly across Windows, macOS, and Linux.
     """
-    try:
-        # Copy (pyperclip handles the OS-specific details).
-        clip_copy(text)
-            
-    except PyperclipException as error:
-        # This catch is mainly for Linux environments where xclip, xsel, or wl-copy might be missing.
-        if ERROR_LOG_ON: log_caught_exception()
-        msg = "Could not access the clipboard!\n"
-        msg += f"Details: {error}."
+    if clip_copy is None:
+        msg = "Missing Dependency! Pyperclip library isn't installed!\nType 'pip install pyperclip' to install it."
         color = RED
-        
-        error = str(error).lower()
-        if 'xclip' in error or 'xsel' in error:
-            msg += "\n\nYou likely need to install a command-line clipboard utility like 'xclip' or 'xsel'; "
-            msg += "try: 'sudo apt install xclip' or 'sudo yum install xclip'"
     
+    else:    
+        try:
+            # Copy (pyperclip handles the OS-specific details).
+            clip_copy(text)
+                
+        except PyperclipException as error:
+            # This catch is mainly for Linux environments where xclip, xsel, or wl-copy might be missing.
+            if ERROR_LOG_ON: log_caught_exception()
+            msg = "Could not access the clipboard!\n"
+            msg += f"Details: {error}."
+            color = RED
+            
+            error = str(error).lower()
+            if 'xclip' in error or 'xsel' in error:
+                msg += "\n\nYou likely need to install a command-line clipboard utility like 'xclip' or 'xsel'; "
+                msg += "try: 'sudo apt install xclip' or 'sudo yum install xclip'"
+        
+        except Exception as error:
+            if ERROR_LOG_ON: log_caught_exception()
+            msg = "An error occured when copying to clipboard!\n"
+            msg += f"Details: {error}."
+            color = RED
+    
+    # Show status if not hidden/silent; return True to signal success.
+    if not hidden:
+        box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
+    
+    if color == GR:
+        return True
+
+def paste_from_clipboard():
+    """
+    Return data from system clipbaord.
+    Work with ALT-V, CTRL-T or CTRL-P.
+    """
+    if clip_copy is None:
+        error = "Missing Dependency! Pyperclip library isn't installed!\nType 'pip install pyperclip' to install it."
+        return (False, error)
+    try:
+        text = clip_paste()
+        return (True, text)
     except Exception as error:
         if ERROR_LOG_ON: log_caught_exception()
-        msg = "An error occured when copying to clipboard!\n"
-        msg += f"Details: {error}."
-        color = RED
-
-    box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
+        return (False, error)
 
 def copy_last_prompt():
     """
     Copy the user's last sent message to cpliboard.
-    Used with 'copy-prompt' command.
+    Used with /copy-prompt command.
     """
     # Last prompt is already stored in memory as 'last_prompt'.
     global last_prompt
     msg = 'Your last prompt was copied to clipboard!'
     color = GR
     
-    # Fallback to prompt history file.
-    if (not last_prompt) and PROMPT_HISTORY_ON:
+    # Fallback to prompt history.
+    if (not last_prompt) and PROMPT_HISTORY_MODE in ['temporary', 'permanent']:
         try: last_prompt = list(history.get_strings())[-2]
         except: pass
         
@@ -2598,22 +3148,6 @@ def copy_last_prompt():
     # Do it.
     copy_to_clipboard(last_prompt, msg, color)
 
-def select_files_dialog(mode: str):
-    """
-    Open file/folder dialog allowing multiple selections.
-    Then return the selected files/folders' paths.
-    Works upon pressing F3 or F4 while in prompt.
-    """
-    selected = None
-    
-    if mode == 'file':
-        selected = list(filedialog.askopenfilenames(title="Select File(s)"))
-        
-    elif mode == 'dir':
-        selected = filedialog.askdirectory(title="Select Folder")   # Can only select one folder at a time.
-        
-    return selected  
-
 def convert_raw_urls():
     """
     If user prompt has private API URLs, convert them to objects that Gemini
@@ -2621,6 +3155,7 @@ def convert_raw_urls():
     (Used inside interpret_special_commands() function).
     """
     global message_to_send
+    if not path_exist(SAVED_LINKS_FILE): return
     
     # Syntax: https://generativelanguage.googleapis.com/v1beta/files/abcdefhijklm   
     mark = 'generativelanguage.googleapis.com/'
@@ -2747,7 +3282,7 @@ def upload_to_google():
     Any file uploaded to Google’s servers using this File API is auto-deleted after 48 hours.
     We can upload files of the same name without issues, Google handle that.
     This API will refuse non-standard files like DOCX, although the webapp accepts them.
-    Works with 'file' or 'upload' commands.
+    Works with /file or /upload commands.
     """
     global uploading, message_to_send, last_urls, recovery_prompt
     
@@ -2852,7 +3387,7 @@ def upload_to_google():
         with open(SAVED_LINKS_FILE, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        notes = "# This is a list of the files you uploaded to Gemini; use them to avoid re-uploading.\n"
+        notes = "# This is a list of the files you uploaded to Gemini; used to avoid re-uploading.\n"
         notes += "# Each file's link can be reused within 48h of its upload date.\n"
         notes += "# The first ones here are the most recent.\n"
         notes += "# [!] Only Gemini can access these links with their specific API key, not you!"
@@ -2954,7 +3489,7 @@ def upload_raw_file():
         if len(paths) == 1: msg = f'{YLW}Processing raw content failed:\n' + msg
         elif n == len(paths): msg = f'{YLW}Processing raw content failed for all files! Details:\n' + msg
         else: msg = f'{YLW}Processing raw content failed for some files! Details:\n' + msg
-        msg += f'\n\n{YLW}- Press (UP) to get your prompt back.'
+        msg += f'\n\n{YLW}Press (UP) to get your prompt back.'
         
         # Display.
         box(msg, title='RAW FILE ERROR', border_color=RED, text_color=RED, secondary_color=RED)
@@ -2968,7 +3503,7 @@ def recover_prompt():
     Upon a failed upload attempt, an alternative prompt is generated for the user
     (in upload_to_google() function) where sucessfully uploaded files paths are
     replaced with their ready-to-use URLs; this function shows that generated prompt.
-    Used with 'recover' command.
+    Used with /recover command.
     """
     app_dir = os.path.dirname(os.path.abspath(__file__))
     path = os.path.join(app_dir, RECOVERY_PROMPT_FILE)
@@ -2978,11 +3513,8 @@ def recover_prompt():
         color = GR
         
         # Copy to clipboard.
-        try:
-            clip_copy(recovery_prompt)
-            msg += " (It's already copied to clipboard).\n"
-        except:
-            msg += '.\n'
+        if copy_to_clipboard(recovery_prompt, hidden=True): msg += " (It's already copied to clipboard).\n"
+        else: msg += '.\n'
         
         # Write it to a file & open it.
         with open(RECOVERY_PROMPT_FILE, 'w', encoding='utf-8') as f:
@@ -3009,14 +3541,16 @@ def switch_chat_configuration():
     to quickly resume the conversation and avoid 'Quota Exceeded' or related errors.
     Work with /switch command.
     """
-    global client, chat
+    global client, chat, GEMINI_API_KEY, GEMINI_MODEL
     
     # Get new settings.
     separator(before='\n', color=GR)
     msg = f"{CYN}You are about to update chat settings temporarily; you won't lose chat history or anything else; settings file and future conversations won't be affected. "
     msg += "Don't use the /switch command too much often, you know Google...\n\nLeave any field empty to keep using its current setting; "
     msg += "you can use an API key from another account; for the AI model, 'gemini-2.5-flash' or 'gemini-2.5-flash-lite' are recommended "
-    msg += "(Your new options won't be validated; press CTRL-C to cancel).\n"
+    msg += "(Your new options won't be validated; press CTRL-C to cancel).\n\n"
+    msg += f"# Current API key: {GEMINI_API_KEY}\n"
+    msg += f"# Current Gemini Model: {GEMINI_MODEL}\n"
     cprint(msg)
     
     try:
@@ -3026,7 +3560,7 @@ def switch_chat_configuration():
         ai_model = input(f"{GR}New Gemini Model: {RS}").strip() or GEMINI_MODEL
     
     except Interruption:
-        cprint(f"\n\n{YLW}Cancelled by you...")
+        cprint(f"\n\n{YLW}{choice(CANCEL_MESSAGES)}")
         separator(color=GR)
         return
     
@@ -3036,10 +3570,10 @@ def switch_chat_configuration():
         separator(color=GR)
         return
     
-    # Client first.
     cprint(f"{GR}\nUpdating...")
     try:
         # raise Exception
+        # Client first.
         http_options = {
             "timeout": HTTP_TIMEOUT * 1000, 
         }
@@ -3060,7 +3594,11 @@ def switch_chat_configuration():
             history=history,
             config=config,
         )
-    
+        
+        # Global vars.
+        GEMINI_API_KEY = api_key
+        GEMINI_MODEL = ai_model
+        
     except Exception as error:
         if ERROR_LOG_ON: log_caught_exception()
         separator(color=GR, end='')
@@ -3070,7 +3608,898 @@ def switch_chat_configuration():
     # Inform.
     cprint(f"Chat updated!")
     separator(color=GR)
+
+def select_files_dialog(mode: str):
+    """
+    Open file/folder dialog allowing multiple selections.
+    Then return the selected files/folders' paths.
+    Works upon pressing F3 or F4 while in prompt.
+    """
+    from tkinter.filedialog import askopenfilenames, askdirectory
+    selected = None
+    
+    if mode == 'file':
+        selected = list(askopenfilenames(title="Select File(s)"))
         
+    elif mode == 'dir':
+        selected = askdirectory(title="Select Folder")   # Can only select one folder at a time.
+    
+    flush_input()
+    return selected  
+
+def quick_text_editor(default_text=''):
+    """
+    Call in a quick & handy graphical text editor.
+    NOTE: This is a blocking function.
+    Used with CTRL-G hotkey or /gui, /editor commands.
+    """
+    from tkinter.messagebox import askyesno
+    from tkinter import (Tk, Frame, Button, Text, Label, Scrollbar, Toplevel, Listbox,
+                         END, WORD, X, Y, LEFT, RIGHT, BOTH, FLAT)
+    global config_options
+    
+    # Buttons & Hotkeys Actions.
+    def show_shortcuts():
+        # Create small modal window.
+        win = Toplevel(root)
+        win.title('Keyboard Shortcuts')
+        win.resizable(False, False)
+        win.transient(root)  # keep above parent
+        win.grab_set()       # modal
+
+        # Theme-aware colors.
+        bg = '#020617' if dark_mode else '#ffffff'
+        fg = '#e5e7eb' if dark_mode else '#000000'
+        win.configure(bg=bg)
+
+        # Shortcuts text.
+        shortcuts_text = (
+            'Enter           →  New line\n'
+            'Ctrl-Enter      →  Send message\n'
+            'Ctrl-T          →  Toggle dark/light theme\n'
+            'Ctrl-(+)        →  Zoom in\n'
+            'Ctrl-(-)        →  Zoom out\n'
+            'Ctrl-C          →  Copy (whole line if no selection)\n'
+            'Ctrl-X          →  Cut (whole line if no selection)\n'
+            'Ctrl-A          →  Select All\n'
+            'Ctrl-Z          →  Undo\n'
+            'Ctrl-Y          →  Redo\n'
+            'Ctrl-Backspace  →  Delete previous word\n'
+            'Ctrl-Delete     →  Delete next word'
+        )
+
+        # Display label.
+        label = Label(
+            win,
+            text=shortcuts_text,
+            justify='left',
+            font=('Consolas', font_size),
+            bg=bg,
+            fg=fg,
+            padx=20,
+            pady=16
+        )
+
+        # Close button.
+        button = Button(
+            win,
+            text='Close',
+            command=win.destroy,
+            font=('Segoe UI', 10),
+            relief=FLAT,
+            bg='#1e293b' if dark_mode else '#e5e7eb',
+            fg=fg,
+            padx=12,
+            pady=4
+        )
+        
+        # Pack widgets & Center the window above root.
+        label.pack()
+        button.pack(pady=(0, 12))
+        
+        win.update_idletasks()
+        root_x = root.winfo_rootx()
+        root_y = root.winfo_rooty()
+        root_w = root.winfo_width()
+        root_h = root.winfo_height()
+
+        win_w = win.winfo_width()
+        win_h = win.winfo_height()
+        x = root_x + (root_w - win_w) // 2
+        y = root_y + (root_h - win_h) // 2
+        
+        win.geometry(f'+{x}+{y}')
+
+    def on_ctrl_backspace(event):
+        text_field.delete(
+            text_field.index('insert -1c wordstart'),
+            'insert'
+        )
+        return 'break'
+
+    def on_ctrl_delete(event):
+        text_field.delete('insert', 'insert wordend')
+        return 'break'
+
+    def on_ctrl_x(event):
+        if not text_field.tag_ranges('sel'):
+            line_start = text_field.index('insert linestart')
+            line_end = text_field.index('insert lineend +1c')
+
+            # Copy first.
+            root.clipboard_clear()
+            root.clipboard_append(
+                text_field.get(line_start, line_end)
+            )
+
+            # Then delete.
+            text_field.delete(line_start, line_end)
+        else:
+            text_field.event_generate('<<Cut>>')
+
+        return 'break'
+
+    def on_ctrl_c(event):
+        if not text_field.tag_ranges('sel'):
+            root.clipboard_clear()
+            root.clipboard_append(
+                text_field.get(
+                    'insert linestart',
+                    'insert lineend'
+                )
+            )
+        else:
+            text_field.event_generate('<<Copy>>')
+        return 'break'
+    
+    def check_text(event=None):
+        content = text_field.get('1.0', 'end-1c').strip()
+        if content:
+            send_btn.config(state='normal')
+        else:
+            send_btn.config(state='disabled')
+    
+    def change_font(delta):
+        nonlocal font_size
+        if font_size + delta > 4:  # Don't go too small.
+            font_size += delta
+            text_field.config(font=('Segoe UI', font_size))
+            if SUGGEST_FROM_WORDLIST_MODE:
+                sugg_list.config(font=('Segoe UI', font_size))
+                hint.config(font=('Segoe UI', font_size-2))
+    
+    def update_scrollbar(*args):
+        size = text_field.yview()
+        if size == (0.0, 1.0):
+            scrollbar.grid_remove()
+        else:
+            scrollbar.set(*size)
+            scrollbar.grid() 
+            
+    def toggle_theme():
+        nonlocal dark_mode
+        dark_mode = not dark_mode
+        apply_theme()
+
+    def apply_theme():
+        if dark_mode:
+            root.config(bg='#0f172a')
+            top_frame.config(bg='#001033')
+            scrollbar.config(bg='#1e293b', troughcolor='#020617')
+            text_field.config(
+                bg='#020617',
+                fg='#e5e7eb',
+                insertbackground='#e5e7eb'
+            )
+            toggle_btn.config(
+                bg='#1e293b',
+                fg='#e5e7eb',
+                activebackground='#334155',
+                text='🔆 Switch Theme',
+            )
+            shortcuts_btn.config(
+                bg='#1e293b',
+                fg='#e5e7eb',
+                activebackground='#334155'
+            )
+            font_plus_btn.config(
+                bg='#1e293b',
+                fg='#e5e7eb',
+                activebackground='#334155'
+            )
+            font_minus_btn.config(
+                bg='#1e293b',
+                fg='#e5e7eb',
+                activebackground='#334155'
+            )
+            send_btn.config(
+                bg='#1e293b',
+                fg='#e5e7eb',
+                activebackground='#334155'
+            )
+            cancel_btn.config(
+                bg='#1e293b',
+                fg='#e5e7eb',
+                activebackground='#334155'
+            )
+            if SUGGEST_FROM_WORDLIST_MODE:
+                popup.config(bg='#020617')
+                hint.config(bg='#020617', fg='#9ca3af')
+                sugg_list.config(
+                    bg='#020617',
+                    fg='#e5e7eb',
+                    selectbackground='#334155',
+                    selectforeground='#e5e7eb'
+                )
+        else:
+            root.config(bg='#f8fafc')
+            top_frame.config(bg='#2d5ac4')
+            scrollbar.config(bg='#e5e7eb', troughcolor='white')
+            text_field.config(
+                bg='white',
+                fg='black',
+                insertbackground='black'
+            )
+            toggle_btn.config(
+                bg='#e5e7eb',
+                fg='black',
+                activebackground='#d1d5db',
+                text='🌙 Switch Theme',
+            )
+            shortcuts_btn.config(
+                bg='#e5e7eb',
+                fg='black',
+                activebackground='#d1d5db'
+            )
+            font_plus_btn.config(
+                bg='#e5e7eb',
+                fg='black',
+                activebackground='#d1d5db'
+            )
+            font_minus_btn.config(
+                bg='#e5e7eb',
+                fg='black',
+                activebackground='#d1d5db'
+            )
+            send_btn.config(
+                bg='#e5e7eb',
+                fg='black',
+                activebackground='#d1d5db'
+            )
+            cancel_btn.config(
+                bg='#e5e7eb',
+                fg='black',
+                activebackground='#d1d5db'
+            )
+            if SUGGEST_FROM_WORDLIST_MODE:
+                popup.config(bg='white')
+                hint.config(bg='white', fg='#6b7280')
+                sugg_list.config(
+                    bg='white',
+                    fg='black',
+                    selectbackground='#d1d5db',
+                    selectforeground='black'
+                )
+
+    def send_and_close(*args):
+        nonlocal user_text, geometry
+        # (-1c) = minus one char, because 'Tk Text' widget always adds a trailing newline.
+        user_text = text_field.get('1.0', 'end-1c')
+        geometry = root.geometry()
+        root.destroy()
+        # We return 'break' so that Tk doesn't try to insert a new line upon pressing ENTER on a destroyed Text widget.
+        return 'break'
+
+    def cancel_and_close():
+        nonlocal user_text, geometry
+        text_empty = not text_field.get('1.0', END).strip()
+        if text_empty: confirm = True
+        else: confirm = askyesno('Confirm', 'Are you sure you want to cancel?', parent=root)
+        if confirm:
+            user_text = ''
+            geometry = root.geometry()
+            root.destroy()
+            return 'break'
+    
+    if SUGGEST_FROM_WORDLIST_MODE:
+        def get_current_word():
+            idx = text_field.index('insert')
+            start = text_field.search(r'\m\w*$', idx, regexp=True, backwards=True)
+            if not start:
+                return '', idx
+            return text_field.get(start, idx), start
+
+        def show_suggestions(event=None):
+            if event.keysym == 'Escape': return  # Ignore ESC.
+            if event.state & 0x4: return         # Ignore Ctrl.
+            if len(event.keysym) > 1: return     # ignore Shift, Control, Alt, etc.
+                
+            word, start = get_current_word()
+            if not word:
+                hide_suggestions()
+                return
+
+            matches = [w for w in WORDS_LIST if w.startswith(word)]
+            if not matches:
+                hide_suggestions()
+                return
+
+            sugg_list.delete(0, END)
+            for w in matches[:8]:
+                sugg_list.insert(END, w)
+
+            bbox = text_field.bbox('insert')
+            if not bbox:
+                return
+
+            x, y, w, h = bbox
+            popup.geometry(f'+{root.winfo_rootx()+x}+{root.winfo_rooty()+y+h}')
+            popup.deiconify()
+            sugg_list.selection_set(0)
+
+        def hide_suggestions(event=None):
+            popup.withdraw()
+            return 'break'
+
+        def apply_suggestion(event=None):
+            if not sugg_list.curselection():
+                return
+
+            choice = sugg_list.get(sugg_list.curselection())
+            word, start = get_current_word()
+            text_field.delete(start, 'insert')
+            text_field.insert(start, choice + ' ')
+            hide_suggestions()
+            return 'break'
+    
+    # Options.
+    font_size = config_options['gui_font_size']
+    dark_mode = config_options['gui_dark_mode']
+    geometry  = config_options['gui_editor_geometry']
+    user_text = None
+    
+    # Main Window.
+    root = Tk()
+    root.title('Quick Text Editor')
+    root.geometry(geometry)
+    root.minsize(500, 300)
+    root.protocol('WM_DELETE_WINDOW', cancel_and_close)
+    root.bind_all('<Control-t>', lambda e: toggle_theme())
+    root.bind_all('<Control-plus>', lambda e: change_font(1))
+    root.bind_all('<Control-minus>', lambda e: change_font(-1))
+    if SUPPRESS_ERRORS: root.report_callback_exception = lambda *_: None
+    # root.bind('<Control-Return>', lambda event: send_and_close())     # This may be needed if we add another focus-able widget.
+    
+    # Top Bar Buttons.
+    top_frame = Frame(root, bg='#001033')
+    toggle_btn = Button(
+        top_frame,
+        text='🔆 Switch Theme',
+        font=('Segoe UI', 11),
+        command=toggle_theme,
+        relief=FLAT,
+    )  
+    shortcuts_btn = Button(
+        top_frame,
+        text='⌨ Shortcuts',
+        font=('Segoe UI', 11),
+        command=show_shortcuts,
+        relief=FLAT,
+    )  
+    font_plus_btn = Button(
+        top_frame,
+        text='A+',
+        font=('Segoe UI', 11),
+        command=lambda: change_font(1),
+        relief=FLAT,
+    )  
+    font_minus_btn = Button(
+        top_frame,
+        text='A- ',
+        font=('Segoe UI', 11),
+        command=lambda: change_font(-1),
+        relief=FLAT,
+    )  
+    send_btn = Button(
+        top_frame,
+        text='➤ Send',
+        font=('Segoe UI Semibold', 11),
+        command=send_and_close,
+        relief=FLAT,
+        state='disabled' if not default_text.strip() else 'normal',
+    )  
+    cancel_btn = Button(
+        top_frame,
+        text='✘ Cancel',
+        font=('Segoe UI Semibold', 11),
+        command=cancel_and_close,
+        relief=FLAT,
+    )
+    
+    top_frame.pack(fill=X)
+    toggle_btn.pack(side=LEFT, padx=(6, 2), pady=6)
+    shortcuts_btn.pack(side=LEFT, padx=4)
+    font_plus_btn.pack(side=LEFT, padx=(2, 2))
+    font_minus_btn.pack(side=LEFT, padx=(1, 2))     # 1 left, 2 right.
+    send_btn.pack(side=RIGHT, padx=(2, 6), pady=6)
+    cancel_btn.pack(side=RIGHT, padx=4)
+    
+    # Text Area.
+    text_frame = Frame(root)
+    text_frame.pack(expand=True, fill=BOTH)
+    text_field = Text(
+        text_frame,
+        wrap=WORD,
+        font=('Segoe UI', font_size),
+        relief=FLAT,
+        undo=True,
+        maxundo=48,
+    )
+    
+    text_field.grid(row=0, column=0, sticky='nsew')
+    if default_text: text_field.insert('1.0', default_text) # (1.0) = line 1, character 0.
+    text_field.focus_set()                                  # Focused on launch.
+    
+    text_field.bind('<KeyRelease>', check_text)
+    text_field.bind('<Control-Return>', send_and_close)
+    text_field.bind('<Control-BackSpace>', on_ctrl_backspace)
+    text_field.bind('<Control-Delete>', on_ctrl_delete)
+    text_field.bind('<Control-x>', on_ctrl_x)
+    text_field.bind('<Control-c>', on_ctrl_c)
+
+    # Scrollbar.
+    scrollbar = Scrollbar(text_frame, command=text_field.yview)
+    scrollbar.grid(row=0, column=1, sticky='ns')
+
+    text_frame.grid_columnconfigure(0, weight=1)
+    text_frame.grid_rowconfigure(0, weight=1)
+    text_field.config(yscrollcommand=update_scrollbar)
+
+    if SUGGEST_FROM_WORDLIST_MODE:
+        WORDS_LIST = word_completer.words
+        
+        popup = Toplevel(root)
+        popup.withdraw()
+        popup.overrideredirect(True)
+        popup.attributes('-topmost', True)
+        
+        sugg_list = Listbox(
+            popup,
+            font=('Segoe UI', font_size),
+            height=SUGGESTIONS_LIMIT,
+            relief=FLAT
+        )
+        hint = Label(
+            popup,
+            text='Use (↑↓ ENTER ESC)',
+            font=('Segoe UI', font_size-2),
+            fg='#9ca3af',
+            bg=sugg_list.cget('bg'),
+            anchor='w',
+            padx=6
+        )
+        
+        sugg_list.pack()
+        hint.pack(fill=X)
+        text_field.bind('<KeyRelease>', show_suggestions, add='+')
+        text_field.bind('<Escape>', hide_suggestions)
+        text_field.bind('<Down>', lambda e: sugg_list.focus_set())
+        sugg_list.bind('<Return>', apply_suggestion)
+        sugg_list.bind('<Escape>', hide_suggestions)
+        sugg_list.bind('<Double-Button-1>', apply_suggestion)        
+                 
+    # Block Execution (Python freezes while editing).
+    apply_theme()
+    while True:
+        try:
+            root.mainloop()
+            flush_input()
+            return user_text
+        except Interruption:
+            # In case the user presses CTRL-C in the CLI.
+            pass
+        except Exception:
+            if ERROR_LOG_ON: log_caught_exception()
+            pass
+        finally:
+            config_options['gui_font_size'] = font_size
+            config_options['gui_dark_mode'] = dark_mode
+            config_options['gui_editor_geometry'] = geometry
+
+def quick_markdown_viewer(md_content=''):
+    """
+    A graphical Markdown renderer with a 'See Raw' toggle.
+    Used with ALT-G hotkey or /viewer, /preview or /markdown commands.
+    """
+    from markdown import markdown
+    from tkinterweb import HtmlFrame
+    from tkinter.filedialog import asksaveasfilename
+    from tkinter import (Tk, Frame, Button, Text, StringVar, Label, Toplevel, Scrollbar,
+                         END, WORD, X, BOTH, LEFT, RIGHT, FLAT)
+    global config_options
+    
+    # Buttons & Hotkeys Actions.
+    def show_shortcuts():
+        # Create small modal window.
+        win = Toplevel(root)
+        win.title('Keyboard Shortcuts')
+        win.resizable(False, False)
+        win.transient(root)  # keep above parent
+        win.grab_set()       # modal
+
+        # Theme-aware colors.
+        bg = '#020617' if dark_mode else '#ffffff'
+        fg = '#e5e7eb' if dark_mode else '#000000'
+        win.configure(bg=bg)
+
+        # Shortcuts text.
+        shortcuts_text = (
+            'Up/Down      →  Scroll up/down\n'
+            'Mouse LB/RB  →  Copy links\n'
+            'Ctrl-S       →  Save to file\n'
+            'Ctrl-C       →  Copy selected text\n'
+            'Ctrl-R       →  Toggle raw/preview mode\n'
+            'Ctrl-T       →  Toggle dark/light theme\n'
+            'Ctrl-A       →  Select all (raw mode only)\n'
+            'Ctrl-(+)     →  Zoom in\n'
+            'Ctrl-(-)     →  Zoom out'
+        )
+
+        # Display label.
+        label = Label(
+            win,
+            text=shortcuts_text,
+            justify='left',
+            font=('Consolas', font_size),
+            bg=bg,
+            fg=fg,
+            padx=20,
+            pady=16
+        )
+
+        # Close button.
+        button = Button(
+            win,
+            text='Close',
+            command=win.destroy,
+            font=('Segoe UI', 10),
+            relief=FLAT,
+            bg='#1e293b' if dark_mode else '#e5e7eb',
+            fg=fg,
+            padx=12,
+            pady=4
+        )
+        
+        # Pack widgets & Center the window above root.
+        label.pack()
+        button.pack(pady=(0, 12))
+        
+        win.update_idletasks()
+        root_x = root.winfo_rootx()
+        root_y = root.winfo_rooty()
+        root_w = root.winfo_width()
+        root_h = root.winfo_height()
+
+        win_w = win.winfo_width()
+        win_h = win.winfo_height()
+        x = root_x + (root_w - win_w) // 2
+        y = root_y + (root_h - win_h) // 2
+        
+        win.geometry(f'+{x}+{y}')
+
+    def save_to_file(event=None):
+        nonlocal is_status_busy
+        # Prompt user to choose a file to save.
+        file_path = asksaveasfilename(
+            defaultextension='.md',
+            filetypes=[('Markdown', '*.md'), ('Plain text', '*.txt'), ('All files', '*.*')],
+            title='Save As'
+        )
+        if not file_path:
+            return  # User cancelled.
+
+        # Get the content from the text area.
+        is_status_busy = True
+        content = raw_text_area.get('1.0', END)
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+            status_var.set(f'Saved to: {file_path}')
+            def reset_status():
+                nonlocal is_status_busy
+                is_status_busy = False
+                status_var.set(status_bar_idle)
+            
+            root.after(2000, reset_status)
+        except Exception as error:
+            if ERROR_LOG_ON: log_caught_exception()
+            status_var.set(f'Error saving file: {error}')
+
+    def update_scrollbar(*args):
+        size = raw_text_area.yview()
+        if size == (0.0, 1.0):
+            scrollbar.grid_remove()
+        else:
+            scrollbar.set(*size)
+            scrollbar.grid() 
+            
+    def copy_link(event, *_):
+        nonlocal is_status_busy
+        url = None
+        
+        if isinstance(event, str):
+            # In case it was trigerred by (on_navigate_fail) method.
+            url = event
+        else:
+            # Extract the URL.
+            element = html_view.get_currently_hovered_element()
+            if element:
+                attrs = getattr(element, 'attributes', {})
+                url = attrs.get('href')
+            
+        if url:
+            # Copy it.
+            is_status_busy = True
+            root.clipboard_clear()
+            root.clipboard_append(url)
+            status_var.set(f'📋 Link copied: {url}')
+            def reset_status():
+                nonlocal is_status_busy
+                is_status_busy = False
+                status_var.set(status_bar_idle)
+            
+            root.after(1500, reset_status)
+            root.update()
+        
+    def show_link(event):
+        if is_status_busy: return
+        element = html_view.get_currently_hovered_element()    
+        if element:
+            attrs = getattr(element, 'attributes', {})
+            url = attrs.get('href')
+            
+            if url:
+                status_var.set(url)
+                return  # Exit early so we don't clear the text.
+
+        # If we aren't hovering over a link, clear the status bar.
+        status_var.set(status_bar_idle)
+        
+    def get_html_content(text):
+        # Convert Markdown to HTML
+        # Using 'extra' extension for tables, code blocks, etc.
+        html = markdown(text, extensions=['extra', 'codehilite'])
+        
+        # Inject basic CSS for theming.
+        bg = '#020617' if dark_mode else '#ffffff'
+        fg = '#e5e7eb' if dark_mode else '#000000'
+        link = '#38bdf8' if dark_mode else '#2563eb'
+        
+        styled_html = f"""
+        <style>
+            body {{ 
+                background-color: {bg};
+                color: {fg}; 
+                font-family: 'Segoe UI', sans-serif; 
+                font-size: {font_size}pt;
+                padding: 10px;
+            }}
+            a {{ color: {link}; }}
+            code {{ background-color: {'#1e293b' if dark_mode else '#f1f5f9'}; padding: 2px 4px; border-radius: 4px; }}
+            pre {{ background-color: {'#1e293b' if dark_mode else '#f1f5f9'}; padding: 10px; border-radius: 6px; }}
+            table {{ border-collapse: collapse; width: 100%; }}
+            th, td {{ border: 1px solid {fg}; padding: 8px; text-align: left; }}
+        </style>
+        {html}
+        """
+        return styled_html
+
+    def toggle_raw():
+        nonlocal showing_raw
+        if showing_raw:
+            raw_container.pack_forget()
+            html_view.pack(fill=BOTH, expand=True)
+            html_view.load_html(get_html_content(raw_text_area.get('1.0', END)))
+            raw_btn.config(text='✎ Edit Raw')
+            status_var.set(status_bar_idle)
+        else:
+            html_view.pack_forget()
+            raw_container.pack(fill=BOTH, expand=True)
+            raw_btn.config(text='📜 See Preview')
+            status_var.set(f'ⓘ You can edit/paste markdown code here and see the preview.')
+        showing_raw = not showing_raw
+
+    def apply_theme():
+        # Set colors.
+        bg_main = '#0f172a' if dark_mode else '#f8fafc'
+        bg_top = '#001033' if dark_mode else '#2d5ac4'
+        btn_bg = '#1e293b' if dark_mode else '#e5e7eb'
+        fg = '#e5e7eb' if dark_mode else '#000000'
+        activebackground = '#334155' if dark_mode else '#d1d5db'
+        
+        # Update widgets.
+        root.configure(bg=bg_main)
+        top_frame.configure(bg=bg_top)
+        view_frame.configure(bg=bg_main)
+        status_frame.configure(bg=bg_main)
+                
+        for btn in [raw_btn, toggle_btn, font_plus_btn, font_minus_btn, save_btn, close_btn, shortcuts_btn]:
+            btn.config(bg=btn_bg, fg=fg, activebackground=activebackground)
+        
+        toggle_btn.config(text='🔆 Switch Theme' if dark_mode else '🌙 Switch Theme')
+        raw_text_area.config(bg='#020617' if dark_mode else 'white', fg=fg, insertbackground=fg)
+        status_bar.config(
+            bg='#0a1d2f' if dark_mode else '#cfd3d6',
+            fg='#94a3b8' if dark_mode else '#334155'
+        )
+        
+        # Refresh HTML view with new theme colors
+        if not showing_raw:
+            html_view.load_html(get_html_content(raw_text_area.get('1.0', END)))
+
+    def toggle_theme():
+        nonlocal dark_mode
+        dark_mode = not dark_mode
+        apply_theme()
+
+    def change_font(delta):
+        nonlocal font_size
+        if font_size + delta > 4:  # Don't go too small.
+            font_size += delta
+            raw_text_area.config(font=('Segoe UI', font_size))
+            if not showing_raw:
+                html_view.load_html(get_html_content(raw_text_area.get('1.0', END))) 
+    
+    def close():
+        nonlocal geometry
+        geometry = root.geometry()
+        root.destroy()
+        return 'break'
+    
+    # Options.
+    geometry  = config_options['gui_viewer_geometry']
+    dark_mode = config_options['gui_dark_mode']
+    font_size = config_options['gui_font_size']
+    showing_raw = False
+    status_bar_idle = 'Idle...' 
+    is_status_busy = False
+    
+    # Main Window.
+    root = Tk()
+    root.title('Quick Markdown Viewer')
+    root.geometry(geometry)
+    root.minsize(550, 300)
+    root.protocol('WM_DELETE_WINDOW', close)
+    root.bind_all('<Control-r>', lambda e: toggle_raw())
+    root.bind_all('<Control-t>', lambda e: toggle_theme())
+    root.bind_all('<Control-plus>', lambda e: change_font(1))
+    root.bind_all('<Control-minus>', lambda e: change_font(-1))
+    root.bind_all('<Control-s>', save_to_file)
+    if SUPPRESS_ERRORS: root.report_callback_exception = lambda *_: None
+    
+    # Top Bar Buttons.
+    top_frame = Frame(root)      
+    toggle_btn = Button(top_frame,
+        text='💡 Switch Theme',
+        font=('Segoe UI', 11),
+        command=toggle_theme,
+        relief=FLAT
+    )
+    
+    raw_btn = Button(
+        top_frame,
+        text='✎ Edit Raw',
+        font=('Segoe UI', 11),
+        command=toggle_raw,
+        relief=FLAT
+    )
+    shortcuts_btn = Button(
+        top_frame,
+        text='⌨ Shortcuts',
+        font=('Segoe UI', 11),
+        command=show_shortcuts,
+        relief=FLAT,
+    )
+    font_plus_btn = Button(top_frame,
+        text='A+',
+        font=('Segoe UI', 11),
+        command=lambda: change_font(1),
+        relief=FLAT
+    )
+    font_minus_btn = Button(top_frame,
+        text='A- ',
+        font=('Segoe UI', 11),
+        command=lambda: change_font(-1),
+        relief=FLAT
+    )
+    save_btn = Button(top_frame,
+        text='💾 Save',
+        font=('Segoe UI Semibold', 11),
+        command=save_to_file,
+        relief=FLAT
+    )
+    close_btn = Button(top_frame,
+        text='✘ Close',
+        font=('Segoe UI Semibold', 11),
+        command=close,
+        relief=FLAT
+    )
+    
+    top_frame.pack(fill=X)
+    toggle_btn.pack(side=LEFT, padx=(6, 2), pady=6)
+    raw_btn.pack(side=LEFT, padx=4)
+    shortcuts_btn.pack(side=LEFT, padx=(2, 4))
+    font_plus_btn.pack(side=LEFT, padx=(2, 2))
+    font_minus_btn.pack(side=LEFT, padx=(1, 2))
+    save_btn.pack(side=RIGHT, padx=(2, 6), pady=6)
+    close_btn.pack(side=RIGHT, padx=4)
+    
+    # Status Bar.
+    status_frame = Frame(root)
+    status_frame.pack(fill=X, side='bottom')
+    status_frame.pack_propagate(False)
+    status_frame.configure(height=22)
+    
+    status_var = StringVar(value=status_bar_idle)
+    status_bar = Label(
+        status_frame,
+        textvariable=status_var,
+        anchor='w',
+        padx=10,
+        font=('Segoe UI', 9),
+    )
+
+    status_bar.pack(fill=X)
+    
+    # View Area
+    view_frame = Frame(root)
+    view_frame.pack(fill=BOTH, expand=True)
+    
+    # 1. HTML Rendered View.
+    html_view = HtmlFrame(view_frame, messages_enabled = False)  # Disable debugging info.
+    html_view.pack(fill=BOTH, expand=True)
+    html_view.on_navigate_fail = copy_link
+    html_view.bind('<Button-1>', copy_link)
+    html_view.bind('<Button-3>', copy_link)
+    html_view.bind('<Motion>', show_link)
+
+    # 2. Raw Text View (Hidden by default).
+    raw_container = Frame(view_frame)
+    raw_container.grid_rowconfigure(0, weight=1)
+    raw_container.grid_columnconfigure(0, weight=1)
+
+    raw_text_area = Text(
+        raw_container,
+        wrap=WORD,
+        font=('Segoe UI', font_size),
+        relief=FLAT
+    )
+    
+    raw_text_area.insert('1.0', md_content)
+    raw_text_area.config(yscrollcommand=update_scrollbar)
+    # raw_text_area.config(state='disabled')
+    
+    scrollbar = Scrollbar(raw_container, command=raw_text_area.yview)
+    scrollbar.grid(row=0, column=1, sticky='ns')
+    raw_text_area.grid(row=0, column=0, sticky='nsew')
+    
+    # Block Execution (Python freezes while editing).
+    apply_theme()
+    while True:
+        try:
+            root.mainloop()
+            flush_input()
+            break
+        except Interruption:
+            # In case the user presses CTRL-C in the CLI.
+            pass
+        except Exception:
+            if ERROR_LOG_ON: log_caught_exception()
+        finally:
+            config_options['gui_dark_mode'] = dark_mode
+            config_options['gui_font_size'] = font_size
+            config_options['gui_viewer_geometry'] = geometry
+
 if SAVED_INFO:
     def manage_saved_info(user_input, command):
         """Manage user saved info by either: 'forget' or 'remember'."""
@@ -3097,7 +4526,7 @@ if SAVED_INFO:
                             f.write('\n')
                         
                         else:
-                            leading_new_lines = len(content) - len(content.lstrip('\n'))
+                            leading_new_lines = len(content) - len(ltrim(content))
                             trailing_new_lines = len(content) - len(content.rstrip('\n'))
                             if (trailing_new_lines > 1) or (leading_new_lines > 1):
                                 clean_file = True
@@ -3121,7 +4550,7 @@ if SAVED_INFO:
                     
                 msg = "Information saved!\n"
                 msg += "You can always ask Gemini to forget by starting your prompt with 'forget'. "
-                msg += f"Or type 'saved-info' to manually edit your info in '{SAVED_INFO_FILE}'."
+                msg += f"Or type /saved-info to manually edit your info in '{SAVED_INFO_FILE}'."
                 color = GR
             
             except Exception as error:
@@ -3176,7 +4605,7 @@ if SAVED_INFO:
                             if ERROR_LOG_ON: log_caught_exception()
                             cprint(f"Couldn't edit '{SAVED_INFO_FILE}' file!\nError: {error}.")
                     else: 
-                        cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+                        cprint(GR + choice(CANCEL_MESSAGES) + RS)
                         
                     separator(color=YLW)
                     return
@@ -3213,7 +4642,7 @@ if SAVED_INFO:
                     cprint(YLW + 'You probably meant one of these saved info:' + GR)
                     cprint('1) Remember ' + info_1, wrap_joiner='\n   ')
                     cprint('2) Remember ' + info_2, wrap_joiner='\n   ')
-                    question = "(If none, use 'saved-info' command for manual edit)\n"
+                    question = "(If none, use /saved-info command for manual edit)\n"
                     question += 'Which one you want to delete? (1, 2, cancel): '
                     answers = ['1', '2']
                     
@@ -3222,7 +4651,7 @@ if SAVED_INFO:
                     cprint(YLW + 'Perphaps you meant one of these saved info:' + GR)
                     cprint('1) Remember ' + info_1, wrap_joiner='\n   ')
                     cprint('2) Remember ' + info_2, wrap_joiner='\n   ')
-                    question = "(If none, use 'saved-info' command for manual edit)\n"
+                    question = "(If none, use /saved-info command for manual edit)\n"
                     if top_n == 3:
                         cprint('3) Remember ' + info_3, wrap_joiner='\n   ')
                         question += f'Which one you want to delete? (1, 2, 3, cancel): '
@@ -3254,10 +4683,10 @@ if SAVED_INFO:
                
                 # User said no/cancel.
                 else:
-                    cprint(GR + choice(CONTINUE_MESSAGES) + RS)
+                    cprint(GR + choice(CANCEL_MESSAGES) + RS)
 
             except Interruption:
-                cprint(f'\n{GR}{choice(CONTINUE_MESSAGES)}{RS}')
+                cprint(f'\n{GR}{choice(CANCEL_MESSAGES)}{RS}')
             
             finally:
                 separator(color=YLW)
@@ -3353,12 +4782,12 @@ if EXTERNAL_EDITOR:
                 if FAVORITE_EDITOR:
                     os.environ['EDITOR'] = FAVORITE_EDITOR
                 
-                # Fallback to the system's available editor.
+                # Fallback to the system's known editor.
                 else:
                     if sys.platform.startswith('win'):
                         os.environ['EDITOR'] = 'notepad'        # For Windows.
                     else:
-                        os.environ['EDITOR'] = 'vim'            # For MacOS/Linux.
+                        os.environ['EDITOR'] = 'vim'            # For Mac/Linux.
             
             # 3. Restore the original value/state.
             elif mode == 'restore':
@@ -3370,6 +4799,36 @@ if EXTERNAL_EDITOR:
         except:
             if ERROR_LOG_ON: log_caught_exception()
 
+    def external_editor(default_text='', file=TEMP_PROMPT_FILE):
+        """
+        Call the external editor, edit the text, then return it.
+        In case of unhandled errors, the edited file will be kept.
+        NOTE: This is a blocking function.
+        Used with CTRL-X-CTRL-E hotkey or /external command.
+        """
+        from subprocess import call, CREATE_NEW_CONSOLE
+        
+        # Write current text to file, or just create an empty file.
+        with open(file, 'w', encoding='utf-8') as f:
+            f.write(default_text)
+
+        # Open editor & Wait until it's closed.
+        editor = os.environ.get('EDITOR')
+        try:
+            # raise Exception
+            # This is a blocking call; we create a new console to avoid interference with CLI-based editors.
+            call([editor, file], creationflags=CREATE_NEW_CONSOLE)
+        except:
+            return False
+
+        # Read the edited text back.
+        with open(file, 'r', encoding='utf-8') as f:
+            text = f.read()
+
+        # Remove the temp file & submit.
+        try: os.remove(file)
+        except: pass
+        return text
 
 
 
@@ -3384,7 +4843,8 @@ def flush_input():
     """
     Flush the input buffer to avoid accidental hotkeys registration.
     E.g: If the user presses F1 outside prompt(), prompt() may still catch it
-         when it's back ON.
+         when it's back ON; same for tkinter, the program may catch hotkeys
+         pressed while in GUI - when it's back ON.
     """
     if OPERATING_SYSTEM == "posix":    # Linux/Mac.
         termios.tcflush(sys.stdin, termios.TCIFLUSH)
@@ -3442,11 +4902,14 @@ def save_chat_history_json(up_separator=True, down_separator=True, hidden=False)
             # Case 2: Messages were added.
             serializable_history = serialize_history()
             new_history_json_str = json.dumps(serializable_history)
-            with open(CHAT_HISTORY_JSON, 'r', encoding='utf-8') as f:
-                old_history_dicts = json.load(f)
-            
-            old_history_json_str = json.dumps(old_history_dicts)
-            changed = new_history_json_str != old_history_json_str
+            try:
+                with open(CHAT_HISTORY_JSON, 'r', encoding='utf-8') as f:
+                    old_history_dicts = json.load(f)
+                
+                old_history_json_str = json.dumps(old_history_dicts)
+                changed = new_history_json_str != old_history_json_str
+            except:
+                changed = True
         
     except:
         serializable_history = None
@@ -3476,7 +4939,7 @@ def save_chat_history_json(up_separator=True, down_separator=True, hidden=False)
                 
                 if not hidden:
                     if serializable_history: cprint(f"{GR}Chat history saved!{RS}")
-                    else: cprint(f"{GR}Chat history saved & cleared!{RS}")
+                    else: cprint(f"{GR}Chat history cleared & saved!{RS}")
                 chat_saved = True
             
             except Exception as error:
@@ -3485,49 +4948,6 @@ def save_chat_history_json(up_separator=True, down_separator=True, hidden=False)
                 
         if not hidden and down_separator: separator()
         return True
-
-def save_chat_history_text():
-    """
-    Save the chat history as a readable text file, without json formatting.
-    Used with 'save-chat' command.
-    """
-    history = chat.get_history()
-    chat_lines = []
-    
-    if history:
-        # Retrieve sender + text from chat history.
-        for msg in history:
-            sender = 'You' if msg.role == 'user' else 'Gemini'
-
-            # Loop through all parts in the message.
-            text_parts = []
-            for part in msg.parts:
-                if part.text: text_parts.append(part.text)
-                
-            # Join the text parts with a newline, if multiple parts exist.
-            content = '\n'.join(text_parts)
-            chat_lines.append(f'>>> {sender}:\n{content}')
-        
-        # Save the chat.
-        try:
-            delimiter = '\n\n\n'
-            chat_text = delimiter.join(chat_lines)
-            with open(CHAT_HISTORY_TEXT, "w", encoding='utf-8') as f:
-                f.write(chat_text)
-            
-            msg = f"Chat saved successfully to '{CHAT_HISTORY_TEXT}'."
-            color = GR
-        
-        except Exception as error:
-            if ERROR_LOG_ON: log_caught_exception()
-            msg = f"Failed to save chat!\n{error}"
-            color = RED
-    
-    else:
-        msg = "Current conversation is empty!"
-        color = YLW
-    
-    box(msg, title='STATUS', border_color=color, text_color=color)
 
 def load_chat_history():
     """Load chat history, if it meets the conditions."""
@@ -3565,9 +4985,22 @@ def load_chat_history():
             if load_history == 'y':
                 try:
                     with open(CHAT_HISTORY_JSON, 'r', encoding='utf-8') as f:
-                        saved_history_dicts = json.load(f)
+                        content = f.read()
+                    
+                    try:
+                        saved_history_dicts = json.loads(content)
+                    except json.JSONDecodeError as error:
+                        repaired, content = catch_json_error(error, CHAT_HISTORY_JSON, content)
+                        if repaired:
+                            saved_history_dicts = content
+                        else:
+                            clear_lines()
+                            separator()
+                            box(content, title='JSON ERROR', border_color=RED, text_color=RED)
+                            quit(1)
                     
                     # Reconstruct Content & Part objects from the saved dictionaries.
+                    del content
                     errors = 0
                     for item in saved_history_dicts:
                         try:
@@ -3576,11 +5009,8 @@ def load_chat_history():
                         except:
                             if ERROR_LOG_ON: log_caught_exception()
                             errors += 1
-                            if errors == 1:
-                                cprint(f"{RED}({errors}) partial error occurred during loading chat history.{RS}")
-                            else:
-                                clear_lines()
-                                cprint(f"{RED}({errors}) partial errors occurred during loading chat history.{RS}")
+                            # if errors:
+                                # cprint(f"{RED}({errors}) partial error(s) occurred during loading chat history.{RS}")
                             continue
                     
                     # Inform the user of the loading status.
@@ -3594,7 +5024,7 @@ def load_chat_history():
                         cprint(f"{YLW}Failed to load any history messages (0 loaded).{RS}")
                         
                     if errors:
-                        cprint(f"{RED}Found ({errors}) errors while loading the history, the rest was loaded successfully.{RS}")
+                        cprint(f"{RED}Found ({errors}) partial error(s) while loading chat history; the rest was loaded successfully.{RS}")
                     break
                     
                 except Exception as error:
@@ -3699,17 +5129,12 @@ def setup_chat():
         except NetworkExceptions:
             catch_network_error()
             sys_exit(1)
-
-    # Preparation & Welcome Screen...
-    console.set_window_title('Gemini Py-CLI')
-    if EXTERNAL_EDITOR: manage_editor_variable('change')
-    if PROMPT_HISTORY_ON: load_prompt_history()
             
     while True:
         try:
             welcome_screen()
             load_chat_history()
-            if SUGGEST_FROM_WORDLIST: load_word_completer()  
+            if SUGGEST_FROM_WORDLIST_MODE in ['normal', 'fuzzy']: load_word_completer()  
             break
             
         except Interruption:
@@ -3733,11 +5158,11 @@ def setup_chat():
   
 def interpret_commands():
     """If the user input is a special command, execute it."""
-    global discarding, history, should_compress, default_prompt, message_to_send
-        
+    global discarding, history, should_compress, default_prompt, user_input, message_to_send
+    
     command = user_input.strip()
     if not CASE_SENSITIVITY: command = command.lower()
-    if command.startswith('/'): command = command.lstrip('/')
+    if command.startswith('/'): command = command.removeprefix('/')
     else: command = 'None'   # So that it doesn't accidentaly match one of the cases below before reaching other 'interpret' functions.
     
     # Check for high priority commands first:
@@ -3760,10 +5185,11 @@ def interpret_commands():
             cprint()
             farewell(confirmed=True)
     
-        case 'help' | 'help-2' | 'help-3':
+        case 'help' | 'help-2' | 'help-3' | 'cheat':
             if command == 'help': help(mode='short')
             elif command == 'help-2': help(mode='regular')
-            else: help(mode='long')
+            elif command == 'help-3': help(mode='long')
+            else: help(mode='cheat')
 
         case 'clear':
             system(CLEAR_COMMAND)
@@ -3800,23 +5226,62 @@ def interpret_commands():
         case 'save-chat':
             save_chat_history_text()
         
-        case  'last-links' | 'last-urls':
+        case 'last-links' | 'last-urls':
             if last_urls:
-                msg = ''
+                msg = f'{BL}Links of the last successfully uploaded files:'
+                urls = ''
                 color = GR
                 for path, url in last_urls.items():
                     name = get_file_name(path)
-                    msg += f'\n[{name}]:\n{url}\n'
-                try:
-                    clip_copy(msg.strip())
-                    msg = f'{BL}Links of the last successfully uploaded files:\n{BL}(Already copied to clipboard)\n{msg}'
-                except:
-                    msg = f'{BL}Links of the last successfully uploaded files:{msg}'
+                    urls += f'\n[{name}]:\n{url}\n'
+                if copy_to_clipboard(urls.strip(), hidden=True): msg += f'\n{BL}(Already copied to clipboard)\n{urls}'
+                else: msg += urls
             else:
                 msg = "You've not successfully uploaded any files for now."
                 color = YLW
             box(msg, title='LAST LINKS', border_color=color, text_color=color, secondary_color=color)
-
+        
+        case 'editor' | 'gui' | 'external':
+            # /external for the external editor; others for our quick editor.
+            if command == 'external':
+                if not EXTERNAL_EDITOR: return True
+                with ProgressBar(bottom_toolbar=' Now using the external editor... ', cancel_callback=lambda: None):
+                    edited_text = external_editor()
+                    if edited_text is False:
+                        # Error.
+                        update_placeholder("The external editor couldn't be found!", temp=True)
+                        clear_lines(2)
+                        return
+            else:
+                with ProgressBar(bottom_toolbar=' Now using the quick editor... ', cancel_callback=lambda: None):
+                    edited_text = quick_text_editor()
+                    
+            if not edited_text.strip():
+                # No text, cancel.
+                update_placeholder(user_input, temp=True)
+                user_input = None
+                clear_lines(2)
+                return
+            # Save the edited text.
+            user_input = message_to_send = edited_text
+            Keys.save_history(user_input)
+            # Show it & Submit.
+            to_show = ltrim(user_input).rstrip() 
+            if HIDE_LONG_INPUT:
+                i = Keys.hide_threshold
+                if len(to_show) > i: to_show = to_show[:i-6].rstrip() + ' [...]'
+            margin = f'{GRY}{line_continuation}{RS}'
+            width = glitching_text_width - len(line_continuation)
+            for line in to_show.splitlines(): cprint(margin + line, wrap_width=width, wrap_joiner=f'\n{margin}')
+            return interpret_commands()
+        
+        case 'viewer' | 'preview' | 'markdown':
+            response = get_last_response('return')
+            with ProgressBar(bottom_toolbar=' Now using the quick markdown viewer... ', cancel_callback=lambda: None):
+                quick_markdown_viewer(response)
+            update_placeholder(user_input, temp=True)
+            clear_lines(2)
+        
         case c if c.startswith('pop-last'):
             if command == 'pop-last': n_turns = 1
             elif command.startswith('pop-last '):
@@ -3834,10 +5299,12 @@ def interpret_commands():
         case 'del-prompt':
             try:
                 os.remove(PROMPT_HISTORY_FILE)
-                if PROMPT_HISTORY_ON: load_prompt_history()
+                if PROMPT_HISTORY_MODE in ['temporary', 'permanent']: load_prompt_history()
                 msg = f"File '{PROMPT_HISTORY_FILE}' removed successfully."
-                msg += "\nIf you ever cancel, type 'discard', else it'll be permanently lost."
                 color = GR
+                if PROMPT_HISTORY_MODE == 'permanent':  # Backup doesn't exist if the user isn't in history-file mode.
+                    msg += "\n\nBefore you exit, know that an earlier backup is temporarily available in: "
+                    msg += os.path.abspath(PROMPT_HISTORY_FILE + '.bak')
             except FileNotFoundError:
                 msg = f"File '{PROMPT_HISTORY_FILE}' not found!"
                 color = YLW
@@ -3867,7 +5334,7 @@ def interpret_commands():
         
         case 'del-output':
             try:
-                remove_dir('Output')
+                remove_dir(FILE_GENERATION_DIR)
                 msg = 'All generated files were removed!'
                 color = GR
             except Exception as error:
@@ -3892,11 +5359,11 @@ def interpret_commands():
         
         case 'discard' | 'kill':
             discarding = True
-            try: move_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
+            try: copy_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
             except: pass
             
             if command == 'discard':
-                if PROMPT_HISTORY_ON: load_prompt_history()
+                if PROMPT_HISTORY_MODE in ['temporary', 'permanent']: load_prompt_history()
                 msg = 'Discarding current session & Restarting...'
                 box(msg, title='DISCARD', border_color=YLW, text_color=YLW)
                 raise SoftRestart
@@ -3925,7 +5392,14 @@ def interpret_commands():
         case 'version':
             msg = "Gemini Py-CLI, Version 1.0"
             box(msg, title='VERSION', border_color=GR, text_color=GR)
-            
+        
+        case 'secret':
+            path = 'Secret'
+            if path_exist(path): open_path(path, clear=2, set_placeholder=user_input)
+            else:
+                msg = "The 'Secret' directory wasn't found!"
+                box(msg, title='SECRET LOST... FOREVER', border_color=RED, text_color=RED, secondary_color=RED)
+                
         case _:
             # Try the extra & special commands.
             if not interpret_extra_commands(command): return   # Command found, so there is no message to send.
@@ -3948,7 +5422,7 @@ def interpret_special_commands():
     
     if cmd_finder('dir') or cmd_finder('folder'):
         if not convert_folder_to_files(): to_return = None
-        # Update 'cp' variable because /dir commands has been replaced by /file.
+        # Update 'cp' variable because /dir commands have been replaced by /file.
         converted_prompt = message_to_send
         cp = converted_prompt if CASE_SENSITIVITY else converted_prompt.lower()
         cmd_finder = lambda cmd: cp.startswith(f'/{cmd} ') or (f' /{cmd} ' in cp) or (f'\n/{cmd} ' in cp) or (f'\t/{cmd} ' in cp)
@@ -3969,7 +5443,7 @@ def interpret_extra_commands(command: str):
     A special function to interpret the extra-secret commands.
     This really should be in 'useless.py' module, but I faced a lot of issues to do that.
     """
-    global user_input, default_prompt
+    global default_prompt, keys, chaos_mode, exit_key
     
     nice_try = f"{RED}Nice try, Zero Cool. The Gibson is secured. I'm not hurting or deleting myself today.{RS}"
     cmd_finder = lambda cmd: command.startswith(cmd) and command[len(cmd):len(cmd)+1].isspace()
@@ -3992,12 +5466,15 @@ def interpret_extra_commands(command: str):
                     catch_exception(error)
         
         case _ if cmd_finder('eval'):
-            try:
-                # Trick: using '/eval user_input' will just show you the same thing that you just typed.
-                value = eval(user_input[6:])
-                cprint(f'{GR}Evaluation Result: {value}{RS}')
-            except Exception as error:
-                catch_exception(error)
+            if danger_finder(command):
+                cprint(nice_try)
+            else:
+                try:
+                    # Trick: using '/eval user_input' will just show you the same thing that you just typed.
+                    value = eval(user_input[6:])
+                    cprint(f'{GR}Evaluation Result: {RS}{value}')
+                except Exception as error:
+                    catch_exception(error)
 
         case _ if cmd_finder('echo'):
             cprint(f'{GR}Echo Says: {user_input[6:]}{RS}')
@@ -4032,7 +5509,7 @@ def interpret_extra_commands(command: str):
         
         case 'test':
             from useless import LOREM_IPSUM
-            print_response(LOREM_IPSUM.strip())
+            print_response(LOREM_IPSUM.strip(), 'Gemini (Test Response)')
             
         case _:
             second_match = True
@@ -4052,9 +5529,9 @@ def interpret_extra_commands(command: str):
             from useless import draw_ascii_image
             draw_ascii_image('BANANAS', 'BANANAS', YLW, console_width, visual_len, box)
 
-        case 'dog':
+        case 'pup':
             from useless import draw_ascii_image
-            draw_ascii_image('DOG', 'SAY HI!', YLW2, console_width, visual_len, box)
+            draw_ascii_image('PUP', 'SAY HI!', YLW2, console_width, visual_len, box)
         
         case 'fish':
             from useless import draw_ascii_image
@@ -4159,12 +5636,12 @@ def interpret_extra_commands(command: str):
         case 'zen':
             from useless import PYTHON_ZEN
             zen = PYTHON_ZEN.strip()
-            box(zen, title='SORRY', border_color=PURP, text_color=PURP, secondary_color=PURP)  
+            box(zen, title='PYTHON', border_color=PURP, text_color=PURP, secondary_color=PURP)  
             
         case 'tea' | 'coffee':
             from useless import TEA
             tea =  '旦~ ' + choice(TEA)
-            box(tea, title='Good Morning', border_color=PURP, text_color=PURP, secondary_color=PURP)  
+            box(tea, title='Good Morning!', border_color=PURP, text_color=PURP, secondary_color=PURP)  
         
         case 'matrix':
             from useless import matrix
@@ -4185,18 +5662,32 @@ def interpret_extra_commands(command: str):
             update_placeholder(emoji, temp=True)
             clear_lines(2)
         
+        case 'chaos':
+            from useless import chaos_keybindings
+            mode_options = chaos_keybindings(keys, chaos_mode, exit_key, box)
+            if mode_options:
+                chaos_mode = True
+                keys, exit_key = mode_options
+        
+        case _ if chaos_mode and user_input.strip().lstrip('/') == exit_key:  # We use (user_input) directly because the game is case-sensitive.
+            # Restore normal hotkeys.
+            chaos_mode, exit_key = False, None
+            keys = Keys().get_key_bindings()
+            msg = "Congratulations! You won the 'Chaos Game'!\nYou are back to normal mode now, or you know... normal life :1"
+            box(msg, title='CHAOS', border_color=PURP, text_color=PURP, secondary_color=PURP)
+        
         case c if c.startswith(('false-echo', 'f-echo')):
             from useless import false_echo
             false_echo(user_input, box)
         
         case 'random':
             random_cmd = choice([
-                'banana', 'dog', 'cat', 'horse', 'time-travel', 'quote','fact', 'joke', 'riddle', 'lang',
+                'banana', 'pup', 'cat', 'horse', 'time-travel', 'quote','fact', 'joke', 'riddle', 'lang',
                 'nothing', 'nonsense', 'hint', 'math', 'scan', 'overthink', 'achieve', 'f-echo random', 'mohyoo',
-                'tea', 'admin', 'matrix', 'duck', 'shrug', 'zen',
+                'tea', 'admin', 'matrix', 'duck', 'shrug', 'zen', 'chaos', 'fish', 'rabbit', 'deer', 'cheetah',
+                'fox', 'raven',
             ])
             
-            user_input = random_cmd
             interpret_extra_commands(random_cmd)
             default_prompt = f"Last random command: '/{random_cmd}'"
         
@@ -4212,37 +5703,58 @@ def get_user_input():
     get a little modified when uploading files to remove the program commands
     and personal files paths.
     """
-    global last_prompt, default_prompt, prompt_placeholder
+    global user_input, last_prompt, default_prompt, prompt_placeholder, rprompt
+    last_prompt = user_input
     
-    # Store last user prompt.
-    try: last_prompt = user_input
-    except: pass
-    
-    # Set input options.
-    # 1. RPrompt.
-    rprompt = None
+    # Update the rprompt info.
+    # ALWAYS_GUI_MODE = False
     if INFORMATIVE_RPROMPT:
+        # if ALWAYS_GUI_MODE:
         current_time = datetime.now().strftime('%I:%M %p')
-        margin = ' ' * (terminal_size().columns - console_width - 1)
-        rprompt = f"[{GEMINI_MODEL} | {current_time}]{margin}"
-        
-    # 2. Hotkeys editing mode.
-    if VIM_EMACS_MODE == 'vim': editing_mode = EditingMode.VI
-    elif VIM_EMACS_MODE == 'emacs': editing_mode = EditingMode.EMACS
-    else: editing_mode = None
-    
-    # 3. Others.
-    error_handler = lambda *args, **kwargs: log_caught_exception() if ERROR_LOG_ON else None
-    bottom_free_space = SUGGESTIONS_LIMIT + 1 if SUGGEST_FROM_WORDLIST else False
+        info = f'[{GEMINI_MODEL} | {current_time}]'
+        margin = ' ' * (console_width - len(info))
+        rprompt = f'{GRY}{margin}{info}{RS}'
+        console.print(rprompt, style=None, markup=False, highlight=False, soft_wrap=True, no_wrap=True, overflow='ignore')
+        # else:
+            # current_time = datetime.now().strftime('%I:%M %p')
+            # margin = ' ' * (terminal_size().columns - console_width - 1)
+            # rprompt = f'[{GEMINI_MODEL} | {current_time}]{margin}'
     
     # Log.
     if GLOBAL_LOG_ON:
-        if rprompt: in_time_log(' ' * (console_width - len(rprompt)) + rprompt + '\n')
-        else: in_time_log(' ')
+        # if rprompt: in_time_log(' ' * (console_width - len(rprompt)) + rprompt + '\n')
+        # else: in_time_log(' ')
         in_time_log(' You >  ' + str(prompt_placeholder[0][1]))
+    
+    # Use GUI if the user is in permanent GUI mode.
+    if ALWAYS_GUI_MODE:
+        with ProgressBar(bottom_toolbar=' Now using the quick editor... ', cancel_callback=lambda: None):
+            while True:
+                user_input = quick_text_editor()
+                if user_input.strip():
+                    # Save, show & submit .
+                    Keys.save_history(user_input)
+                    to_show = ltrim(user_input).rstrip() 
+                    if HIDE_LONG_INPUT:
+                        i = Keys.hide_threshold
+                        if len(to_show) > i: to_show = to_show[:i-6].rstrip() + ' [...]'
+                    margin = f'{GRY}{line_continuation}{RS}'
+                    width = glitching_text_width - len(line_continuation)
+                    cprint(f'{USER_BG}{BLK} You > {RS}', end=' ')
+                    lines = to_show.splitlines()
+                    cprint(lines.pop(0), wrap_width=width, wrap_joiner=f'\n{margin}')
+                    for line in lines: cprint(margin + line, wrap_width=width, wrap_joiner=f'\n{margin}')
+                    return user_input
+                    
+                else:
+                    # The user cancelled, so continue with CLI input.
+                    if INFORMATIVE_RPROMPT: rprompt = None
+                    cprint()
+                    clear_lines()
+                    break
 
-    # Stream input.
-    flush_input()
+    # Stream input via 'prompt_toolkit'.
+    if not ALWAYS_GUI_MODE: flush_input()  # Already flushed inside quick_text_editor().
     try:
         # Just a reference - Possible prompt() args:
         # ['message', 'history', 'editing_mode', 'refresh_interval', 'vi_mode', 'lexer', 'completer'
@@ -4262,29 +5774,32 @@ def get_user_input():
             message=prompt_message,
             placeholder=prompt_placeholder,
             prompt_continuation=line_continuation,
+            key_bindings=keys,
             multiline=True,
             wrap_lines=True,
-            key_bindings=keys,
             
             # Other options.
-            default=default_prompt if default_prompt else '',
-            mouse_support=MOUSE_SUPPORT,
+            default=default_prompt,
+            mouse_support=bool(MOUSE_SUPPORT),
             history=history,
             auto_suggest=auto_suggest,
             completer=word_completer,
             complete_while_typing=bool(word_completer),
             complete_in_thread=bool(word_completer),
-            rprompt=rprompt,
+            # rprompt=rprompt,
             bottom_toolbar=prompt_bottom_toolbar,
             editing_mode=editing_mode,
-            enable_open_in_editor=EXTERNAL_EDITOR,
+            enable_open_in_editor=bool(EXTERNAL_EDITOR),
             reserve_space_for_menu=bottom_free_space,
             search_ignore_case=True,
             lexer=lexer,
             validator=input_validator,
-            set_exception_handler=error_handler,
-            # tempfile=tempfile,
-            # pre_run=,
+            validate_while_typing=bool(VALIDATE_INPUT),
+            enable_system_prompt=bool(DEV_MODE),
+            set_exception_handler=not SUPPRESS_ERRORS,
+            # set_exception_handler – When True, in case of an exception, go out
+            # of the alternate screen and hide the application, display the exception,
+            # and wait for the user to press ENTER.
         )
         
     except Interruption:
@@ -4293,15 +5808,11 @@ def get_user_input():
     
     finally:
         # If prompt options changed (because of open_path() function), restore them.
-        if default_prompt: default_prompt = None
+        if default_prompt: default_prompt = ''
         if prompt_placeholder != last_placeholder: update_placeholder(restore=True)
-        
-    # Return input.
-    if user_input.strip():
-        return user_input
-    else:
-        clear_lines(2)
-        return None
+    
+    # Return it.
+    return user_input
 
 def get_response():
     """Send the user input to AI and wait to receive the response."""
@@ -4334,7 +5845,7 @@ def get_response():
     if final_mb > MAX_SIZE:
         final_mb = round(final_mb, 3)
         if final_mb == 20: final_mb = 20.001
-        msg = f"Message payload is {final_mb}MB, which exceeds the exact 20MB limit."
+        msg = f"Message payload is {final_mb} MB, which exceeds the exact 20 MB limit."
         box(msg, title='MESSAGE TOO LARGE', border_color=RED, text_color=RED)
         return
     
@@ -4364,12 +5875,12 @@ def get_response():
                 # raise httpx.HTTPError(message='Test' * 25)
                 # raise Exception('Test' * 25)
 
-                # Initialize the worker thread (A thread instance can only be started once, so we create it here).
-                worker = GeminiWorker(chat, message_to_send)
-                active = worker.is_alive
-                worker.start()
+                # Initialize the sender thread (A thread instance can only be started once, so we create it here).
+                sender = MessageSender(chat, message_to_send)
+                active = sender.is_alive
+                sender.start()
 
-                # Loop while the worker thread is still running.
+                # Loop while the sender thread is still running.
                 with console.status(status=status_messages[0], spinner=SPINNER) as status:
                     message_index = 0
                     while active():
@@ -4377,7 +5888,7 @@ def get_response():
                         delay = uniform(*STATUS_UPDATE_DELAY)
                         slept_time = 0.0
                         while active() and (slept_time < delay):
-                            worker.join(SLEEP_INTERVAL)
+                            sender.join(SLEEP_INTERVAL)
                             slept_time += SLEEP_INTERVAL
                         
                         # Update status message.
@@ -4387,9 +5898,15 @@ def get_response():
                         elif active() and (message_index < len(status_messages) - 1):
                             message_index += 1
                             status.update(status=status_messages[message_index])
-
-                if worker.exception: raise worker.exception
-                response = worker.response
+                
+                # Take the received response.
+                if sender.exception: raise sender.exception
+                response = sender.response
+                # try: response.text[-1]    # Make sure the response has a string + not empty.
+                # except: response = f"{RED}I'm sorry, I encountered an issue while responding... Please try again.{RS}"
+                if not response or type(response) is type(None) or isinstance(response, type(None)):
+                    response = f"{RED}I'm sorry, I encountered an issue while responding... Please try again.{RS}"
+                
                 clear_lines()
                 break
 
@@ -4479,6 +5996,11 @@ def print_response(response, title='Gemini'):
         clear_lines(lines_to_remove)
         if INFORMATIVE_RPROMPT: cprint()
         else: stdout_flush()
+        
+        # Show in GUI if requested.
+        if ALWAYS_GUI_MODE:
+            with ProgressBar(bottom_toolbar=' Now using the quick markdown viewer... ', cancel_callback=lambda: None):
+                quick_markdown_viewer(response)
     
     except Interruption:
         # Clear empty lines from blocked response.
@@ -4520,20 +6042,17 @@ def run_chat():
                 
             # Get user input.
             user_input = get_user_input()
-            if not user_input: continue
+            if not user_input: continue     # In case of CTRL-C.
             # REMINER!
             # 1) user_input: is the original untouched user prompt, always kept this way.
-            # 2) cp (converted prompt): an intermediate format to manipulate commands in interpret_special_commands().
+            # 2) converted_prompt: an intermediate format to manipulate commands in interpret_special_commands().
             # 3) message_to_send: is the final, ready-to-send message.
             message_to_send = user_input
             
-            # Interpret commands.
+            # Interpret Commands and/or Get Response.
             if not interpret_commands(): continue
-
-            # Get & Print Response.
             response = get_response()
-            if not response or type(response) is type(None) or isinstance(response, type(None)): continue
-            print_response(response)
+            if response: print_response(response)   # In case of exceptions.
 
         except Interruption:
             farewell()
@@ -4553,25 +6072,66 @@ def define_global_objects():
     """Define local variables and copy them directly into the global namespace."""
     # Define global variables.
     confirm_separator = True                        # Before confirming to quit, print a separator only if no precedent one was already displayed.
-    word_completer = None                           # Has a True value only if the WORDLIST_FILE is present and SUGGEST_FROM_WORDLIST is True.
+    word_completer = None                           # Has a True value only if the WORDLIST_FILE is present and SUGGEST_FROM_WORDLIST_MODE is ON.
     chat_saved = False                              # True after the chat has been saved.
     restarting = False                              # Session restart flag.
     discarding = False                              # Session discard flag.
     uploading = False                               # A flag to signal that a file has been downloaded.
     messages_to_remove = []                         # Store selected messages for deletion at exit.
     messages_to_remove_steps = []                   # Used to undo messages deletion.
-    default_prompt = None                           # An initial prompt the user gets when asked for input, mostly not used.
+    user_input = None                               # Just an initial value.
+    default_prompt = ''                             # An initial prompt the user gets when asked for input, mostly not used.
     line_continuation = '....... '                  # Line break marker.
     recovery_prompt = ''                            # Used to recover urls quickly after a failed upload.
     should_compress = None                          # A flag used with /compress or /no-compress commands.
     last_prompt = None                              # Used to store last user prompt, to copy it if requested.
     last_urls = {}                                  # Last urls for successfully uploaded files: {name: url}
+    chaos_mode, exit_key = False, None              # Flags for the chaos game mode, used in interpret_extra_commands().
+    history = None                                  # Will have a value if prompt_history is ON.
+    rprompt = None                                  # The informative rprompt at top right of input field.
+    config_options = {}                             # Used with CONFIG_FILE to store permanent user settings in memory.
+    
     if RESPONSE_EFFECT: current_response_line = 0   # Used to clean output upon blocking a response.
-    if VIM_EMACS_MODE: editor_variable = None       # This will change to the current EDITOR variable in the system, if available.
+    if EXTERNAL_EDITOR: editor_variable = None      # This will change to the current EDITOR variable in the system, if available.
+    if VIM_EMACS_MODE == 'vim': editing_mode = EditingMode.VI       # This is the special hotkeys mode used inside prompt().
+    elif VIM_EMACS_MODE == 'emacs': editing_mode = EditingMode.EMACS
+    else: editing_mode = None
+    if SUGGEST_FROM_WORDLIST_MODE in ['normal', 'fuzzy']: bottom_free_space = SUGGESTIONS_LIMIT + 1
+    else: bottom_free_space = False                 # The reserved bottom space for wordlist suggestions.
     if DEV_MODE:
         DANGEROUS_PATTERNS = (                      # Used to make sure the user won't use harmful orders with developper commands.
-            "rm -rf", "del /F /Q /S C:\*", "mkfs", "dd if=", "format", "wipefs",
-            "cryptsetup luksFormat", ":(){"
+            "rm -rf", "mkfs", "dd if=", "format", "wipefs", "cryptsetup luksFormat", ":(){",
+            # Del (C:) drive in Windows.
+            "del C:\\*",
+            "del /F C:\\*",
+            "del /Q C:\\*",
+            "del /S C:\\*",
+            "del /F /Q C:\\*",
+            "del /F /S C:\\*",
+            "del /Q /S C:\\*",
+            "del /F /Q /S C:\\*",
+            "del C:\\*",
+            "del C:\\* /F",
+            "del C:\\* /Q",
+            "del C:\\* /S",
+            "del C:\\* /F /Q",
+            "del C:\\* /F /S",
+            "del C:\\* /Q /S",
+            "del C:\\* /F /Q /S",
+            # Variations with different argument orders.
+            "del /Q /F /C:\\*",
+            "del /S /Q C:\\*",
+            "del /F /C:\\* /Q",
+            "del /Q /S /F C:\\*",
+            # Without the drive letter (* means all files in current dir).
+            "del *",
+            "del /F *",
+            "del /Q *",
+            "del /S *",
+            "del /F /Q *",
+            "del /F /S *",
+            "del /Q /S *",
+            "del /F /Q /S *",
         )
         
         spaces = r'\s+'
@@ -4581,10 +6141,19 @@ def define_global_objects():
         )
 
     # Define global constants.
+    INITIAL_CONFIG = {}                             # Used to store the loaded settings from CONFIG_FILE intially; this will not change.
+    DEFAULT_CONFIG = {                              # Used with CONFIG_FILE as a fallback to store permanent user settings.
+        'gui_font_size': 11,
+        'gui_dark_mode': True,
+        'gui_editor_geometry': '640x420',
+        'gui_viewer_geometry': '800x500',
+    }
     CLEAR_COMMAND = 'cls' if OPERATING_SYSTEM == 'nt' else 'clear'
-    ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')          # Used to clean a string from ANSI codes.
-    if RESPONSE_EFFECT == 'word': WORD_SPACE_PATTERN = re.compile(r'(\s+)')  # Used to split text into words for word-by-word animation.
-    STOP_WORDS = set(get_stop_words(COMPRESSION_LANGUAGE))  # If compression is ON, these stop words will be removed from the prompt.
+    LTRIM_PATTERN = re.compile(r'^([ \t]*\n)+')     # Used inside ltrim() function.
+    if USE_ANSI: ANSI_ESCAPE = re.compile(r'\x1b\[[0-9;]*[mK]')      # Used to clean a string from ANSI codes.
+    if RESPONSE_EFFECT == 'word': WORD_SPACE_PATTERN = re.compile(r'(\s+)')    # Used to split text into words for word-by-word animation.
+    if get_stop_words: STOP_WORDS = set(get_stop_words(COMPRESSION_LANGUAGE))  # If compression is ON, these stop words will be removed from the prompt.
+    else: STOP_WORDS = ('a', 'an', 'the', 'and', 'on', 'in', 'me', 'my', 'it', 'that', 'is', 'are', 'was', 'be', 'of', 'for', 'at', 'by', 'to')
     SHORTCUT_WORDS = {                                      # If compression is ON, long expressions will be replaced by shorter ones.
         # Common Connectors & Prepositions.
         "and": "&",
@@ -4612,6 +6181,7 @@ def define_global_objects():
         "people": "ppl",
         "myself": "myslf",
         "them": "'em",
+        "gemini": "♊",
 
         # Common Verbs & Actions.
         "are": "r",
@@ -4629,7 +6199,7 @@ def define_global_objects():
         "want to": "wanna",
         "got to": "gotta",
         "do not": "don't",
-        "will": "'ll",
+        " will": "'ll",
         "will not": "won't",
         "must not": "mustn't",
         "can not": "can't",
@@ -4743,7 +6313,7 @@ def define_global_objects():
 
     # Create necessary instances.    
     auto_suggest = None                             # Suggest words based on user prompt history.
-    if SUGGEST_FROM_HISTORY: auto_suggest = AutoSuggestFromHistory()
+    if SUGGEST_FROM_HISTORY_MODE in ['normal', 'flex']: auto_suggest = AutoSuggestFromHistory()
 
     console_theme = Theme({                         # Hyperlinks may not be clear, so we make them brighter.
         "markdown.link": "bold magenta", 
@@ -4766,16 +6336,17 @@ def define_global_objects():
         width=console_width,
         force_terminal=True,
     )
-
+    
+    # prompt_message = ' You > ' if ALWAYS_GUI_MODE else '\n You > '
     prompt_message = FormattedText([                # User prompt message.
-        (f'bg:{PROMPT_CYN} fg: black', '\n You > '),
+        (f'bg:{PROMPT_CYN} fg: black', ' You > '),
         ('', ' '), # Unstyled part                                 
     ])
  
     prompt_bottom_toolbar = None                                  # User prompt toolbar.
     if BOTTOM_TOOLBAR:
         prompt_bottom_toolbar = '\n<b>[CTRL-SPACE]</b> new line | <b>[UP/DOWN]</b> history | <b>[CTRL-Z/CTRL-Y]</b> undo/redo'
-        prompt_bottom_toolbar += '\n<b>[F3]</b> upload | <b>[F5]</b> quit | <b>[CTRL-L]</b> clear | <b>[CTRL-C]</b> cancel | <b>[F7]</b> help'
+        prompt_bottom_toolbar += '\n<b>[F3]</b> upload | <b>[F5]</b> quit | <b>[CTRL-G]</b> editor | <b>[CTRL-C]</b> cancel | <b>[F7]</b> help'
         prompt_bottom_toolbar = HTML(prompt_bottom_toolbar)
 
     lexer = None
@@ -4791,12 +6362,12 @@ def define_global_objects():
         'rprompt': PROMPT_GRY, 
         'prompt-continuation': PROMPT_GRY, 
         'bottom-toolbar': f'bg:{PROMPT_GRY} fg: black',
-        'validation-error': 'fg:yellow bold',
+        'validation-toolbar': 'bg:blue',
         # 'completion-menu': 'bg: cyan fg: white',
     }) 
     
     input_validator = None                                 # To check user input before submitting.
-    if VALIDATE_INPUT: input_validator = LengthValidator()     
+    if VALIDATE_INPUT: input_validator = PromptValidator()     
     
     keys = Keys().get_key_bindings()                       # The custom keyboard shortcuts.
     # from prompt_toolkit.key_binding import merge_key_bindings
@@ -4806,6 +6377,16 @@ def define_global_objects():
         # Keys().get_key_bindings()]
     # )
     
+    
+    # from prompt_toolkit.shortcuts import ProgressBar
+    # with ProgressBar(bottom_toolbar='Doing stuff...', cancel_callback=lambda: None): pass
+    # cancel_callback arg is used to avoid ctrl-c interruption    
+    # from prompt_toolkit.shortcuts import message_dialog
+    # message_dialog(
+        # title="Async Message",
+        # text="This dialog is running in a separate thread, "
+             # "not blocking the main event loop. Mimicha is watching!", # Added Mimicha for you!
+    # ).run()
     
     # The core operation: Copy locals() into globals().
     globals().update(locals())
@@ -4818,10 +6399,17 @@ if __name__ == '__main__':
 
     # Define global variables & Start console width updater.
     define_global_objects()   # Must be called out of the loop.
+    load_config_file()
     update_placeholder()
     if DYNAMIC_CONSOLE_WIDTH:
         width_updater = ConsoleWidthUpdater()
         width_updater.start()
+    
+    # Remaining Preparation.
+    console.set_window_title('Gemini Py-CLI')
+    if EXTERNAL_EDITOR: manage_editor_variable('change')
+    if PROMPT_HISTORY_MODE in ['temporary', 'permanent']: load_prompt_history()
+    paste_from_clipboard()  # A quick warm-up for Pyperclip.
     
     while True:
         try:
@@ -4862,10 +6450,11 @@ if __name__ == '__main__':
         
         finally:
             # Save chat history & Clean log file & prompt history.
-            if not chat_saved and not discarding: save_chat_history_json(hidden=True)  
+            if not chat_saved and not discarding: save_chat_history_json(hidden=True)
+            save_config_file()
             if EXTERNAL_EDITOR: manage_editor_variable('restore')
             if ERROR_LOG_ON: shrink_log_file()
-            if PROMPT_HISTORY_ON and not PROMPT_HISTORY_MEMORY:
+            if PROMPT_HISTORY_MODE == 'permanent':
                 prune_prompt_history()
                 try: os.remove(PROMPT_HISTORY_FILE + '.bak')
                 except: pass

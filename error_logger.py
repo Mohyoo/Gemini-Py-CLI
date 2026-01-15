@@ -89,14 +89,31 @@ def log_unhandled_exception(exc_type, exc_value, exc_traceback):
     Custom handler called automatically by Python for all uncaught exceptions.
     It logs the error details and then exits the program gracefully.
     """
-    from gemini import save_chat_history_json, console_width
-    # Save the chat seesion.
+    from gemini import console_width, EXTERNAL_EDITOR, save_chat_history_json, save_config_file, manage_editor_variable
+    
+    # Save the most important stuff.
     save_chat_history_json()
+    save_config_file()
+    if EXTERNAL_EDITOR: manage_editor_variable('restore')
 
     # Print error to console (standard behavior, with some customization).
     print('\n' + '─' * console_width)
-    print('Unexpected error, program terminated!\n')
-    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+    if issubclass(exc_type, (ImportError, ModuleNotFoundError)):
+        print("Missing Dependency!")
+        print(f"It looks like you're missing a module: {exc_value.name}")
+        print(f"Please try running: pip install {exc_value.name}")
+        print("Or, if the feature you tried to use is optional, stop using it to avoid this error.")
+        
+    elif issubclass(exc_type, (PermissionError, OSError)):
+        file = getattr(exc_value, 'filename', 'Unknown file')
+        print(f"System reported an issue with: {file}")
+        print(f"Details: {exc_value}\n\nThis is likely a permission error.")
+        print("Check if the file is locked, missing, or in a protected folder.")
+        
+    else:
+        print('Unexpected error, program terminated!\n')
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        
     print('─' * console_width)
     
     # Use 'traceback.format_exception' to get the full traceback structure.
