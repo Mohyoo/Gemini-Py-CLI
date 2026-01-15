@@ -4,7 +4,7 @@
 </div>
 
 <p align="center">
-  <br><b>LIST OF CONTENT</b><br> •
+  <br><b>LIST OF CONTENT</hb><br> •
   <a href="#gemini-py-cli">Introduction</a> •
   <a href="SCREENSHOTS.md">Screenshots</a> •
   <a href="#features">Features</a> •
@@ -46,7 +46,7 @@ Used for simple conversations (and for fun too :) <br>
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
 2. Install needed libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary stop_words tksvg resvg_py markdown tkinterweb json_repair` <br>
-([Here](https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Libraries) is a brief about required/optional libraries.
+([Here](https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Libraries) is a summary about required/optional libraries.
 3. Clone this repository; or download the [ZIP](https://github.com/Mohyoo/Gemini-Py-CLI/archive/refs/heads/main.zip) file, extract it, and enter the extracted folder.
 4. Unleash Gemini Py-CLI! open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading)
 

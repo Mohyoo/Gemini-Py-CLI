@@ -3,7 +3,7 @@
 > Wait for the GIF to load...
 
 ## Overview Video
-HD overview video [**here**](https://github.com/Mohyoo/Gemini-Py-CLI/raw/refs/heads/main/Overview-HD.mp4).
+HD overview video [**here**](https://github.com/Mohyoo/Gemini-Py-CLI/raw/refs/heads/main/Assets/Overview-HD.mp4).
 
 ![Overview](Assets/Overview.gif)
 
