@@ -4,7 +4,7 @@
 </div>
 
 <p align="center">
-  <br><b>LIST OF CONTENT</hb><br> •
+  <br><b>LIST OF CONTENT</b><br> •
   <a href="#gemini-py-cli">Introduction</a> •
   <a href="SCREENSHOTS.md">Screenshots</a> •
   <a href="#features">Features</a> •
