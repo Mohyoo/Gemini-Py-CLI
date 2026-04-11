@@ -14,13 +14,14 @@
   <a href="#limitations">Limitations</a> • <br>
 </p>
 
+> <span style="color:orange; font-weight:bold;">This repository is no longer maintained...</span><br>
+
 ## Gemini Py-CLI
 A simple AI chat CLI program, written in Python. <br>
 Acts as a lightweight client for [Google AI web app](https://gemini.google.com/app), which is called ***Gemini***. <br>
 Can be used for simple conversations (and for fun too :) <br>
 + **Screenshots can be seen [here](SCREENSHOTS.md).**
 + Tested using Command Prompt & ConEmu console, in Windows 8.1 64-bit. I tried my best to keep it cross-platform, but I couldn't test it in Linux/macOS.<br>
-+ <span style="color:orange; font-weight:bold;">This repository is no longer maintained...</span><br>
 
 ---
 <span style="color:cyan"><b><i>Reminder:</i></b><br>For people who don't know Python, it's just a small command-line program. After installing it, you only run 2 commands, one to install dependencies (which took me 10 min with my 80kb/s internet), then the main command which is instant.</span>
