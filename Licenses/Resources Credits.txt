@@ -1,0 +1,48 @@
+# ASCII Art:
+Raven
+https://emojicombos.com/crow-text-art
+https://emojicombos.com/raven-ascii-art
+
+Fox
+https://emojicombos.com/fox-ascii-art
+
+Cheetah
+https://emojicombos.com/cheetah-ascii-art
+
+Deer
+https://emojicombos.com/deer-ascii-art
+https://www.asciiart.eu/animals/deer
+
+Rabbit
+https://emojicombos.com/bunny-rabbit-ascii-art
+https://emojicombos.com/bugs-bunny-ascii-art
+https://www.asciiart.eu/animals/rabbits
+
+Fish
+https://www.asciiart.eu/animals/fish
+
+Horse
+https://llizard.etherwork.net/ascii-animation/horsegaitsinclpr.html
+(I'd to parse the HTML file, until I found the JS file carrying the art)
+
+Dog
+https://emojicombos.com/dog-ascii-art
+https://emojicombos.com/hound-ascii-art
+
+Cat
+https://www.reddit.com/r/cs2a/comments/1iuhuex/cat_ascii_animation_i_made_during_class/
+https://www.onlinegdb.com/r5NjqrB4m
+
+
+
+
+# Quack Sounds:
+https://pixabay.com/sound-effects/search/quack/
+
+
+
+# Icons:
+https://icons8.com/icons
+https://www.iconfinder.com
+https://www.freepik.com/icons
+https://www.flaticon.com/

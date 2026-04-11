@@ -2154,7 +2154,7 @@ QUOTES = [
     "If you think you are too small to make a diffrence, try sleeping with a mosquito.",
     "Be aware.. crazy people don't always look crazy ;)",
     "The quieter you become, the more you are able to hear.",
-    "I don't like that man i must get to know him better.",
+    "I don't like that man; I must get to know him better.",
     "Do not take life too seriously. You will never get out of it alive.",
     "If you want to know what a man's like, take a good look at how he treats his inferiors, not his equals.",
     "A smooth sea never made a skilled sailor.",
@@ -2180,7 +2180,7 @@ QUOTES = [
     "The best way to destroy an enemy is to make him a friend.",
     "I am a slow walker, but I never walk backward.",
     "Character is like a tree and reputation like a shadow. The shadow is what we think of it; the tree is the real thing.",
-    "To live is the rarest thing in the world most people exist.",
+    "To live is the rarest thing in the world. Most people exist.",
     "Sometimes I wish I was an octopus, so I could slap eight people at once.",
     "You have a brain. Use it.",
     "Available to everyone... Unremarkable.",
@@ -2199,7 +2199,24 @@ QUOTES = [
     "Sometimes... all you need is just some peace of mind.",
     "The only way to do great work is to love what you do.",
     "The mind is everything. What you think you become.",
-    "The only journey is the one within.",   
+    "The only journey is the one within.",
+    "No inspirational quote today.\nPunch them if you need to.",
+    "Alone in the cosmos, let us at least honor the existence of one another.",
+    "There is a crack, a crack in everything... That's how the light gets in.",
+    "'Because I don't want to' is a valid reason by the way.",
+    "Be calm when things are going well. Don’t think you’re ontop of the world. Everyone is disposable.",
+    "People do not decide their their future. They decide their habits and their habits decide their future.",
+    "A person who fears suffering is already suffering from what he fears.",
+    "A sin that brings you low and humble before God is better than a good deed that makes you proud and arrogant.",
+    "Be the reason someone smiles today...",
+    "A friend in need is a friend indeed.",
+    "People will always see what choices you've chosen, they will not see what choices you had.",
+    
+    "If we're the only life in the universe, then every one of us is the only one of us "
+    "there is. And that means we have to make room for the possibility that we're alone. "
+    "And if we're alone, then that means that every human being you come across, every "
+    "person you meet, has the potential to be the most important person you've ever met. "
+    "And that means that if we're alone, we have to take care of each other.",
 ]
 
 FACTS = [
@@ -2218,10 +2235,12 @@ FACTS = [
     "Fact: The total weight of all the ants on Earth is roughly the same as the total weight of all the humans!",
     "Fact: In space, astronauts cannot cry properly. The tears just clump together and stick to "
     "their eye because of the lack of gravity.",
-    "Real: A bolt of lightning is five times hotter than the surface of the sun! That's super, super hot!",
+    "Real: A single bolt of lightning is five times hotter than the surface of the sun! The temperature of lightning "
+    "can reach up to 30,000 degrees Celsius (54,000 degrees Fahrenheit)! That's super, super hot!",
     "Fact: There are more trees on Earth than there are stars in the Milky Way galaxy. "
     "Scientists estimate there are about 3 trillion trees on Earth and around 100-400 billion stars in our galaxy.",
-    "Fact: The human stomach can dissolve a razor blade. It has very strong acid!",
+    "Fact: The human stomach can dissolve a razor blade. The hydrochloric acid in your stomach is "
+    "incredibly strong, but your stomach lining constantly regenerates to protect itself.",
     "Fact: It is impossible to sneeze with your eyes open. Try to keep them open next time "
     "(But please don't hurt yourself trying!)",
     "Fact: In the 16th century, the King of England had a job called the 'Groom of the Stool,' "
@@ -2233,7 +2252,7 @@ FACTS = [
     "Fact: There are more possible iterations of a game of chess than there are atoms in the observable universe.",
     "Fact: Australia is wider than the moon. The moon is 3,400 km wide, while Australia's widest point is about 4,000 km.",
     "Fact: The electric chair was invented by a dentist named Alfred Southwick.",
-    "Fact: A 'jiffy' is an actual unit of time: 1/100th of a second. It's the time it takes for light to travel one centimeter in a vacuum (approximately 33.3 picoseconds).",
+    "Fact: A 'jiffy' is an actual unit of time: 1/100th of a second (approximately 33.3 pico-seconds). It's the time it takes for light to travel one centimeter in a vacuum.",
     "Fact: All the world's diamonds are less than a teaspoon of mass.",
     "Real: Ketchup was sold in the 1830s as a medicine.",
     "Did you know? The Great Wall of China is not visible from space with the naked eye; it was just a myth.",
@@ -2244,14 +2263,14 @@ FACTS = [
     "Fact: There is a town in Norway called A, and a town in France also called Y.",
     "Fact: The fingerprints of a koala are so similar to a human's that they could contaminate a crime scene.",
     "Real: The quietest room in the world is located at Microsoft's headquarters in Washington state. The background noise is measured in negative decibels.",
-    "Real: You can't hum (Produce voice with your mouth closed) while holding your nose (it's physically impossible to sustain the airflow).",
+    "Real: You can't hum (Produce voice with your mouth closed) while holding your nose. It's physically impossible to sustain the airflow needed for humming without using your nose.",
     "Fact: The human body contains enough carbon to make 9,000 pencils.",
     "Fact: Chewing gum while peeling onions will keep you from crying.",
-    "Fact: In ancient Egypt, pillows were made of stone.",
-    "Fact: The Eiffel Tower can grow taller by about 15 cm in the summer due to thermal expansion.",
-    "Fact: Rats laugh when tickled.",
+    "Fact: In ancient Egypt, pillows were made of stone. These were designed to support the head and keep insects away.",
+    "Fact: The Eiffel Tower can grow taller by about 15 cm (6 inches) in the summer due to thermal expansion. The metal expands in the heat.",
+    "Fact: Rats laugh when tickled. This suggests they experience a form of joy or amusement.",
     "Fact: The shortest war in history was between Britain and Zanzibar on August 27, 1896. Zanzibar surrendered after only 38 to 45 minutes.",
-    "Real: Your brain uses about 20% of the oxygen and calories that you consume.",
+    "Real: Your brain uses about 20% of the oxygen and calories that you consume. It's a very energy-intensive organ!",
     "Did you know? The first recorded use of 'OMG' was in a letter to Winston Churchill in 1917.",
     "Fact: A single bolt of lightning contains enough energy to power a 100-watt lightbulb for three months.",
     "Fact: The human eye can distinguish about 10 million different colors.",
@@ -2264,7 +2283,7 @@ FACTS = [
     "So DNA is enough to reach from Earth to the Sun and back about 670~1300 times!",
     "The planet Jupiter is so big that all the other planets in our solar system could fit inside it.",
     "Cleopatra lived closer in time to the building of the first Pizza Hut than to the building of the Great Pyramid of Giza.",
-    "Bananas are berries, but strawberries aren't.",
+    "Bananas are botanically classified as berries, but strawberries are not. It's a fun botanical twist!",
     "The sound of a whip cracking is actually a sonic boom. The tip of the whip moves faster than the speed of sound.",
     "There are more possible ways to arrange a deck of 52 playing cards than there are atoms in the Earth.",
     "The world's largest desert is Antarctica. Deserts are defined by their low rainfall, not temperature.",
@@ -2273,9 +2292,150 @@ FACTS = [
     "Humans share about 50% of their DNA with bananas.",
     "The most common element in the universe is hydrogen."
     "The Hawaiian alphabet only has 12 letters: A, E, I, O, U, H, K, L, M, N, P, and W.",
+    "Fact: The longest time between two twins being born is 87 days! It's possible "
+    "for twins to be born in different days that are quite far apart.",
+    "Did you know? Honeybees can recognize human faces! This ability helps them "
+    "identify individuals who are a threat or a friend to their hive.",
+    "Real: There's a phenomenon called the 'placebo effect' where a person "
+    "experiences real medical benefits from a treatment with no active medical "
+    "properties, simply because they believe it will work.",
+    "Did you know? The smell of rain, known as 'petrichor,' is caused by a "
+    "combination of oils secreted by plants and chemicals released by bacteria in the soil.",
+    "Real: A group of rhinos is called a 'crash.' It's a fitting name for such powerful animals!",
+    "Fact: The electric chair was invented by a dentist named Alfred Southwick. He originally conceived it as a more humane method of execution.",
+    
+    
+    "Get ready for a jaw-dropping physics insight: Light travels at the ultimate speed limit of the universe – "
+    "so fast that time, from light's perspective, doesn't pass at all!\n\n"
+    "If light could perceive, it would see our entire universe as completely frozen. "
+    "Every galaxy's journey, every star's birth and death, every moment of our history would be one single, static snapshot. "
+    "It’s a wild demonstration of just how relative time is when you're pushing the universe's speed limit!\n\n"
+    "Think of time as a river. When you're still, you float at its normal pace. If you swim fast, you're paddling hard, "
+    "but you're still mostly going *with* the river's main flow. The river's speed *for you* barely seems to change. "
+    "To truly make the river's flow noticeably slower *for you*, you'd need to achieve a speed that's a significant "
+    "portion of the river's absolute maximum possible speed – like getting close to the speed of light!\n\n"
+    "That's why our everyday speeds, even a fast car like a Ford Mustang doing 400 km/h, are just tiny ripples compared to light's cosmic speed. "
+    "They represent such an infinitesimally small fraction of light's speed that they don't alter our experience of time. "
+    "That's the precise reason we never feel that temporal difference.",
+    
+    "The Invisible Mountains:\nWhen you look at a map of the world, you see the "
+    "Himalayas or the Andes and think of them as the great mountain ranges.\n"
+    "But the longest mountain range on Earth is actually underwater. It is "
+    "called the Mid-Ocean Ridge. It is a continuous chain of volcanoes and "
+    "mountains that wraps around the entire globe like the seams on a baseball.\n"
+    "The Scale: It is over 40,000 miles long.\nThe Shock: More than 90% of this "
+    "mountain range is hidden under the ocean surface. We have better maps of "
+    "the surface of Mars and the Moon than we do of this massive structure on "
+    "our own planet!",
 
+    "You could have technically sent a fax to a Samurai.\n- The first "
+    "'electric printing telegraph' (the ancestor of the fax machine) was "
+    "patented in 1843.\n- The Samurai class in Japan wasn't abolished until 1867.\n"
+    "We think of Samurai as 'medieval' and faxes as 'modern,' but they were "
+    "existing at the exact same time.",
+
+    "The Stomach's Suicide Prevention:\nYour stomach contains hydrochloric acid "
+    "that is strong enough to dissolve metal. If you dropped a piece of zinc "
+    "into your stomach acid, it would sizzle and disappear.\nSo, why doesn't "
+    "your stomach dissolve itself? Because it is constantly digesting its own "
+    "lining and replacing it. Your stomach creates a new layer of mucus every "
+    "3 to 4 days. If your body stopped this 'software update' for even a week, "
+    "your own digestive juices would eat through your organs and kill you "
+    "(don't worry, it's slow and very painful). You are essentially a walking, "
+    "self-cleaning acid tank.",
+
+    "The Radioactive Breakfast:\nYou probably didn't know your kitchen is a "
+    "low-level radiation zone. Bananas are slightly radioactive. This is "
+    "because they are rich in potassium, and a tiny fraction of all natural "
+    "potassium is the isotope potassium-40, which is radioactive. In fact, "
+    "there is an informal measurement level called the 'Banana Equivalent "
+    "Dose' used by nuclear scientists to explain radiation levels to the "
+    "public.\nYou would need to eat about 10 million bananas in one sitting "
+    "to die of radiation poisoning. At that point, you'd definitely die of "
+    "stomach explosion or potassium overdose long before the radiation got to you.",
+
+    "The Size of a Neutron Star:\nA neutron star is the collapsed core of a "
+    "massive sun. It is so dense that it defies imagination.\nIf you took a "
+    "single teaspoon of material from a neutron star, it would weigh about "
+    "6 billion tons!\nThat is roughly the weight of every single human being "
+    "on Earth combined, or the weight of Mount Everest, all packed into a "
+    "tiny spoon.",
+
+    "If you have a room with only 23 people in it, there is a 50% chance that "
+    "two of them share the exact same birthday.\nIt feels impossible — there "
+    "are 365 days in a year! But because you aren't looking for a specific "
+    "date, just any match between any two people, the number of possible pairs "
+    "grows so fast that 23 people is all it takes to reach a coin-flip's chance "
+    "of a match (With 75 people, the chance is 99.9%).\nWe naturally think: "
+    "'What are the odds someone has my birthday?' (which is low). But the math "
+    "isn't looking for a match with you; it's looking for any two people to "
+    "match. In a room of 23 people, there are 253 possible pairs of people. "
+    "Every time you add one person, the number of pairs jumps significantly. "
+    "With 253 chances for a match, the odds hit 50/50 much faster than you’d expect.",
+
+    "The 'Diamond Rain' of the Giants:\nOn Earth, we worry about rain or snow. "
+    "But on Neptune and Uranus, it literally rains diamonds.\nDeep inside these "
+    "gas giants, the atmospheric pressure is so intense (millions of times "
+    "greater than Earth's) that it crushes carbon atoms into graphite and then into actual solid diamonds. "
+    "These diamonds then 'rain' down through the interior of the planet like "
+    "hailstones.\nThere are likely 'oceans' of liquid diamond with solid diamond "
+    "'icebergs' floating in them inside these planets.",
+
+    "You Have Never 'Touched' Anything.\nYou might feel like you are sitting on a "
+    "chair or holding your phone, but physically, you are hovering.\nAtoms have a "
+    "nucleus surrounded by a cloud of electrons. Electrons are negatively charged, "
+    "and like magnets, they repel other negative charges. When you 'touch' a "
+    "surface, the electrons in your hand and the electrons in the object push "
+    "away from each other so violently that they never actually meet.\nWhat you "
+    "perceive as 'solid touch' is actually just your brain interpreting the "
+    "electrostatic repulsion between two objects. You have spent your entire life "
+    "floating a microscopic distance above everything you've ever 'held.'",
+
+    "The word 'Buffalo' can be used eight times in a row to create a "
+    "grammatically correct sentence; it has three meanings:\n"
+    "Buffalo (City)   = New York\nbuffalo (Animal) = Bison\n"
+    "buffalo (Verb)   = Bully\n- The sentence (Capital 'B' is for the "
+    "city meaning):\n  'Buffalo buffalo Buffalo buffalo buffalo buffalo "
+    "Buffalo buffalo.'\n- The translation:\n  'New York bison [that] New "
+    "York bison bully, [also] bully New York bison.'",
+
+    "Einstein’s theory of Special Relativity tells us that 'Now' is an illusion. "
+    "Because light takes time to travel, you never see the world as it is; you see "
+    "it as it was.\nYou see the Moon as it was 1.3 seconds ago.\nYou see the Sun "
+    "as it was 8 minutes ago.\nYou see the stars as they were hundreds of years "
+    "ago.\nIf an alien in a galaxy 65 million light-years away looked at Earth "
+    "through a powerful telescope right now, they wouldn't see you — they would "
+    "see dinosaurs.",
+
+    "The Grandfather Paradox is the brain-breaker of time travel. It highlights a "
+    "logical inconsistency that makes backwards time travel seem impossible in a "
+    "single, linear timeline.\nThe Trip: You build a time machine and travel back "
+    "to 1950.\nThe Event: You accidentally (or intentionally) prevent your "
+    "grandfather from meeting your grandmother.\nThe Result: Your father is never "
+    "born. Therefore, you are never born.\nThe Loop: If you were never born, you "
+    "couldn't have existed to build the time machine and go back to stop the "
+    "meeting.\nThe Headache: If you didn't stop them, you were born, which means "
+    "you did go back... and around it goes.\n(Don't think about it, it's like "
+    "thinking of a new color you’ve never seen before)\n(Again, don't think "
+    "about that color)",
+
+    "Your brain is making a choice about 10 seconds (or less) before "
+    "you feel like you've made it. In several neuroscientific studies, "
+    "researchers using fMRI (Functional Magnetic Resonance Imaging) were "
+    "able to predict which button a participant would press up to 10 seconds "
+    "before the participant was even aware they had made a decision. Your "
+    "'conscious self' is basically just a press secretary "
+    "announcing decisions your subconscious already finalized.",
+
+    "Great Pyramid built: ~2550 BCE.\nCleopatra’s reign: ~30 BCE "
+    "(roughly 2,500 years after the Pyramids).\niPhone invented: "
+    "2007 CE (roughly 2,000 years after Cleopatra).\nCleopatra is "
+    "chronologically closer to iPhone invention than she is to the"
+    "building of the pyramids. To her, the pyramids were already "
+    "thousands of years old — basically as ancient as the Roman "
+    "Empire is to us today.",
+    
     # Creatures Facts.
-    "Fact: Octopuses have a blue blood and three hearts! Two pump blood to the gills, and one circulates it to the rest of the body.",
     "Fact: A cow gives nearly 200,000 glasses of milk in its lifetime.",
     "Fact: A cow can walk up the stairs but cannot walk down them. Their knees don't bend the right way!",
     "Real: Cows have best friends! They get stressed if they are separated from their favorite pals.",
@@ -2283,9 +2443,9 @@ FACTS = [
     "If you keep a goldfish in a dark room, it will eventually turn white.",
     "Fact: Wombat poop is cube-shaped! No one is completely sure why, but it helps the animal mark its territory.",
     "Real: The smell of freshly cut grass is actually a plant distress signal. The grass is releasing chemicals and SCREAMING that it's being hurt!",
-    "Fact: Otters hold hands when they sleep so they don't drift away from each other.",
+    "Fact: Otters hold hands when they sleep so they don't drift away from each other in the water.",
     "Fact: A crocodile cannot stick its tongue out.",
-    "Fact: Butterflies taste with their feet :)",
+    "Fact: Butterflies taste with their feet :) They have chemoreceptors on their legs that help them detect sweet or bitter substances.",
     "Dolphins have names for each other and can recognize themselves in mirrors, demonstrating self-awareness.",
     "Elephants can recognize themselves in mirrors, and have been observed mourning their dead.",
     "Crows are highly intelligent and can use tools, solve problems, and remember human faces.",
@@ -2299,14 +2459,33 @@ FACTS = [
     "A cat has 32 muscles in each ear, allowing them to rotate 180 degrees independently.",
     "An ostrich's eye is bigger than its brain.",
     
+    "Some creatures are capable of seeing nearly 360 degrees around them. Dragonflies have compound eyes with thousands of facets, "
+    "giving them a nearly panoramic (thorough) view. Chameleons' eyes can move independently and rotate almost 360 degrees, allowing "
+    "them to observe their surroundings thoroughly. Horses have a large blind spot directly in front of and behind them but can see "
+    "much of their environment around them. Certain fish & marine animals have eyes on the sides of their heads, providing a wide field of vision. "
+    "What about humans? We typically see about 180 degrees horizontally in our direct line of sight (field of view); however, our peripheral "
+    "vision extends beyond that, allowing us to detect movement and shapes up to approximately 200-220 degrees, but with less detail and clarity toward the edges.",
+    
+    "Some creatures are capable of seeing/detecting objects at incredible distances. Eagles and hawks, for example, have exceptional eyesight, "
+    "allowing them to spot prey from several KILOMETERS away! Certain marine animals, like some species of sharks, can detect prey "
+    "hundreds of meters below or around them due to their specialized sensory systems. Humans, on the other hand, can see objects clearly "
+    "up to a few hundred meters under good conditions, with visibility diminishing as distance increases, especially in low light or fog. "
+    "While our peripheral vision helps us monitor our immediate surroundings, our ability to perceive distant objects is limited compared "
+    "to these remarkable creatures.",
+    
+    "Fact: Octopuses have blue blood and three hearts! Two hearts pump blood to the gills, and one circulates it to " 
+    "the rest of the body. Their blood contains a copper-based molecule called hemocyanin to transport oxygen "
+    "(instead of iron-based hemoglobin like humans), which turns blue when oxygenated, helping them survive "
+    "in their often oxygen-poor ocean environments.",
+    
     "Fact: Deer sleep for short periods throughout the day and night, often in a safe hidden spot. "
     "They enter a state called 'resting', where they remain alert to potential dangers while dozing.",
 
     "Horses sleep both lying down and standing up. They rest in short naps throughout the day and night, but they need to lie down for deeper REM (Rapid Eye Movement) sleep, "
     "during which their eyes move while sleeping (This phase happens to humans too); horses typically do it for a few hours at a time.",
     
-    "Real: There is a species of jellyfish called the Turritopsis Dohrnii that is considered biologically immortal. "
-    "It can go back to its juvenile (young) stage after reaching maturity, and start its life over again.",
+    "Real: There is a species of jellyfish called the 'Turritopsis Dohrnii' that is considered biologically immortal. "
+    "After getting sick, injured, or simply mature, it can go back to its juvenile (young) stage and start its life over again. It can do this forever!",
     
     "Fact: Fainting Goats don't actually lose consciousness; they suffer from a condition called "
     "myotonia congenita that causes their muscles to temporarily freeze when they are startled.",
@@ -2372,6 +2551,199 @@ FACTS = [
     "making them some of the most intelligent wild animals—qualities they share with domesticated dogs, "
     "reflecting their close evolutionary relationship.",
 
+    "The Silent Forest:\nThe largest living organism on Earth isn't the Blue "
+    "Whale; it’s a forest called Pando in Utah. It looks like 47,000 individual "
+    "Aspen trees, but it is actually a single underground root system. Every "
+    "'tree' is a genetically identical clone connected to the same massive "
+    "'brain' in the dirt. It weighs 6,000 tons and has been alive for over "
+    "80,000 years. If you stand in the middle of it, you aren't in a "
+    "forest—you're standing inside one giant creature.",
+
+    "The Biological Alien:\nOctopuses are so strange that some scientists "
+    "jokingly call them 'aliens.' Unlike humans, where the brain is in the "
+    "head, two-thirds of an octopus's neurons are in its arms. So each arm "
+    "has its own brain (a thick axial nerve cord) and can literally 'think' "
+    "for itself and act without permission, with about 40 million neurons in "
+    "each arm. If you cut off an octopus arm (very painful, don't do it!), "
+    "the arm will continue to crawl around, detect prey, hunt for food, and "
+    "try to bring that food to a mouth that is no longer there. It's a "
+    "decentralized consciousness — like having eight semi-independent people "
+    "attached to one body.\nIncredible, they can also edit their own genetic "
+    "code (RNA) on the fly. While humans are stuck with the DNA we are born "
+    "with, octopuses can change how their genes are expressed to adapt to "
+    "things like freezing water temperatures in real-time. This might be "
+    "why their arms are so smart; they are constantly re-programming themselves "
+    "to be better hunters.",
+
+    "The Bird That Lives in the Sky:\nThe 'Common Swift' is a small bird that "
+    "performs a feat of endurance that seems impossible. These birds spend "
+    "almost their entire lives in the air. They eat, mate, and even sleep "
+    "while flying. They can stay aloft for ten months straight without ever "
+    "touching the ground. To sleep, they fly to a high altitude and let "
+    "their brain drift into a half-awake state while they glide on the wind. "
+    "The only time they ever land is to lay eggs and raise their chicks.",
+    
+    "The Smell of Space:\n"
+    "Astronauts consistently report that space has a very distinct odor once they "
+    "repressurize the airlock. They describe it as a mix of burnt steak, hot metal, and welding fumes.",
+
+    "The Fly’s 'Hand-Washing' Mystery:"
+    "When a fly lands and starts rubbing its front legs together, it is actually cleaning its sensors.\n"
+    "- Taste Buds on Feet: Flies have taste receptors on their feet. To decide if you (or your sandwich) "
+    "are edible, they need their 'taste buds' to be free of dust and pollen.\n"
+    "- Sticky Situations: They have tiny pads called 'pulvilli' that produce a glue-like substance to "
+    "help them walk on ceilings. If those pads get dirty, they lose their grip and fall off the wall.\n"
+    "- Extreme Hygiene: They are obsessive cleaners because their survival depends on being able to "
+    "taste and fly instantly.",
+    
+    "The 'Diamond Core' Star:\n"
+    "There is a white dwarf star (the small, dense remains of a dead star) called BPM 37093, nicknamed 'Lucy,' "
+    "that is essentially a 10 billion-trillion-trillion-carat diamond.",
+
+    "Venusian Snow:\n"
+    "On Venus, it doesn't snow water; it snows metal. Specifically, it 'snows' galena and bismuthinite "
+    "(metallic minerals), which coat the mountaintops in a shiny, metallic frost.",
+
+    "The Saturn Hexagon:\n"
+    "Saturn has a permanent, massive hexagonal cloud pattern (a six-sided storm; it's a giant, "
+    "stable cloud formation that takes the shape of a hexagon, and within it, there is a storm) "
+    "at its north pole that is wider than two Earths. It’s a geometric mystery of fluid dynamics "
+    "(how liquids and gases move) that has persisted for decades.",
+
+    "Saturn's Density:\n"
+    "Saturn is so 'light' (it has low density relative to its size) that if you had a bathtub large "
+    "enough to hold it, the planet would float on water.",
+
+    "Oxford vs. Aztecs:\n"
+    "Oxford University is older than the Aztec Empire. Oxford began teaching in 1096, "
+    "while the Aztec Empire wasn't founded until roughly 1325.",
+
+    "The 'Year Without a Summer':\n"
+    "In 1816, a massive volcanic eruption in Indonesia (Mount Tambora) caused a global climate abnormality. "
+    "It snowed in New England in June, and the constant gloom inspired Mary Shelley to write the famous novel Frankenstein.",
+
+    "The Lung Surface:\n"
+    "If you unrolled all the tiny air sacs called alveoli (where oxygen enters your blood) "
+    "in your lungs and laid them flat, they would cover an entire tennis court.",
+
+    "Shuffling Realities:\n"
+    "Every time you thoroughly shuffle a deck of cards, it is almost certain that the specific "
+    "order of those 52 cards has never existed before in the entire history of the universe; "
+    "because there are (8.06 x 10^67) possible combinations. This number is astronomically large — "
+    "much larger than the estimated number of atoms in the observable universe, which is roughly (10^80). ",
+
+    "The Weight of Bacteria:\n"
+    "There are more bacteria living in and on your body right now than there are humans who have "
+    "ever lived on Earth (roughly 117 billion humans vs. trillions of bacteria).",
+
+    "The Voynich Manuscript is history’s most baffling 'unsolved mystery,' a 240-page 15th-century "
+    "book written in a completely unique, undeciphered script that follows the statistical patterns "
+    "of a real language but has resisted every attempt by elite codebreakers and AI to crack it. "
+    "It acts like a textbook from a parallel dimension, filled with bizarre illustrations of "
+    "non-existent botanical hybrids, celestial maps, and strange diagrams of miniature naked women "
+    "in green pools connected by organ-like pipes. Theories regarding its origin range from it being "
+    "a coded manual for heretical alchemy or a sophisticated Renaissance-era hoax designed to scam "
+    "wealthy collectors, to it being a record of a lost language or even the result of trance-like "
+    "'speaking in tongues.' Despite modern linguistic analysis and carbon dating, it remains a total "
+    "'glitch' in the historical record, with every claimed solution being quickly dismantled by the "
+    "global scholarly community.",
+    
+    "The Immortal Lobster:\n"
+    "Lobsters don't die of old age. They produce an enzyme called telomerase (a protein that "
+    "protects DNA) that repairs their cells indefinitely. They usually only die because they grow "
+    "too big to shed their shells (they lose it) or are eaten by predators.",
+
+    "Blue Whale Heart:\n"
+    "A blue whale’s heart is so large that a human child could swim through its primary arteries "
+    "(the main tubes that carry blood away from the heart).",
+
+    "Bee Democracy:\n"
+    "When a honeybee colony gets too big and needs to find a new home, they 'vote.' Scout bees "
+    "perform dances for different locations, and the 'vibe' (the location that gets the most bees "
+    "to join the dance) wins the new real estate.",
+
+    "Wombat Defense:\n"
+    "Wombats have 'armored' butts made of thick cartilage (the same tough stuff in your ears and nose). "
+    "When a predator chases them into their burrow, they block the entrance with their rear, "
+    "which is nearly impossible to bite through.",
+
+    "The Last Woolly Mammoths:\n"
+    "When the Great Pyramids of Giza were being built in Egypt (around 2560–2580 BCE), "
+    "woolly mammoths were still alive and roaming on Wrangel Island in the Arctic. "
+    "To be more accurate, they went extinct roughly 4,000 years ago (around 1650 BCE), "
+    "but some small populations survived on isolated islands like Wrangel Island until that time.",
+
+    "The Dodo's Fearlessness:\n"
+    "Native to the island of Mauritius, the Dodo bird lived without any natural predators "
+    "for so long that it completely lost the ability to fly and had no fear of humans. "
+    "When sailors arrived in the 1500s, the birds would walk right up to them, making "
+    "them tragically easy to hunt. They were gone by 1681 (extinction).",
+
+    "The Sky-Darkening Pigeons:\n"
+    "In the early 1800s, the Passenger Pigeon was likely the most abundant bird on Earth, "
+    "with a population of 3 to 5 billion. Their flocks were so massive that they would "
+    "literally darken the sky for hours or even days as they flew over North America. "
+    "Due to extreme overhunting, they went from billions to zero in just 50 years; "
+    "the last one, named Martha, died in a zoo in 1914.",
+
+    "The 'Penguin' of the North:\n"
+    "The Great Auk was a large, flightless bird that looked and acted like a penguin, "
+    "though it wasn't related to them. They were so defenseless on land that the very "
+    "last pair was killed in 1844 by collectors who wanted their skins for a museum.",
+
+    "The Half-Striped Zebra:\n"
+    "The Quagga was a unique subspecies of zebra from South Africa that only had "
+    "stripes on the front half of its body. The back half was solid brown, looking more "
+    "like a horse. It was hunted to extinction by settlers by 1883, and it was the "
+    "first extinct animal to ever have its DNA analyzed by scientists.",
+
+    "The Pouch-Bearing 'Tiger':\n"
+    "The Thylacine (often called the Tasmanian Tiger) was not a cat at all, but "
+    "a marsupial (an animal that carries its young in a pouch, like a kangaroo). "
+    "Despite having a dog-like body and tiger-like stripes, it had a 'double-jointed' "
+    "jaw that could open incredibly wide—up to 80 degrees. They were threatened by "
+    "hunting and habitat destruction. The last known one died in a zoo in 1936.",
+
+    "The Gentle Sea Giant:\n"
+    "Steller’s Sea Cow was a relative of the manatee but grew up to 30 feet (9 meters) long. "
+    "It was so large and 'gentle' that it had no teeth and just chewed kelp (seaweed). Sadly, "
+    "because it was such an easy target for meat and oil, it was driven to extinction just 27 "
+    "years after humans first discovered it in 1741.",
+
+    "The Schomburgk's Deer was a beautiful animal native to the swampy plains of Thailand, "
+    "known for its magnificent, multi-branched antlers that looked like a crown of branches. "
+    "During the monsoon season, the rising floodwaters would force the deer onto small, "
+    "high-ground islands, where they became trapped and easily visible. Hunters would surround "
+    "these islands in boats and spear the deer as they had nowhere to run. Habitat loss from rice "
+    "farming further pushed them to the brink, and the last known wild deer was killed in 1932, "
+    "with the very last captive individual killed by a local in 1938.",
+
+    "The Falkland Islands Wolf, also known as the Warrah, was the only native land mammal on the "
+    "Falkland Islands and had the misfortune of being 'too friendly.' Because there were no other "
+    "mammals on the islands, the wolves had no natural fear and would walk right up to the sailors "
+    "who landed there. Explorers and settlers viewed them as a threat to their sheep or simply as "
+    "a source of fur. They were so easy to kill that sailors would hold out a piece of meat in one "
+    "hand to lure the wolf close and then kill it with a knife or club in the other. By 1876, less "
+    "than a hundred years after they were first described, they were gone.",
+
+    "The Caribbean Monk Seal was the only seal species native to the Caribbean Sea and the Gulf of "
+    "Mexico, known for being incredibly non-aggressive and curious. When Christopher Columbus and "
+    "his crew first encountered them in 1494, they called them 'sea wolves' and immediately began "
+    "killing them for meat and oil. Over the next few centuries, they were relentlessly hunted because "
+    "they would lazily sunbathe on beaches and allow humans to walk right up to them. Overfishing also "
+    "depleted the food they needed to survive, and they were officially declared extinct in 2008, "
+    "though the last one was actually seen in 1952.",
+    
+    "The internet is so massive that - as of 2026 - it's growing far absurd; for example, To copy the "
+    "entire internet, you would need to store approximately 180 to 220 Zettabytes (1 ZB = 10^9 TB) of "
+    "data. If you used standard 20TB hard drives, you would need about 10 billion drives. You would need "
+    "a warehouse the size of a small city just to house the hardware. And - on a top-tier 1 Gbps fiber "
+    "connection - copying 200 Zettabytes would take roughly 50 billion years. The universe is only about "
+    "13.8 billion years old. In 2026, approximately 400 million Terabytes of data are created every single day. "
+    "Even if you had a 400 Terabit-per-second connection (the fastest experimental speeds currently known), "
+    "you would still only be copying the new data being created that second. You would never be able to go "
+    "back and copy the 30+ years of history already sitting there.",
+    
     # Gratitude Facts.
     "If you have clean drinking water at home, you are better off than about 25% of people in the world.",
     "If you have hot water in your house, you are better off than roughly 40% of the world's population.",
@@ -2471,6 +2843,7 @@ JOKES = [
     "My life is basically just doing things that future me will be mad about.",
     "I started eating healthier.\nThen I remembered I have free will.",
     "I hate when I walk into a room and forget why I’m there.\nLike… I came here with a mission.\nI was chosen.",
+    "I have two problems in my life:\n- Difficulty falling asleep.\n- Difficulty waking up.",
     
     "I love how programmers say: “this will only take 5 minutes.”\nThe same way geologists say: “this volcano is mostly inactive.”",
     "Therapist: I want you to write letters to everyone who hurts you then burn them.\nMe: okay but what do I do with the letters?",
@@ -2498,6 +2871,9 @@ JOKES = [
     
     "A man walks into a restaurant and orders a pizza. The waiter asks, 'Do you "
     "want it cut into 8 or 12 slices?' The man says, '8 please, I don't think I can eat 12.'",
+    
+    "Judge: Why did you kill your husband after 30 years of marriage?\n"
+    "The Wife: Honestly, procrastination. Every day I’d say: 'I will do it tomorrow' and I was just too lazy.",
     
     "A tourist is visiting a museum and stops in front of a famous painting. He asks the guard, 'Is this painting worth a lot of money?' "
     "The guard replies, 'It's priceless.' The tourist then asks, 'So, does that mean I can steal it?'",
@@ -3460,6 +3836,490 @@ TEA = [
     "Coffee ready. The unofficial fuel of humans.",
 ]
 
+SCIENCE = [
+    {
+        '?': "Suppose we have a piece of ice in a room at 30°C. As the ice melts, "
+             "does the rate (speed) of melting increase over time, decrease, or stay constant?",
+        '✓': "It decreases. According to Newton's Law of Cooling, the rate of heat transfer "
+             "slows as the temperature difference between an object and its surroundings "
+             "shrinks. For example, a hot piece of metal cools rapidly at first but slows "
+             "down as it approaches room temperature, eventually stabilizing once they are equal."
+    },
+    {
+        '?': "Why does the sky look blue during the day but red or orange at sunset, "
+             "even though the sun's color doesn't change?",
+        '✓': "It's due to the atmosphere (the layer of gases) surrounding Earth. Sunlight "
+             "is a mix of all colors, but blue light bounces off air molecules easily, "
+             "filling the sky with blue. At sunset, the Sun is lower, so instead of the "
+             "light traveling through the atmosphere the short way (top to bottom), "
+             "the path becomes diagonal and much longer. By the time the light reaches "
+             "you, the blue has been scattered away, leaving only the reds and oranges."
+    },
+    {
+        '?': "Why do we see lightning before we hear the thunder?",
+        '✓': "Light travels much faster than sound! Light moves at about 300,000 kilometers "
+             "per second! while sound only crawls along at about 340 meters per second. "
+             "The flash reaches your eyes almost instantly, but the sound wave takes a "
+             "few seconds to catch up."
+    },
+    {
+        '?': "If you're in a moving car and jump straight up, why don't you hit the back window?",
+        '✓': "Because of inertia (objects want to keep doing exactly what they are already doing). "
+             "Even though you aren't touching the floor for a split second, "
+             "you and the air inside the car are still moving at the same speed as the vehicle. "
+             "Unless the driver accelerates or slams on the brakes while you're mid-air (so your "
+             "body tries to keep the car's old speed), you'll land right where you started."
+    },
+    {
+        '?': "How do planes stay in the air if they are so heavy?",
+        '✓': "It’s a team effort between speed and wing shape. As the plane moves forward, "
+             "the curved shape of the wings forces air to move faster over the top than "
+             "underneath, and the rule says: 'The faster air moves, the less push/pressure it has'. "
+             "This creates a difference in pressure that lifts the plane up. On top, the wing is curved, "
+             "so the air has to speed up to get over the hump; this fast air becomes weak and doesn't "
+             "push down very hard. On bottom, the air is moving slower, so it stays strong; It pushes "
+             "up with a lot of force."
+    },
+    {
+        '?': "How do giant metal ships float when a tiny pebble sinks?",
+        '✓': "It’s all about moving water out of the way. When a ship sits in the ocean, "
+             "it pushes aside a massive amount of water. If the weight of that pushed "
+             "water is equal to the weight of the ship, the water pushes back up with "
+             "enough force to keep it horizontal. A pebble sinks because it's too small "
+             "to push away enough water to balance its own weight. This is the push back law of Archimedes."
+    },
+    {
+        '?': "Why do our fingers get wrinkled after a long bath?",
+        '✓': "It’s not because they are absorbing water! It’s actually a smart trick "
+             "by your nervous system. Your brain tells the blood vessels to shrink, "
+             "which pulls the skin inward. This creates treads like on a car tire, "
+             "giving you a better grip to pick up wet objects underwater."
+    },
+    {
+        '?': "How do trees get water from their roots all the way to the top leaves?",
+        '✓': "Trees use suction power. As water evaporates from the leaves (called "
+             "transpiration), it acts like a juice straw, pulling a long chain of water "
+             "molecules upward. Water molecules love to stick together, so when "
+             "the top one moves up, it pulls the whole rope of water with it! "
+             "this attraction is stronger than the pull of gravity or air. This "
+             "prevents any air bubbles from filling the void, allowing a solid rope "
+             "of water to climb hundreds of feet high!"
+    },
+    {
+        '?': "Why does our heart beat faster when we run?",
+        '✓': "Your muscles are like engines; when they work hard, they need more fuel "
+             "(oxygen). Your blood carries that oxygen. To keep the engines from "
+             "stalling, your heart pumps faster to deliver fresh oxygen and carry "
+             "away the exhaust (carbon dioxide) as quickly as possible. This also means "
+             "that feeling tired isn't because your muscles are hot (needing to cool down) or weak "
+             "(needing to stop contracting), but because your heart can't afford to send "
+             "oxygen as fast as the muscles are spending it!"
+    },
+    {
+        '?': "Why don't we feel the Earth spinning if it's going so fast?",
+        '✓': "Because everything - the ground, the trees, the air, and you — is moving "
+             "at the same constant speed. It’s like being in a smooth airplane; "
+             "unless the pilot turns or hits the brakes, you don't feel the movement "
+             "because there is no change in speed to push against you."
+    },
+    {
+        '?': "Why do plants grow toward the sunlight?",
+        '✓': "Plants have a special hormone that hates light. It moves to the dark "
+             "side of the stem and makes those cells grow longer. Since the dark "
+             "side grows faster than the sunny side, the plant naturally bends "
+             "and leans toward the light to get more energy."
+    },
+
+
+
+
+    {
+        '?': "How does the eye work? How can we visualize surroundings using a nervous organ?",
+        '✓': "Our eyes capture reflected light and turn it into electrical signals for the brain to "
+             "decode into images and construct a 3D internal map. You don't see with your eyes; you see with your "
+             "brain, using that code to paint a conscious mental picture. We are limited from seeing the full "
+             "light spectrum because our sensors can only catch a specific sliver; while we see colors, some "
+             "creatures can see ultraviolet (like bees) or infrared (like pit vipers; though they use pit organs "
+             "for that) because their eyes evolved to detect different energy frequencies.\n\nSimilarly, our "
+             "distance vision is capped by our eye's physical shape and the density of light-detecting cells. Cell "
+             "density means the more cells you have in a small area, the higher the resolution (sharpness) of the "
+             "image. Eye shape means a much deeper (tubular or bell-shaped) eye increases the focal length, which "
+             "creates a larger image on the retina, it comes already pre-magnified! Pupil shape (the black hole) "
+             "controls the field of view: a vertical slit (like a cat) helps a ground-predator judge depth for a "
+             "focused strike (because it doesn't have the height advantage to measure precisely), a round pupil "
+             "(like a human) is for general-purpose viewing, and a horizontal one (like a sheep) provides a wide- "
+             "angle panoramic view to spot danger, and they stay parallel to the ground even when the animal tilts "
+             "its head down to graze!\n\nSo, while a human eye is built for a general wide-angle view of our "
+             "surroundings (regular cell density, spherical eye and round pupil shape, and height advantage), an "
+             "eagle’s eye acts like a permanent telephoto lens. By combining high cell density, a very deep eye "
+             "shape, and a round pupil for broad searching while in the sky, they can resolve tiny details from "
+             "miles away, letting the brain visualize an HD photo in high flicker fusion frequency (high frame per "
+             "second; this means a TV screen would look like a flickering slideshow for it), making distant "
+             "objects look as clear as if they were right in front of them.\n\nWhile eagles have better "
+             "resolution, most animals with sharp sight (like extreme distance vision or clear night sight) "
+             "sacrifice some other details (like colors variation or night sight). An eagle’s eye is packed with "
+             "cones (sensors for color and detail) which require heavy light, making it practically blind at "
+             "night! Humans have a higher proportion of rods (light-gathering sensors), allowing us to navigate in "
+             "low-light conditions better than the eagle, though we still trail far behind the cat or the "
+             "owl.\n\nKnow that eye color is determined by the amount of melanin (pigment) in your iris. It "
+             "doesn't affect the sight quality, but it's about protection. Dark eyes (more melanin): People with "
+             "brown eyes have better protection against UV rays and glare. The extra pigment absorbs light. Light "
+             "eyes (mess melanin): People with blue or green eyes are more sensitive to light. Because there is "
+             "less pigment to absorb the rays, more light scatters inside the eye (I still wish I had blue eyes "
+             "though).\n\nJust one more thing; using two eyes (binocular vision) allows your brain to compare two "
+             "slightly different angles of the same scene, creating a 3D map that lets you judge exactly how far "
+             "away an object is. With only one eye, your depth perception changes and you lose that stereo data, "
+             "making it much harder to track a moving ball or thread a needle, as your brain has to rely on "
+             "shadows and relative size to guess distance instead of calculating it.\n\nSo that's it; the power of "
+             "sight and its mechanism varies based on the creature; but in nature, you can’t have it all."
+    },
+    {
+        '?': "How does the ear work? How do we turn vibrations into a symphony?",
+        '✓': "Our ears turn invisible ripples of air into a language the brain can understand. We "
+             "don’t actually hear with our ears; we hear with our brain, which decodes electrical signals to "
+             "construct a mental map of our surroundings. The process begins when the outer ear — acting like a "
+             "satellite dish — collects sound waves and funnels them toward a thin, drum-like membrane. This "
+             "membrane vibrates, triggering a chain reaction through three microscopic bones that act like "
+             "mechanical gears, magnifying the signal so it’s strong enough to push & move through fluid. The real "
+             "magic happens inside a tiny, snail-shaped chamber filled with liquid and lined with thousands of "
+             "microscopic hair cells. As sound vibrations ripple the fluid, these hairs bend; high-pitched sounds "
+             "wiggle the hairs at the entrance, while deep bass notes travel to the very end — sending a click"
+             "of electricity to the brain to be translated into sound.\n\nHumans are generalists, but specialists "
+             "like bats and dolphins use echolocation, emitting high-frequency clicks and seeing the bounce-back "
+             "to navigate in total darkness. On the opposite end of the spectrum, elephants use infrasound, "
+             "communicating through vibrations so low they travel through the earth rather than the air; an "
+             "elephant can literally hear a distant rumble through its feet. Some hunters, like the owl, even have "
+             "asymmetrical ears placed at different heights on their heads. This slight offset creates a timing "
+             "gap, allowing the owl’s brain to triangulate a target's exact position with terrifying precision, "
+             "even if the prey is buried under snow. Because one ear hole is higher on the skull than the other, a "
+             "sound wave coming from a mouse on the ground will reach the lower ear a fraction of a millisecond "
+             "before it reaches the higher one; and the closer the prey is vertically, the smaller the time "
+             "difference. The owl’s brain uses that horizontal and vertical time lag, along with sound intensity, "
+             "to figure out height and direction. By processing these tiny gaps in arrival time, the owl can "
+             "pinpoint exactly where a sound is coming from to strike with no-look accuracy, diving toward a "
+             "target it can’t even see!\n\nThis ear system is also incredibly fragile. Those microscopic hair "
+             "cells are like blades of grass; a sound that is too loud is like a heavy boot stepping on them. In "
+             "humans, once these hairs are flattened or snapped, they do not grow back, leading to permanent dead "
+             "zones in our hearing. This is why hearing is often the first sense to dull with age or injury. "
+             "Ultimately, the ear serves as our 360-degree early-warning system; it is the only sense that never "
+             "truly sleeps, constantly scanning the invisible vibrations of the world to keep us connected and "
+             "safe (well, this depends on your waking-up speed)."
+    },
+    {
+        '?': "How does the sense of smell work? How do we recognize objects by their released chemicals?",
+        '✓': "Smell goes straight to the emotional and memory centers. We don't smell with our "
+             "nostrils; we smell with a specialized patch of tissue at the very top of the nasal cavity. This "
+             "tissue is packed with millions of chemoreceptors that act like locks and keys. When you sniff, you "
+             "are pulling in invisible clouds of floating molecules. If a molecule (the key) fits perfectly into a "
+             "specific receptor (the lock), it triggers an electrical pulse that tells your brain exactly what "
+             "chemicals are hitting the receptors inside your nose, so you can finally identify the object that is "
+             "sending them by either moving your eye toward it and see it, or by using your memory to recall it, "
+             "or at least recall something similar.\n\nHumans are microsmatic, meaning we have a relatively weak "
+             "sense of smell compared to the rest of the animal kingdom, yet we can still remember and distinguish "
+             "between thousands of different odors (at least 50.000, but it can still be countless). Specialists, "
+             "however, take this to an extreme level by increasing the surface area of their detectors. A "
+             "bloodhound, for instance, has about 300 million receptors compared to our 6 million, and a much "
+             "larger portion of its brain is dedicated to processing those signals. This allows them to see (let's "
+             "say feel) a trail of scent like a physical path through the woods, even from miles away (like a "
+             "wolf). Some animals, like snakes, even use a split-tongue system to collects the molecules and "
+             "delivers them to a sensor inside the mouth called the Jacobson’s organ. By flicking their forked "
+             "tongue, they gather chemical samples from two different points in space; if the scent is stronger on "
+             "the left fork, the snake knows its dinner is to the left.\n\nInterestingly, the nose is also a "
+             "partner to the tongue. About 80% of what we perceive as flavor is actually smell (this is called "
+             "retronasal olfaction). As you chew, aromas are forced up the back of your throat into your nasal "
+             "cavity. This is why food tastes flat (weak flavor) when you have a cold; your chemical laboratory is "
+             "boarded up, and your brain can only detect the basic tastes (salty, sweet, sour, bitter) without the "
+             "complex aroma that makes a strawberry taste like a strawberry.\n\nThis system is also uniquely tied "
+             "to our internal time machine. Because the olfactory bulb is physically nestled next to the parts of "
+             "the brain that handle memory and emotion (the amygdala and hippocampus), a single scent can trigger "
+             "a vivid flashback to a childhood memory faster than a photo or a song. This is a survival mechanism; "
+             "your brain wants you to remember the smell of a fire or spoiled food instantly, without needing to "
+             "stop and think about it."
+    },
+    {
+        '?': "How does the sense of taste work? How do we evaluate what we eat?",
+        '✓': "Your tongue identifies five basic categories: sweet, sour, salty, bitter, and savory "
+             "(umami). We don’t taste with the whole surface of our tongue; we taste through thousands of tiny "
+             "bumps called papillae. Inside these bumps are taste buds, which are essentially clusters of bulb- "
+             "shaped receptors that open to the surface of your tongue through a tiny pore. When food is dissolved "
+             "in saliva, it enters these pores and binds to specialized cells that act as molecular switches. When "
+             "a switch is flipped, it sends a lightning-fast signal to the brain to determine if what you just put "
+             "in your mouth is high-energy fuel (sweet) or a potential toxin (bitter).\n\nThe idea that you only "
+             "taste sweet on the tip or bitter at the back is wrong. In reality, 100% of your tongue can detect "
+             "all five tastes, though some areas might be slightly more sensitive than others. Specialists in the "
+             "animal kingdom take this sense outside the mouth entirely. Catfish, for example, are essentially "
+             "swimming tongues; their entire bodies are covered in over 100,000 taste buds. This allows them to "
+             "taste the water for prey or chemicals in the mud without ever opening their mouths. Similarly, "
+             "butterflies and flies have taste sensors on their feet! allowing them to evaluate a flower or a "
+             "piece of fruit simply by landing on it.\n\nOur brains are hardwired to crave sweet because, in the "
+             "wild, sweetness usually indicates high-calorie, safe energy. Conversely, bitter is often the most "
+             "sensitive taste because most natural poisons are bitter; a tiny trace can trigger a gag reflex to "
+             "prevent you from swallowing. Salty ensures we maintain our electrolyte balance, while umami (the "
+             "savory taste of meat or aged cheese) signals the presence of proteins.\n\nTaste isn't just about "
+             "chemicals; it’s a multisensory experience. Your brain combines the chemical signals from your taste "
+             "buds with the mouthfeel (texture and temperature) from touch receptors and the aroma from your nose "
+             "to create the final perception of flavor. This is why a soggy cracker tastes off even if the "
+             "chemicals haven't changed — your brain is looking for a specific harmony of crunch, temperature, and "
+             "chemical signals to give the all clear for a delicious meal.\n\nThe same food doesn't taste the same "
+             "for everyone. Our flavor preference is a mix of genetics and experience. Some people are born with "
+             "more taste buds (called supertasters), making bitter flavors like coffee or broccoli taste "
+             "unbearably intense. Others have genetic variations in their receptors — for example, a specific gene "
+             "makes cilantro taste like soap to some, while it tastes like a fresh herb to others. Beyond "
+             "genetics, your brain learns to like flavors through positive memories, while a single case of food "
+             "poisoning can make your brain permanently flag a specific flavor as danger, even if it’s objectively "
+             "delicious to everyone else.\n\nThe texture of your tongue (the bumpiness) matters. Those bumps, "
+             "called papillae, determine how much surface area you have for taste buds. A rougher tongue usually "
+             "means a higher density of sensors. Additionally, the sensitivity of the tongue’s touch receptors "
+             "matters in mouthfeel; some people are more sensitive to the slimy texture of an okra or the "
+             "graininess of a pear, which can make them hate a food even if the chemical taste is perfectly fine."
+    },
+    {
+        '?': "How does the sense of touch work? How do we feel objects with our skin?",
+        '✓': "We don't just feel one thing; our skin is packed with different types of specialized "
+             "receptors that handle specific data points. Some are designed to detect light fluttering (like a "
+             "hair moving), others sense deep pressure (like a firm handshake), and others are tuned exclusively "
+             "to vibrations or the stretch of your skin as you grip an object. When you pick up a set of keys, "
+             "these receptors fire off a coordinated map of electrical signals that allow your brain to visualize "
+             "the shape of the keys and guess their weight without you even looking. Texture is detected as your "
+             "skin slides across a surface, turning physical bumps into specific vibration patterns that your "
+             "brain identifies as: rough, silky or gritty.\n\nAccuracy in touch depends entirely on receptor "
+             "density. Certain parts of your body have more touch sensors than others. Your fingertips, lips, and "
+             "tongue are packed with the highest concentration of these sensors, which is why you can feel the "
+             "tiny ridges on a coin with your finger but might not even notice a small crumb if it touched your "
+             "forearm. This is also why specialists like the star-nosed mole exist; its nose is covered in 22,000 "
+             "tiny touch organs, allowing it to feel and identify prey in total darkness faster than the human eye "
+             "can even blink! In the ocean, fish use a lateral line system (a row of touch - sensitive scales "
+             "along their sides) to feel the displacement of water, allowing them to detect a predator's movement "
+             "from feet away.\n\nTemperature and pain are handled by a separate set of sensors called "
+             "thermoreceptors and nociceptors. These act as the body’s internal alarm system. Thermoreceptors "
+             "don't measure exact degrees; they measure the flow of heat. This is why a metal spoon feels colder "
+             "than a wooden one at the same room temperature — the metal pulls heat away from your skin faster, "
+             "tricking your brain into thinking it's colder. Pain sensors, on the other hand, only fire when a "
+             "stimulus is potentially damaging. Interestingly, some creatures have evolved to feel temperature at "
+             "a distance; pit vipers have specialized holes (pit organs) near their eyes that can see the infrared "
+             "heat radiating off a mouse, allowing them to strike with thermal-guided precision in the "
+             "dark.\n\nFinally, touch is the only sense that provides proprioception. Specialized sensors in your "
+             "muscles and joints tell your brain where your limbs are located in space. This is why you can close "
+             "your eyes and still touch your nose with 100% accuracy. Without this internal sense of position, you "
+             "would not be able to walk or type without looking at your feet or hands. It is our most grounded "
+             "sense, constantly scanning for texture, heat, and position to ensure we can navigate and survive our "
+             "physical environment."
+    },
+    {
+        '?': "How does a shark feel electricity to detect its prey?",
+        '✓': "This is called electro-reception. Every time a living creature moves a muscle, sends a "
+             "nerve signal, or even beats its heart, it generates a tiny electrical field. While air is a poor "
+             "conductor of electricity, water — especially saltwater — is an excellent conductor, carrying these "
+             "invisible signals directly to the hunter.\n\nThe most famous specialists, sharks and rays, have "
+             "snouts covered in hundreds of tiny, gel-filled pores called 'Ampullae of Lorenzini'. These pores act "
+             "like biological voltmeters; the specialized gel inside conducts electricity from the water to a "
+             "sensory nerve at the base of the pore. This allows them to pick up the microscopic electrical pulses "
+             "of a fish twitching under the sand, even if the prey is completely invisible to their eyes or nose. "
+             "It's essentially a short-range radar that allows them to strike with surgical precision in the final "
+             "seconds of a hunt when their eyes might be closed for protection.\n\nHowever, this sense isn't just "
+             "for hunting or just for sharks. Other specialists, like the platypus, use thousands of electrical "
+             "receptors on their bills to find shrimp in muddy riverbeds where they can't see or smell. Some fish, "
+             "known as weakly electric fish, even use this sense like a lantern in the dark. They generate their "
+             "own low-voltage electrical field around their bodies; when a rock or another animal enters that "
+             "field, it distorts the signal. The fish feels this change on its skin and uses it to see its "
+             "surroundings in 3D, navigate through murky water, or even talk to other fish by varying the "
+             "frequency of their electrical pulses."
+    },
+    {
+        '?': "Why are some creatures insanely fast? Why isn't our reaction speed fast like them?",
+        '✓': "Reaction speed is a race between biology and physics. A signal must travel from a "
+             "sensor (like an eye) to the brain, and then to a muscle. In a housefly, that wire is microscopic, so "
+             "the signal arrives almost instantly. In an elephant, the signal has to travel several meters, "
+             "creating a physical delay. Furthermore, most smaller animals have a higher flicker fusion frequency, "
+             "meaning they process more frames per second than we do. To a fly, your hand moving to swat it looks "
+             "like it is crawling through honey, giving it plenty of time to dodge (their brain processes "
+             "information so fast that time effectively stretches; because they can process up to 250 frames per "
+             "second (humans manage about 60), your hand moving toward them provides their brain with 4x more data "
+             "points than yours receives; they are simply experiencing more moments per second than you "
+             "are)\n\nWhile humans take about 250 milliseconds to react, speed demons like cats and snakes use "
+             "reflex arcs in their spinal cords to bypass the brain entirely, reacting in under 50 milliseconds — "
+             "faster than you can blink! It is like pre-loaded conditions (if signal hits, do action immediately) "
+             "stored in the spinal cord. When the signal (e.g., a specific vibration or touch) hits the spine, the "
+             "action (the muscle contraction) is triggered instantly. The signal still eventually reaches the "
+             "brain so the animal knows what happened, but the body has already finished the move before the brain "
+             "can even say: run.\n\nSome creatures even break the laws of muscle speed by using mechanical latches "
+             "— a power-amplification system similar to pulling an arrow where the bow itself does the work. The "
+             "Mantis Shrimp builds tension like a crossbow and releases a punch that accelerates faster than a .22 "
+             "caliber bullet (insane!) while the Trap-Jaw Ant snaps its mandibles shut at 145 mph! This is the "
+             "pure power of storing energy in a biological exoskeleton (like a spring ligament) and releasing it "
+             "all at once. Muscles have a physical speed limit; the cross-bow part of their body (the exoskeleton) "
+             "is what breaks that limit.\n\nBut know... being fast is expensive and burns huge amounts of energy. "
+             "Sluggish animals like snails and turtles aren't bad at reacting; they’ve simply traded high-octane "
+             "speed for energy conservation and heavy armor. They don't need to be fast if they have a literal "
+             "fortress on their backs; and they have a much lower metabolic rate (energy processing). Because they "
+             "don't have the fast energy-consuming muscles, they can survive for weeks or even months on a single "
+             "meal."
+    },
+    {
+        '?': "How do some creatures generate electricity and light?",
+        '✓': "Creatures like the Electric Eel generate power using specialized muscle cells called "
+             "electrocytes (like tiny batteries). On their own, one cell only produces a tiny voltage (0.15V), but "
+             "the eel has thousands of them stacked in long rows. When the eel wants to strike, it sends a nerve "
+             "signal that makes all these electrocytes discharge at the exact same time. By wiring them in series "
+             "the eel can produce a massive shock of up to 600 to 800 volts — enough to stun a horse!\n\nAt a "
+             "fundamental level, this electricity is identical to the one we use. It consists of a flow of "
+             "electrons that can power a circuit or cause a shock. The only difference is the fuel - while a wall "
+             "outlet uses magnets and turbines, the eel uses ion pumps (moving sodium and potassium across a "
+             "membrane) to create the electrical pressure.\n\nAn electric eel is essentially a living insulator. "
+             "Its vital organs (heart, brain) are wrapped in thick, fatty tissue that acts like the rubber coating "
+             "on a wire, blocking the current. also, because the eel is much larger than its prey, the current is "
+             "spread out over its body but transfered and concentrated in the small fish it's targeting. It "
+             "essentially out-sizes its own weapon.\n\nNow for light generation; it isn't about heat, it’s a "
+             "chemical reaction. Most creatures (like fireflies or deep-sea anglerfish) use a molecule called "
+             "luciferin and an enzyme called luciferase. When the enzyme meets the molecule in the presence of "
+             "oxygen, it triggers a reaction that releases energy as cold light. This is incredibly efficient "
+             "because nearly 100% of the energy is turned into light, whereas a human lightbulb wastes most of its "
+             "energy as heat. This light is used for communication (fireflies finding mates), luring prey (the "
+             "anglerfish's glowing fishing rod), or camouflage (some squid glow to blend in with the faint light "
+             "from the surface, hiding their shadow from predators below).\n\nUnlike a fire or a traditional "
+             "lightbulb, which produces light as a byproduct of heat (incandescence), cold light (bioluminescence) "
+             "is 95-100% efficient. In your home lightbulb, much of the electricity is wasted as heat (try "
+             "touching a lit bulb!) because it uses electrical energy to heat a wire (filament) until it glows. In "
+             "cold light, the chemical reaction is so precise that it releases almost zero heat but direct light, "
+             "without a heating-up phase; that's why it stays cold. This is vital for deep-sea creatures; if they "
+             "produced heat, they would waste precious energy and potentially \"cook\" their own delicate "
+             "tissues."
+    },
+    {
+        '?': "How do birds and fish see the Earth's magnetic field to migrate?",
+        '✓': "Many migratory animals have microscopic crystals of magnetite (a magnetic mineral) in "
+             "their snouts or beaks. These crystals act like a literal compass needle, tugging on sensory nerves "
+             "as the animal turns. This allows them to feel which way is 'Magnetic North.'\n\nSome birds have a "
+             "more 'sci-fi' method. They have specialized proteins in their eyes called cryptochromes. When blue "
+             "light hits these proteins, it triggers a quantum reaction that is sensitive to magnetic fields. "
+             "Scientists believe this allows birds to actually see the magnetic field lines as a shaded overlay on "
+             "top of their normal vision — like a pilot's 'Heads-Up Display' (HUD).\n\nWhales and fish use "
+             "magnetoreception to navigate the ocean. Whales are believed to use magnetic landmarks on the ocean "
+             "floor — areas where the Earth's crust is more or less magnetic — to stay on course during their "
+             "massive migrations from the poles to the equator. Similarly, Salmon use a magnetic memory of the "
+             "river mouth where they were born; they record the specific magnetic signature of home and use it "
+             "years later to find their way back from thousands of miles away to the exact same stream to spawn "
+             "(but for the final few miles, they switch to their sense of smell - olfaction).\n\nFor many species, "
+             "the map is actually genetic. A young whale or bird doesn't necessarily need to be taught the route; "
+             "they are born with the coordinates for their migration destination already programmed into their "
+             "brain. They simply follow their internal compass which works with the magnetic signature they "
+             "receive. As they travel, they record the magnetic signatures of specific areas. If a whale passes a "
+             "volcanic ridge on the seafloor that has a very strong magnetic pull, its brain bookmarks that spot. "
+             "Because the Earth's magnetic field is stable over very long periods, that landmark will be there "
+             "every year, allowing the whale to navigate the dark, deep ocean with the same confidence you have "
+             "walking down your street.\n\nSo while we rely on GPS satellites, animals use the Earth’s core. The "
+             "magnetic field provides a 24/7 navigation grid that works in total darkness, through thick clouds, "
+             "and across featureless oceans where there are no landmarks to follow."
+    },
+    {
+        '?': "How do plants feel their surrounding? How do they respond?",
+        '✓': "Plants don't have a central brain, but they use electrical and chemical signals to "
+             "communicate from leaf to root.\n\nWhen you cut a leaf or a bug bites a plant, the plant sends an "
+             "electrical signal (action potentials) to the rest of its body. Instead of neurons, they use their "
+             "vascular system (the tubes that carry water and sugar). This signal tells the other leaves to start "
+             "pumping out toxins or bad-tasting chemicals to stop the attacker.\n\nPlants don't have pain "
+             "receptors or a brain to feel suffering like we do, but they definitely have a danger response. They "
+             "know they are being damaged and react instantly to survive.\n\nPlants have light-sensitive proteins "
+             "called phototropins. When light hits one side of a stem, these sensors trigger auxins (growth "
+             "hormones) to migrate to the shaded side. The shaded side of the stem now has a much higher "
+             "concentration of auxin than the sunny side.\n\nAuxin makes the cell walls soft and elastic, allowing "
+             "those cells to absorb more water and stretch out. Since the cells on the sunny side stay the same "
+             "size while the cells on the shaded side get longer, the stem has no choice but to arc toward the "
+             "light.\n\nThis arc pivots the entire top of the plant until the leaves are staring directly at the "
+             "sun. Facing the sun allows the leaves to absorb the maximum amount of light photons. More photons + "
+             "ground nutrients = more sugar = more growth.\n\nOnce the plant tip faces the light directly, the "
+             "light hits the stem from the top down rather than from the side. This allows the light to hit all "
+             "sides of the stem equally. The auxin levels then balance out, the plant stops bending, and it grows "
+             "straight toward the light source. This whole process is called 'Phototropism.'\n\nWater "
+             "(Hydrotropism):\nRoots can hear the vibration of water moving through pipes or soil even if they "
+             "aren't touching it yet. They use moisture sensors at the very tip of the root (the root cap) to "
+             "steer their growth toward the wettest areas.\n\nThe plant now uses the same auxin trick as the stem "
+             "— but in reverse.\nIn roots, a high concentration of auxin actually slows down growth.\n\nThe plant "
+             "sends auxin to the dry side of the root, which causes the wet side to grow faster and longer. This "
+             "mechanical imbalance forces the root to curve and dive directly toward the water source. Once it "
+             "hits the water, the root system branches out to create a massive surface area for absorption.\nThis "
+             "whole process is called 'Hydrotropism.'\n\nPlants talk to each other through an underground network "
+             "of fungi (mycorrhizae).\nand form a 'Wood Wide Web.' Through these threads, trees can share "
+             "nutrients with baby trees or send chemical warnings to their neighbors about a local insect. About "
+             "90% of all land plant species form these partnerships with fungi.\n\nA single fungal network can "
+             "stretch across an entire forest, linking different species — like an oak tree talking to a pine "
+             "tree. But some plants (like those in the mustard or cabbage family) don't join the network. They are "
+             "solitary and rely purely on their own roots.\n\nThe most amazing part is that 'Mother Trees' can "
+             "actually recognize their own kin, and send more sugar through the fungal threads to their own baby "
+             "saplings than to strangers of the same species."
+    },
+    {
+        '?': "How do we - or any creature - produce sound?",
+        '✓': "To produce sound, creatures basically turn their bodies into wind instruments. It’s a "
+             "three-step mechanical process: Airflow, Vibration, and Resonance.\n\nThe Power Source (Air): For "
+             "humans and most land animals, it starts in the lungs. We push air upward through the windpipe "
+             "(trachea). Without this moving air, there is no fuel for the sound.\n\nThe Vibrator (Strings): The "
+             "air hits a specialized valve in the throat called the larynx (or the syrinx in birds). Inside are "
+             "two flaps of muscle and tissue called vocal folds (or vocal cords). When we want to speak, we "
+             "tighten these folds. As the air forces its way through the narrow gap, the folds flap together at "
+             "incredible speeds — hundreds of times per second. This turns the steady stream of air into puffs of "
+             "sound waves.\n\nThe Filter (Resonance): The buzz created by the throat sounds like a simple reed "
+             "instrument (or like a duck call). To turn that buzz into a word or a specific call, we use our "
+             "throat, mouth, and nasal cavities as a resonance chamber. By moving our tongue, lips, and jaw, we "
+             "change the shape of the chamber. This filters the sound, boosting some frequencies and muffling "
+             "others, which creates the distinct 'A,' 'E,' 'O' sounds or the complex chirps of a bird.\n\nBirds "
+             "have a syrinx located at the bottom of the windpipe. It is so efficient they can produce two "
+             "different notes at the exact same time!\n\nInsects (Crickets) don't use air. They use stridulation — "
+             "rubbing their wings together like a bow on a violin.\n\nSome fish drum by vibrating their swim "
+             "bladder (an internal gas bag) using specialized fast-twitch muscles."
+    },
+    {
+        '?': "How can we control our body? How can it respond to us?",
+        '✓': "Body control operates like a biological circuit where the 'idea' to move and the "
+             "physical action are linked by rapid-fire electrical pulses. When you decide to move your hand, that "
+             "thought manifests in the prefrontal cortex as a specific pattern of neural firing. This electrical "
+             "signal—the \"idea\"—is essentially the brain's internal language, generated by the shifting of ions "
+             "(sodium and potassium) across the membranes of your neurons. These signals travel down your spinal "
+             "cord and through peripheral nerves to your muscles. Once the signal reaches the muscle, it triggers "
+             "a chemical release that causes the muscle fibers to slide past each other and contract. This is a "
+             "voluntary response, but your body also handles thousands of involuntary responses simultaneously, "
+             "like your heart beating or your pupils dilating, which are controlled by the autonomic nervous "
+             "system without you ever having to \"think\" about them.\n\nAs for where the initial 'idea' "
+             "originally comes from, that is the 'frontier' of neuroscience. Most scientists see it as a chain "
+             "reaction: your brain is constantly processing external data (what you see or hear) and internal "
+             "states (hunger or memory). These inputs collide in the brain's command center, where they trigger a "
+             "threshold of electrical activity. Once that threshold is hit, a signal is sent. So, your 'idea' to "
+             "move isn't a magical spark from nowhere; it is the result of a massive calculation performed by "
+             "billions of neurons reacting to your environment and your past experiences. Your consciousness is "
+             "essentially the interface that experiences this complex biological computation as a simple, singular "
+             "thought."
+    },
+    {
+        '?': "Why don't we notice our nose in sight?",
+        '✓': "Actually, you can see your nose! If you close one eye and look it’s right "
+             "there. But the reason you don't notice it constantly — like you're looking "
+             "through it — is due to your fascinating brain functions: Sensory Adaptation "
+             "and Binocular Vision.\n\n"
+             "Expert Filter: Your brain is constantly bombarded with sensory information. To "
+             "keep you from getting overwhelmed, it uses a process called 'Unconscious "
+             "Selective Attention'.\n\n"
+             "Because your nose is always in your field of vision, it provides no new "
+             "information. It isn't moving, it isn't a threat, and it isn't something you "
+             "need to interact with. Consequently, your brain labels it as background noise "
+             "and simply filters it out. It’s the same reason you stop feeling the socks on "
+             "your feet or the shirt on your back after a few minutes.\n\n"
+             "Ghost Effect (Binocular Vision): Since your eyes are set a few inches apart, "
+             "they see the world from slightly different angles. This is how we perceive "
+             "depth, but it also helps us see through the nose.\n\n"
+             "Your left eye sees what is to the left of your nose, and your right eye sees "
+             "what is to the right. When both eyes are open, your brain merges these two "
+             "different images into one seamless 3D view. Because the right eye can see the "
+             "space that the left eye’s view of the nose is blocking (and vice-versa), your "
+             "brain prioritizes the clear image of the background over the blurry "
+             "obstruction of the nose.\n\n"
+             "Unlike 'Monocular Vision' (One eye), the nose blocks a significant chunk of "
+             "the view with no second angle to fill in the gaps, so you just see it.\n\n"
+             "Try this: Hold your index finger vertically about two inches from your eyes. "
+             "Focus on a distant object. Your finger will appear transparent or like a "
+             "ghost. That’s exactly what’s happening with your nose!"
+    }
+]
+
 def language(box: callable):
     """
     Display a random foreign-language-expression with its translation.
@@ -3724,14 +4584,50 @@ def riddle(box: callable, wrapper: callable, open_path: callable, show_solution=
    
     # Show it.
     box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP)
+  
+def science_query(box: callable, wrapper: callable, open_path: callable, show_solution=False, user_input=''):
+    """
+    Show a random scientific question with its solution.
+    Work with /science or /physic commands.
+    """
+    from os import path
     
+    # Show the solution of previous riddle.
+    text_file = path.join(USER_DATA_DIR, 'science_answer.txt')
+    app_dir = path.dirname(path.abspath(__file__))
+    full_path = path.join(app_dir, text_file)
+    
+    if show_solution:
+        open_path(full_path, clear=2, restore_prompt=user_input)
+        return
+    
+    # Choose a puzzle and prepare its question & answer.
+    puzzle = choice(SCIENCE)
+    question = puzzle['?'].strip()
+    answer = puzzle['✓'].strip()
+
+    # Hide the answer in a file.
+    with open(text_file, 'w', encoding='utf-8') as f:
+        content = '# Query:\n' + question + '\n\n# Answer:\n' + answer
+        content = wrapper(content, width=90)
+        f.write(content)
+    
+    # Prepare the visual message.
+    title = choice(['SCIENCE', 'PHYSICS', 'NATURE'])
+    msg = '# Query:\n' + question + '\n\n'
+    msg += CYN + '# The answer is written in:\n' + CYN + full_path + '\n'
+    msg += CYN + "(Type /s-answer or /science-answer to see it)"
+   
+    # Show it.
+    box(msg, title=title, border_color=PURP, text_color=PURP, secondary_color=PURP)
+  
 def fake_scan(console_status: callable, separator: callable):
     """
     Confuse the user with fake scannning messages >:)
     Work with /scan or /clean commands.
     """   
     # Fake warning.
-    print(PURP)
+    print()
     separator(color=PURP)
     print(YLW + '[!] WARNING!\nThe following content may be too intense for some people!')
     print('Especially for users who experience eye strain or photosensitivity.')
@@ -4033,6 +4929,374 @@ def fake_scan(console_status: callable, separator: callable):
         else: print("* Everything was fake & contained inside this program; all safe." + RS)
         separator(color=PURP)
 
+def fake_ransomware(console_status: callable, separator: callable):
+    """Display a fake ransomware popup :)"""
+    # Fake warning.
+    print()
+    separator(color=PURP)
+    print(YLW + '[!] WARNING!\nThe following content may be too intense for some people!')
+    promise = None
+    try: promise = input('Do you promise me not to get freaked out? (y/n): ' + RS).strip().lower()
+    except KeyboardInterrupt: print()
+    if promise != 'y':
+        print(PURP + '\nMaybe next time. When you are ready...' + RS)
+        separator(color=PURP)
+        return
+    
+    # Fake messages.
+    messages = [
+        "Attempting to disable system antivirus real-time protection...",
+        "Installing ransomware...",
+        "Injecting shellcode into lsass.exe...",
+        "Modifying Group Policy Object (GPO) to disable Task Manager...",
+        "Elevating privileges to NT AUTHORITY/SYSTEM...",
+        "Modifying Registry's 'Policies/System/DisableRegistryTools'...",
+        "Restricting 'User Account Control' (UAC) prompts...",
+        "Flushing DNS cache and redirecting hosts file...",
+        "Terminating antivirus process: MsMpEng.exe...",
+        "Overwriting Master Boot Record (MBR) sequence...",
+        "Acquiring SeDebugPrivilege for process migration...",
+        "Disabling Safe Mode and Recovery Environment...",
+        "Encrypting Shadow Copy volumes (VSS)...",
+        "Establishing persistent backdoor via Task Scheduler...",
+        "Blocking outbound firewall rules for security vendors...",
+        "Intercepting kernel-mode drivers...",
+        "Modifying 'AppLocker' policies to bypass execution prevention...",
+        "Deleting system restore points...",
+    ]
+    
+    paths = [
+        "C:/Users/Admin/AppData/Roaming/",
+        "C:/Users/Admin/Documents/",
+        "C:/Windows/System32/config/SAM/",
+        "C:/Users/Admin/.ssh/keys/",
+        "C:/Windows/System32/drivers/etc/"
+        "credentials.json",
+        "id_rsa",
+        "vault_manifest.bin",
+        "master_key.log",
+        "ntuser.dat",
+        "shadow_copy.vss",
+    ]
+    
+    print()
+    shuffle(messages)
+    shuffle(paths)
+    
+    try:
+        for msg in messages[:10]:
+            with console_status(status=f'[bold {STATUS_PURP}]{msg}\n[/bold {STATUS_PURP}]', spinner=SPINNER) as status:
+                sleep(uniform(0.1, 0.75))
+                print(BL + '- ' + msg)
+        
+        for path in paths:
+            msg = 'ENCRYPTING: ' + path
+            with console_status(status=f'[bold {STATUS_PURP}]{msg}\n[/bold {STATUS_PURP}]', spinner=SPINNER) as status:
+                sleep(uniform(0.05, 0.4))
+                print(RED + '- ' + msg)
+    except:
+        print(RED + '- Attempted user-cancellation, but too late.')
+        pass
+        
+    # Prepare the pop-up.
+    import tkinter as tk
+    from tkinter import font as tkfont
+    from tkinter.scrolledtext import ScrolledText
+    from datetime import timedelta
+    
+    root = tk.Tk()
+    root.attributes('-fullscreen', True)
+    root.attributes('-topmost', True)
+    root.config(bg='black', cursor='pirate')
+    tasks = {'timer': None, 'glitch': None, 'focus': None}
+    remaining_seconds = 86400   # 24h
+    is_running = True
+
+    # SECRET EXIT: Press SHIFT-ESCAPE to exit.
+    def safe_destroy(*_):
+        nonlocal is_running
+        is_running = False
+        
+        # 2. Cancel any pending tasks before destroying root
+        try:
+            if tasks['timer']: root.after_cancel(tasks['timer'])
+            if tasks['glitch']: root.after_cancel(tasks['glitch'])
+            if tasks['focus']: root.after_cancel(tasks['focus'])
+        except:
+            pass
+            
+        root.quit()
+        root.destroy()
+        return 'break'
+        
+    root.protocol("WM_DELETE_WINDOW", lambda: None)
+    root.bind('<Shift-Escape>', safe_destroy)
+
+    # 1. ASCII Skull Header
+    skull_art = """
+                     ..ooo@@@XXX%%%xx..
+                  .oo@@XXX%x%xxx..     ` .
+                .o@XX%%xx..               ` .
+              o@X%..                  ..ooooooo
+            .@X%x.                 ..o@@^^   ^^@@o
+          .ooo@@@@@@ooo..      ..o@@^          @X%
+          o@@^^^     ^^^@@@ooo.oo@@^             %
+         xzI    -*--      ^^^o^^        --*-     %
+         @@@o     ooooooo^@@^o^@X^@oooooo     .X%x
+        I@@@@@@@@@XX%%xx  ( o@o )X%x@ROMBASED@@@X%x 
+        I@@@@XX%%xx  oo@@@@X% @@X%x   ^^^@@@@@@@X%x
+         @X%xx     o@@@@@@@X% @@XX%%x  )    ^^@X%x
+          ^   xx o@@@@@@@@Xx  ^ @XX%%x    xxx
+                o@@^^^ooo I^^ I^o ooo   .  x
+                oo @^ IX      I   ^X  @^ oo
+                IX     U  .        V     IX
+                 V     .           .     V
+                        
+          BAD NEWS, YOUR FILES HAVE BEEN ENCRYPTED!
+    """
+    lines = skull_art.splitlines()
+    lines = [line[8:] for line in lines]
+    skull_art = '\n'.join(lines)
+    
+    skull_font = tkfont.Font(family="Consolas", size=14, weight="bold")
+    skull_label = tk.Label(root, text=skull_art, fg='red', bg='black', font=skull_font)
+    skull_label.pack(pady=10)
+
+    # 2. Scrollable Log Area (Encrypted files list)
+    log_area = ScrolledText(
+        root, width=100,
+        height=12,
+        bg='black',
+        fg='#00FF00', 
+        font=("Consolas", 12),
+        borderwidth=0,
+        padx=9, # Internal horizontal padding
+        pady=7, # Internal vertical padding
+        highlightthickness=1,          # This creates a thin border
+        highlightbackground='white',
+        wrap='word'
+    )
+    log_area.pack(pady=10, expand=True, fill='y')
+    
+    long_text = """
+        What Happened To This Computer?
+        All your personal data, photos, videos, work files, including your operating system have been \
+        encrypted and can be accessed again if you pay a ransom. You can't access anything on this \
+        machine but this screen.
+
+        You have 24 hour to pay the prize, otherwise you will no longer be able to decrypt them. \
+        Powering OFF or restarting your computer will also DESTROY your files.
+
+        What Can You Do?
+        You might be looking for a way to recover your files but don't waste your time. \
+        We use an unbreakable encryption so nobody can restore your files without a decryption key \
+        (Don't cry yet, continue reading).
+
+        You can purchase your key using one of the payment methods listed below. You will receieve \
+        a decryption code followed by a set of instructions. After this you should be restored in \
+        a couple of minutes.
+
+        Is This Legal?
+        Someone who has access to this computer has recently installed one of our free applications \
+        and agreed for the files to be encrypted by accepting the terms and conditions. \
+        This procedure is absolutely legal, we are a certified and awarded company specialized in \
+        computer viruses and digital identity theft. We will send you an invoice for your payment.
+
+        How Do You Pay?
+        We offer many payment methods to make the transaction smooth and easy to make you a \
+        satisfied but not a returning customer:
+
+        Send $399 + Tax worth of Monopoly Money to this address:
+            ʞuɐɹԀ∀ʇsnſsIsᴉɥ┴ # Charges apply, read below.
+        Send the fee with PayDude:
+            shut-up-and-take-my-money@blablabla.com
+        We now accept kidneys!
+        Call now to request kidney transplant: +1 804 TAKE MY KIDNEY
+        
+        Still Having Trouble?
+        You shouldn't be worried, your files are safe and you don't need to pay anything.
+        This was just a prank :3
+
+        You can revert back to your system by pressing the SHIFT-ESCAPE (ESC) keys.
+        We deeply apologize if it went too serious...
+        
+        Inspired from: https://geekprank.com/
+    """
+    lines = long_text.strip().replace('        ', '').splitlines()
+    lines = [line.strip() for line in lines]
+    long_text = '\n'.join(lines)
+    
+    log_area.insert(tk.END, long_text)
+    log_area.see("1.0")
+    log_area.configure(state='disabled')
+
+    # 3. Instruction & Timer Label
+    info_label = tk.Label(
+        root, 
+        text="", 
+        fg='white', 
+        bg='black', 
+        font=("Consolas", 14, "bold"),
+        justify='center'
+    )
+    info_label.pack(side='bottom', fill='x', pady=30)
+        
+    def force_focus():
+        if not is_running: return
+        try:
+            root.lift()
+            root.attributes('-topmost', True)
+            root.focus_force()
+            tasks['focus'] = root.after(200, force_focus) # Store ID
+        except: pass
+        
+    def update_timer():
+        if not is_running: return
+        try:
+            nonlocal remaining_seconds
+            if remaining_seconds > 0:
+                remaining_seconds -= 1
+                time_str = str(timedelta(seconds=remaining_seconds))
+                info_label.config(text=f"TIME REMAINING: {time_str}")
+                tasks['timer'] = root.after(1000, update_timer) # Store ID
+        except: pass
+
+    def glitch_effect():
+        if not is_running: return
+        try:
+            current_fg = skull_label.cget("fg")
+            next_fg = "white" if current_fg == "red" else "red"
+            skull_label.config(fg=next_fg)
+            tasks['glitch'] = root.after(randint(50, 800), glitch_effect) # Store ID
+        except: pass
+
+    # Start everything
+    force_focus()
+    update_timer()
+    glitch_effect()
+    root.mainloop()
+    
+    # Leave.
+    print(GR + '\nJust a prank!')
+    print('Again, we deeply apologize if it went too serious...')
+    separator(color=PURP)
+
+def fbi_takeover(clear_lines):
+    """Display a fake screen of FBI lockdown."""
+    import tkinter as tk
+    from tkinter.scrolledtext import ScrolledText
+
+    root = tk.Tk()
+    root.attributes('-fullscreen', True, '-topmost', True)
+    root.config(bg='#001a33') 
+    root.protocol("WM_DELETE_WINDOW", lambda: None)
+    root.bind('<Shift-Escape>', lambda e: root.destroy())
+
+    # 1. Native Image Loading (Requires .png format)
+    try:
+        logo_img = tk.PhotoImage(file=os.path.join(PROGRAM_DATA_DIR, "FBI Logo.png"))
+        logo_img = logo_img.subsample(4, 4) 
+        logo_label = tk.Label(root, image=logo_img, bg='#001a33')
+        logo_label.image = logo_img 
+        logo_label.place(relx=1.0, x=-20, rely=0.0, y=20, anchor='ne')
+    except:
+        pass
+
+    # 2. Header
+    tk.Label(
+        root, text="FEDERAL BUREAU OF INVESTIGATION", 
+        fg='white', bg='#001a33', font=("Helvetica", 28, "bold"),
+        pady=30,
+    ).pack()
+
+    # 3. Protocol Log
+    log_area = ScrolledText(
+        root, width=90, height=15, 
+        bg='white', font=("Arial", 14),
+        padx=20, pady=20
+    )
+    log_area.pack(pady=20, padx=320, expand=True, fill='y')
+    
+    warning_text = (
+        "RESTRICTED DATA ACCESS - AUTHORIZATION LEVEL: TOP SECRET/SCI\n"
+        "--------------------------------------------------------------------------------\n"
+        "[CRITICAL ALERT]: MANDATORY SYSTEM SEIZURE INITIATED BY FEDERAL ORDER\n"
+        "--------------------------------------------------------------------------------\n\n"
+        "REASON FOR INTERVENTION:\n"
+        "This workstation has been flagged by the Einstein 3.0 Intrusion Detection System.\n"
+        "Multiple violations of the 'Electronic Communications Privacy Act' (ECPA) and \n"
+        "the 'National Security Act' have been traced to this physical MAC address.\n\n"
+        "IDENTIFIED TRANSGRESSIONS:\n"
+        " - Unlicensed distribution of high-level memes without a 'Funny License'.\n"
+        " - Unauthorized access to 'The Forbidden Fridge' (Section 8.1).\n"
+        " - Suspiciously high levels of procrastinating during productive hours.\n"
+        " - Protocol 99-B: General silliness in a restricted digital zone.\n\n"
+        "ACTIVE LIVE PROTOCOLS:\n"
+        "[LOG]: Initializing Bitstream Image of /dev/sda1... [SUCCESS]\n"
+        "[LOG]: Exfiltrating browser history to central mainframe... [WARNING: Cringe Detected]\n"
+        "[LOG]: Activating webcam and microphone for ambient surveillance... [ONLINE]\n"
+        "[LOG]: Remote lockout of peripheral devices... [ENGAGED]\n"
+        "[LOG]: GPS Triangulation of local hardware... [STREET ADDRESS ACQUIRED]\n\n"
+        "LEGAL CONSEQUENCES:\n"
+        "Under Title 18, U.S. Code, Section 1030, you are hereby ordered to keep your hands\n"
+        "visible at all times. Do not attempt to close this window. Federal agents have \n"
+        "been dispatched to your coordinates via black helicopter and/or very fast bicycles.\n\n"
+        "--------------------------------------------------------------------------------\n"
+        "SYSTEM STATUS: COMPROMISED\n"
+        "TIME UNTIL AGENT ARRIVAL: 5H\n"
+        "--------------------------------------------------------------------------------\n\n"
+        "JUST KIDDING!\n"
+        "This was a prank! You can breathe now. \n"
+        "Your files are safe, your mic isn't ON, and no one is coming on a bicycle.\n\n"
+        "Press SHIFT-ESCAPE (ESC) to escape this nightmare."
+    )
+    log_area.insert(tk.END, warning_text)
+    log_area.config(state='disabled')
+
+    # 4. Farewell
+    tk.Label(
+        root, text="CASE ID: 01-2244-LOG", 
+        fg='gray', bg='#001a33', font=("Arial", 10)
+    ).pack(side='bottom', pady=20)
+
+    root.mainloop()
+    clear_lines(2)
+
+def break_screen(clear_lines):
+    """Displays a fake shattered screen with dead pixels."""
+    import tkinter as tk
+
+    root = tk.Tk()
+    root.attributes('-fullscreen', True, '-topmost', True)
+    root.config(bg='black', cursor='none')
+    
+    # Exit on any interaction
+    root.bind('<Key>', lambda e: root.destroy())
+    root.bind('<Button-1>', lambda e: root.destroy())
+
+    try:
+        # Load your image (MUST BE .png, .gif, or .ppm for native Tkinter)
+        img_path = os.path.join(PROGRAM_DATA_DIR, "Broken Screen.png")
+        screen_img = tk.PhotoImage(file=img_path)
+
+        # Create a label to hold the image
+        # We use 'place' with relwidth/relheight to cover the screen
+        label = tk.Label(root, image=screen_img, bg='black')
+        label.image = screen_img 
+        
+        # This centers the image and allows it to "overflow" or 
+        # fill the space without distorting.
+        label.place(relx=0.5, rely=0.5, anchor='center')
+
+    except Exception as e:
+        # Fallback if the image fails to load
+        tk.Label(root, text="FATAL ERROR: DISPLAY DRIVER CRASHED", 
+                 fg='white', bg='black', font=("Arial", 20)).pack(expand=True)
+        raise
+
+    root.mainloop()
+    clear_lines(2)
+
 def overthink(box: callable):
     """
     Funny state of minds while overthinking.
@@ -4235,8 +5499,6 @@ def time_travel(command: str, box: callable):
                 years_int.append(integer)
                 
     top_match = nsmallest(1, years_int, key=lambda x: abs(user_year_int - x))[0]
-    print([y for y in years if y.startswith('15')])
-    print([y for y in years_int if str(y).startswith('15')])
     
     # Track the result & find its original string in TIME_TRAVEL list.
     i = years_int.index(top_match)
@@ -4439,7 +5701,8 @@ def show_globals(cprint: callable):
 
     for name, obj in globals().items():
         # Check for only regular variables/constants.
-        if name.startswith('__') or isfunction(obj) or ismethod(obj) or isclass(obj) or ismodule(obj):
+        if name.startswith('__') or isfunction(obj) or ismethod(obj) or isclass(obj) or ismodule(obj) \
+            or 'function' in str(type(obj)) or 'method' in str(type(obj)):
             continue
             
         # Show raw form of string, shrink them & avoid multilines.
@@ -4512,7 +5775,7 @@ def reload_custom_modules(cprint: callable):
         if module_file and  project_dir in module_file:
             try:
                 reload(module)
-                cprint(f"{GR}- Model reloaded: {name}.")
+                cprint(f"{GR}- Module reloaded: {name}.")
             except Exception as error:
                 cprint(f"{RED}- Failed to reload '{name}': {error}")
     

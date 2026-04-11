@@ -9,16 +9,18 @@
   <a href="SCREENSHOTS.md">Screenshots</a> •
   <a href="#features">Features</a> •
   <a href="#quick-start">Quick Start</a> •
+  <a href="How_to_bundle_the_program_with_PyInstaller.md">Bundling</a> •
   <a href="#wiki">Wiki</a> •
   <a href="#limitations">Limitations</a> • <br>
 </p>
 
 ## Gemini Py-CLI
-A simple Gemini CLI program, written in Python. <br>
-Used for simple conversations (and for fun too :) <br>
-+ Tested using Command Prompt & ConEmu console, in Windows 8.1 64-bit. <br>
-+ <span style="color:orange; font-weight:bold;">In development, help is highly appreciated!</span><br>
+A simple AI chat CLI program, written in Python. <br>
+Acts as a lightweight client for [Google AI web app](https://gemini.google.com/app), which is called ***Gemini***. <br>
+Can be used for simple conversations (and for fun too :) <br>
 + **Screenshots can be seen [here](SCREENSHOTS.md).**
++ Tested using Command Prompt & ConEmu console, in Windows 8.1 64-bit. I tried my best to keep it cross-platform, but I couldn't test it in Linux/macOS.<br>
++ <span style="color:orange; font-weight:bold;">This repository is no longer maintained...</span><br>
 
 ---
 <span style="color:cyan"><b><i>Reminder:</i></b><br>For people who don't know Python, it's just a small command-line program. After installing it, you only run 2 commands, one to install dependencies (which took me 10 min with my 80kb/s internet), then the main command which is instant.</span>
@@ -32,7 +34,7 @@ Used for simple conversations (and for fun too :) <br>
 * Content can be saved locally in many forms, even if the program crashes:
 	+ Automatically, save chat history & prompt history to a structured text file.
 	+ At request, save chat history, last AI response or saved info to a human readable text file.
-* Colorful & vital console text.
+* Colorful & vital console text; with also partial GUI support.
 * Word suggestion & completion:
 	+ Suggest from a wordlist, a menu popup to choose a word from.
 	+ Suggest from history, you get inline completion upon typing words from previous prompts.
@@ -45,8 +47,8 @@ Used for simple conversations (and for fun too :) <br>
 ## Quick Start
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
-2. Install needed libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary stop_words tksvg resvg_py markdown tkinterweb json_repair` <br>
-([Here](https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Libraries) is a summary about required/optional libraries.
+2. Install needed libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary stop_words tksvg resvg_py markdown tkinterweb json_repair html2text beautifulsoup4` <br>
+([Here](https://github.com/Mohyoo/Gemini-Py-CLI/wiki/Libraries) is a summary about required/optional libraries).
 3. Clone this repository; or download the [ZIP](https://github.com/Mohyoo/Gemini-Py-CLI/archive/refs/heads/main.zip) file, extract it, and enter the extracted folder.
 4. Unleash Gemini Py-CLI! open CMD & type: `python gemini.py` <br> (Obviously, you'll get an API key error, just continue reading)
 
@@ -63,35 +65,26 @@ the program.
 3. Press `F3` to upload file(s).
 3. Type `help` for more details (No *bla bla bla...* just 1 min reading).
 
+## Bundling
+Read the instructions [here](How_to_bundle_the_program_with_PyInstaller.md) to bundle the app using PyInstaller.
+
 ## Wiki
 Visit the [Wiki](https://github.com/Mohyoo/Gemini-Py-CLI/wiki) for some valuable information.
 
-Don't worry, there is no *bla bla bla...* everything is hardly summarized :)
+There is no *bla bla bla...* everything is hardly summarized :)
 
 
 ## Limitations:
 1. Tables with many columns will appear chaotic.
-2. Special characters (like the asterisk '*' for bold or italic text)
+2. Special characters (like the asterisk '*' for bold or italic text).
 will appear as a plain text.
 3. Some other bugs I didn't discover yet :)
 
-## To Do
-1. Handle big markdown tables so that they appear readable.
-2. Refactor the code and make it human readable (A total mess is here).
-3. Enhance response speed (If already possible).
-4. Handle more stupid errors.
-5. Change the world...
-6. And more... I'm suffering.
-
 ---
-***Useless Notes:*** <br>
-This script in under development, and I'm too lazy to keep working on it. <br>
-If you want more features, or want binaries for Windows, etc. You can tell me (In the [Issues](https://github.com/Mohyoo/Gemini-Py-CLI/issues) section for example). <br>
-Let's just hope google won't change its Gemini server protocols. <br>
-
-There is also a serie of commented `raise` statements in the script, ignore them, they are just for testing.
+***Useless Note:*** <br>
+There are series of commented `raise` statements in the script. Ignore them, they are just for testing.
 
 ---
 
 ## Disclaimer
-This is not an official **Google** program!
+This is not an official **Google** app!

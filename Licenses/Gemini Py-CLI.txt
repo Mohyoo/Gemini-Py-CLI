@@ -1,0 +1,5 @@
+Do whatever you want using 'Gemini Py-CLI', wherever you want.
+Half of it was written using AI itself, so I won't complain.
+
+But as a polite programmer request, I'll be happy if you mention my name...
+For the efforts.

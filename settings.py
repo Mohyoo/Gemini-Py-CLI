@@ -21,13 +21,11 @@ LOAD_CHAT_MODE = 'load'                      # Whether to load or ignore chat hi
                                                  # 'load' to always load chat without asking.
                                                  # 'forget' to always forget last chat without asking.
 ERROR_LOG_ON = True                          # To log errors to a file, console output won't be affected.
-GLOBAL_LOG_ON = True                         # To log the entire console output to a file + optionally hidden debugging info;
+GLOBAL_LOG_ON = False                        # To log the entire console output to a file + optionally hidden debugging info;
                                                  # it gets cleared on each launch; visual console output won't be affected.
 
 # General Settings
-GEMINI_API_KEY = 'YOUR_API_KEY_HERE'
-GEMINI_API_KEY = 'AIzaSyA5WgK2AsByFmVbRN6MBeXSOx58vD346TM'
-GEMINI_API_KEY = 'AIzaSyA2DewPvPZQMQgJ_bBPfZhbrgdqNLC31xA'
+GEMINI_API_KEY = 'YOUR_API_KEY_HERE (Just a placeholder)'
 GEMINI_MODEL = 'gemini-2.5-flash-lite'       # Advanced models are more expensive and have less API limits ('gemini-2.5-flash-lite' is a forgiving option for testing)
                                                  # NOTE: versions other than '2.5-flash-lite' or '2.5-flash' may require linking a billing account even for Free Tier.
 ENTER_NEW_LINE = False                       # If True, Enter inserts a new line, and Esc-Enter submits; if False, Enter submits, and Esc-Enter inserts a new line.
@@ -56,8 +54,9 @@ RESPONSE_EFFECT = 'line'                     # Effect while displaying response;
                                                  # 'char fast' for a fast character-by-character animation; you should check if this causes a high CPU usage in your computer
                                                  # (from Task Manager), if so, it is a waste of resources & energy, bad choice for long responses, but still fine for short ones.
                                                  # * All 'char' animations can cause glitchs!
-ALWAYS_GUI_MODE = False                      # If True; GUI editor & viewer will both be called automatically on each prompt/response.
-DEV_MODE = True                              # If True, you'll get access to the developper bonuses & commands, like... (shhh, they are secret).
+ALWAYS_GUI_VIEWER = False                    # If True, The quick GUI viewer will always be called automatically upon each response.
+ALWAYS_GUI_EDITOR = False                    # If True, The quick GUI editor will always be called automatically on each prompt.
+DEV_MODE = False                             # If True, you'll get access to the developper bonuses & commands, like... (shhh, they are secret).
 FUN_MODE = True                              # If True, you may see some clean jokes or funny statements while using the program.
                                                 # False = everything becomes serious & professional, but boring (Good for adults); but you'll lose access to some secrets.
 
@@ -69,6 +68,7 @@ TEXT_COMPRESSION = False                     # Compress your prompt & save token
 COMPRESSION_LANGUAGE = 'en'                  # Whether TEXT_COMPRESSION is True or the users uses /compress command; this will be the default language to compress the prompt.
                                                 # Choose a language code (E.g: 'ar' for arabic), which can only be:
                                                 # ar, bg, ca, cz, da, nl, en, fi, fr, de, hi, hu, id, it, nb, pl, pt, ro, ru, sk, es, sv, tr, uk, vi.
+FASTER_GUI_EDITOR = False                    # If you feel the quick editor is laggy, set this to True.
 MAX_CONSOLE_WIDTH = 85                       # Max N° characters to print per line, only effective if the terminal size is bigger than this fixed value; should always be < terminal width.
 DYNAMIC_CONSOLE_WIDTH = True                 # If True, console width will be automatically updated upon a terminal size change.
 CASE_SENSITIVITY = True                      # If True, commands like /copy must be in lower case to be executed.
@@ -102,6 +102,8 @@ TEMP_PROMPT_FILE = 'temp_prompt.txt'         # Used when calling the external ed
 CONFIG_FILE = 'config.json'                  # Used to store permanent settings (like GUI options).
 USER_DATA_DIR = 'User_Data'                  # Used to store user data files (the files listed above).
 FILE_GENERATION_DIR = 'Output'               # Used to save generated files & images.
+PROGRAM_DATA_DIR = 'Data'                    # Used to locate binary files that are needed for this program.
+MODES_DIR = 'Modes'                          # Used to locate scripts for the quick chat modes.
 PROMPT_HISTORY_SIZE = 0.5                    # Max prompt history file size (1 = 1 MB); it'll be loaded into memory, so keep it low.
 LOG_SIZE = 0.5                               # Max error log file size (1 = 1 MB).
 
@@ -131,7 +133,7 @@ if USE_COLORS and USE_ANSI:
     BD      = '\033[1m'     # Bold
     RS      = '\033[0m'     # Reset
     GEM_BG  = '\033[44m'    # Background for Gemini.
-    USER_BG = '\033[30m'    # Background for the user prompt in ALWAYS_GUI_MODE.
+    USER_BG = '\033[30m'    # Background for the user prompt in ALWAYS_GUI_EDITOR mode.
     
     # By name (Used in prompt() & console.status()).
     PROMPT_CYN  = 'cyan'     # Background for the prompt indicator. 
@@ -256,6 +258,7 @@ PLACEHOLDER_MESSAGES = [ # Messages displayed in the prompt field when its empty
     "Own the moment...",
     "Make your move...",
     "Do what you do best!",
+    "Bring it to life...",
 ]
 
 if FUN_MODE:
@@ -453,7 +456,7 @@ if SUGGESTIONS_LIMIT < 1: SUGGEST_FROM_WORDLIST_MODE = None
 if MAX_CONSOLE_WIDTH < 10: MAX_CONSOLE_WIDTH = 10
 
 # 2. Selective & Special Cases
-if ALWAYS_GUI_MODE: RESPONSE_EFFECT = None  # Because the GUI window will block the program, we don't want to waste time with effects after it's closed.
+if ALWAYS_GUI_VIEWER: RESPONSE_EFFECT = None   # Because the GUI window is more important in GUI mode.
 if not RESPONSE_EFFECT in (None, 'line', 'word', 'char', 'char slow', 'char fast'): RESPONSE_EFFECT = None
 if not VIM_EMACS_MODE in (None, 'vim', 'emacs'): VIM_EMACS_MODE = None
 if not PROMPT_HISTORY_MODE in (None, 'temporary', 'permanent'): PROMPT_HISTORY_MODE = None
@@ -487,7 +490,7 @@ FILES = (
     'SAVED_LINKS_FILE', 'RECOVERY_PROMPT_FILE', 'TEMP_PROMPT_FILE', 'CONFIG_FILE',
 )
          
-os.makedirs(USER_DATA_DIR, exist_ok=True)
+if 'gemini.py' in os.listdir(): os.makedirs(USER_DATA_DIR, exist_ok=True)
 for file in FILES:
     path = globals()[file]
     globals()[file] = os.path.join(USER_DATA_DIR, path)

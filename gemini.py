@@ -4,19 +4,52 @@
 
 # 1) Part I: Initialization ------------------------------------------------------------------------
 if __name__ == '__main__':
+    import os
+    import sys
+    from settings import console_width, MODES_DIR, USER_DATA_DIR
+    
+    # Change current working directory to the script's dir, to keep it portable.
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+    
+    # In case this script was bundled with PyInstaller, and the user chooses to
+    # launch a quick chat mode, this executable itself will be called instead
+    # of the python interpreter, so we do this to avoid errors:
+    quick_modes = [
+        'momentary_chat.py',
+        'temporary_chat.py',
+        'file_generator.py',
+        'image_generator.py',
+        'google_searcher.py',
+    ]
+    quick_modes = [os.path.join(MODES_DIR, file) for file in quick_modes]
+    
+    if len(sys.argv) > 1 and sys.argv[1] in quick_modes:
+        try:
+            import platform
+            target = sys.argv[1].removesuffix('.py')
+            system = platform.system()
+            if system == "Windows":   # Windows
+                os.startfile(target)
+            elif system == "Darwin":  # macOS
+                os.system(f'open "{target}"')
+            else:                     # Linux/Unix
+                os.system(f'xdg-open "{target}"')
+            sys.exit(0)
+            
+        except Exception as error:
+            print(f'Error: {error}')
+            input('Press ENTER to exit...')
+            sys.exit(1)
+    
     # Loading Screen.
-    from settings import console_width
     print('\n┌' + '─' * (console_width - 2) + '┐')
     print('│ Loading libraries. Just a moment...' + ' ' * (console_width - 38) + '│')
     print('└' + '─' * (console_width - 2) + '┘')
 
-    # Change current working directory to the script's dir, to keep it portable.
-    import os
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    os.chdir(script_dir)
-
 # Import Custom Modules.
 try:
+    import sys # Exeption.
     from settings import *
     if ERROR_LOG_ON: from error_logger import log_caught_exception, LOG_SEPARATOR
     if GLOBAL_LOG_ON: from global_logger import setup_global_console_logger, in_time_log
@@ -26,17 +59,18 @@ except (ImportError, ModuleNotFoundError) as error:
     print(f'Error: {error}.')
     print('Reinstall the program to restore the missing file.')
     print('─' * console_width)
-    quit(1)
+    sys.exit(1)
     
 except (KeyboardInterrupt, EOFError):
-    quit(0)
+    sys.exit(0)
 
 # Import Libraries.
 try:
     # Necessary (The slowest one to import here is google.genai, others are negligeable).
+    import os
+    import sys
     import re
     import io
-    import sys
     import json
     import httpx
     import textwrap
@@ -140,10 +174,10 @@ except (ImportError, ModuleNotFoundError) as error:
     print("Use 'pip' to install the missing modules.")
     print("E.g: open CMD & type: pip install httpx rich")
     print('─' * console_width)
-    quit(1)
+    sys.exit(1)
     
 except (KeyboardInterrupt, EOFError):
-    quit(0)
+    sys.exit(0)
 
 
 
@@ -250,6 +284,7 @@ class Keys():
             buffer = event.app.current_buffer
             current_text = buffer.text
             self.instant_inform(event, 'Now using the quick markdown viewer...')
+            cprint(' \b', end='')   # To avoid an extra 'g' character glitch.
             
             # Show the response & return.
             response = get_last_response('return')
@@ -436,7 +471,7 @@ class Keys():
         for key in self.INTERRUPT:
             @key_bindings.add(key)
             def _(event):
-                """Handle interruption/termination signal, by either: clear or quit."""
+                """Handle interruption/termination signal, by either clearing or quitting."""
                 buffer = event.app.current_buffer
                 text = buffer.text
                 if text:
@@ -787,9 +822,7 @@ if VALIDATE_INPUT:
         """A class used to check/validate user input while typing."""
         # Define our attributes.
         last_length = 0
-        pasted_length = 0
         long_prompt_threshold = 4096
-        long_paste_threshold = 4096
         
         def validate(self, document):
             """
@@ -804,21 +837,12 @@ if VALIDATE_INPUT:
             diff = characters - self.last_length
             self.last_length = characters
             
-            # # Inform/warn about text paste.
-            # if diff > 1:
-                # self.pasted_length += diff
-                # if self.pasted_length > self.long_paste_threshold:
-                    # self.warn('Long paste! Use CTRL-P next time!')
-                # else:
-                    # self.warn('Pasting text...')
-            
-            # # No paste or paste done; reset.
-            # if self.pasted_length:
-                # self.pasted_length = 0
-            
             # Warn about dangerous developper commands.
-            if DEV_MODE and text.startswith(('/system ', '/exec ', '/eval ')):
-                self.warn('Use the command at your own risk! Beware of self-destruction!')
+            if DEV_MODE:
+                commands = ('/system', '/exec', '/eval')
+                for cmd in commands:
+                    if text.startswith(cmd) and text[len(cmd):len(cmd)+1].isspace():
+                        self.warn('Use the command at your own risk! Beware of self-destruction!')
             
             # Get terminal available size.
             columns, rows = terminal_size()
@@ -1163,7 +1187,7 @@ def catch_no_api_key():
 def catch_client_error_startup(error):
     """Used in setup_chat() if STARTUP_API_CHECK is True & the API validation encounters a client side error."""
     if ERROR_LOG_ON: log_caught_exception()
-    msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}.\n"
+    msg_1 = f"{RED}Client side error occurred:\n{RED}{error.message}\n"
     msg_2 = f"{RED}Check your settings, especially the API key validation or limits."
     msg_3 = f"{GR}For a new key, visit: {UL}https://aistudio.google.com/app/api-keys{RS}"
     msg_4 = f"{GR}(Remember that it requires a google account)\n"
@@ -1173,7 +1197,7 @@ def catch_client_error_startup(error):
 def catch_client_error_in_chat(error):
     """Used in get_response() upon a client side error."""
     if ERROR_LOG_ON: log_caught_exception()
-    msg = f"{RED}Client side error occurred:\n{RED}{error.message}."
+    msg = f"{RED}Client side error occurred:\n{RED}{error.message}"
     
     if error.code in [429, 503]:
         # 429 (Quota Limit), 503 (Overloaded).
@@ -1185,7 +1209,7 @@ def catch_client_error_in_chat(error):
     else:
         msg += f"\n\n{YLW}Check your settings, especially the API key validation or limits."
         msg += f"\n{YLW}If you exceeded characters limit (like hundreds of thousands\n{YLW}of characters), shorten your prompt!"
-        msg += f"\n{YLW}Restarting the session might also help (Type 'restart')."
+        msg += f"\n{YLW}Restarting the session might also help (Type /restart)."
         
     box(msg, title='CLIENT SIDE ERROR', border_color=RED, text_color = RED, secondary_color=RED)
 
@@ -1287,7 +1311,7 @@ def catch_server_error_in_chat():
     
     # Exit the function.
     separator(color=RED)
-    if not response: cprint()
+    # if not response: cprint()
     return response
 
 def catch_network_error():
@@ -1389,9 +1413,10 @@ def catch_keyboard_interrupt():
     Used in get_response() if the user wants to cancel sending his prompt.
     Google still has a chance to receive the prompt if the cancellation was late.
     """
-    msg_1 = f"Prompt cancelled, skipping..."
-    msg_2 = f'Rest assured, Google has no idea about what you just sent (probably ;-;).'
-    box(msg_1, msg_2, title='KEYBOARD INTERRUPTION', border_color=GR, text_color=GR, secondary_color=GR)
+    msg_1 = 'Prompt cancelled, skipping...'
+    msg_2 = 'Rest assured, Google has no idea about what you just sent - probably ;-;'
+    msg_3 = 'If late, response might still be received & saved.'
+    box(msg_1, msg_2, msg_3, title='KEYBOARD INTERRUPTION', border_color=GR, text_color=GR, secondary_color=GR)
 
 def catch_json_error(error, file_name, file_content):
     """
@@ -1623,12 +1648,11 @@ def box(*texts: str, title='Message', border_color='', text_color='', secondary_
     cprint('\r', end='')    # To prevent any extra blank line from appearing.
     
     # Show in GUI if requested.
-    if ALWAYS_GUI_MODE:
-        if len(message) < 128: return   # Don't bother show with short messages.
+    if ALWAYS_GUI_VIEWER:
+        if len(message) < 256: return   # Don't bother show with short messages.
         with ProgressBar(bottom_toolbar=' Now using the quick markdown viewer... ', cancel_callback=lambda: None):
             if USE_ANSI: message = ANSI_ESCAPE.sub('', message)
             message = re.sub(r'(?m)^# ', '## ', message)
-            message = message.replace('\n', '\n\n')
             content = f'<h1 style="text-align: center;">{title}</h1>\n\n{message}'
             quick_markdown_viewer(content)
     
@@ -1779,10 +1803,44 @@ def guess_type(path: str):
         'sparql-query', 'latex', 'x-tex', 'x-config', 'x-cfg', 'graphql', 'x-cmake',
         'x-git', 'x-properties', 'x-env', 'x-ruby', 'x-typescript', 'x-sql', 'srt', 'vtt',
     )
+    text_ext = (     # Deduce form file extension as a last resort.
+        'md', 'bat', 'ini', 'sh', 'cpp', 'py', 'json', 'csv', 'tsv', 'txt', 'config',
+        'config', 'log', 'cmd', 'ps1', 'rtf', 'ass', 'spec', 'c', 'mhtml', 'inf', 
+        'c', 'h', 'hpp', 'cc', 'cxx', 'hh', 'java', 'js', 'mjs', 'ts', 'tsx', 'jsx',
+        'css', 'scss', 'sass', 'less', 'html', 'htm', 'xhtml', 'xml', 'rss', 'atom',
+        'svg', 'yaml', 'yml', 'toml', 'sql', 'rb', 'php', 'go', 'rs', 'swift',
+        'kt', 'kts', 'dart', 'lua', 'pl', 'pm', 't', 'r', 'rmd', 'm', 'f', 'f90',
+        'f95', 'asm', 's', 'pas', 'pp', 'd', 'nim', 'zig', 'scala', 'clj', 'cljs',
+        'edn', 'el', 'lisp', 'scm', 'ss', 'hs', 'lhs', 'erl', 'hrl', 'beam', 'ex',
+        'exs', 'v', 'vh', 'sv', 'svh', 'tcl', 'awk', 'sed', 'makefile', 'mk', 'cmake',
+        'dockerfile', 'ignore', 'gitignore', 'env', 'editorconfig', 'procfile',
+        'vhost', 'conf', 'htaccess', 'bash', 'zsh', 'fish', 'vbs', 'reg', 'diff',
+        'patch', 'adoc', 'asciidoc', 'rst', 'tex', 'latex', 'bib', 'log', 'err',
+        'out', 'msg', 'me', '1', '2', '3', '4', '5', '6', '7', '8', 'nfo', 'bak',
+        'tmp', 'temp', 'srt', 'vtt', 'csv', 'tsv', 'properties', 'prefs', 'manifest',
+        'desktop', 'plist', 'jsonl', 'ndjson', 'geojson', 'kml', 'xsd', 'xsl', 'xslt',
+        'wsdl', 'dtd', 'vue', 'svelte', 'twig', 'tpl', 'blade.php', 'liquid', 'erb',
+        'haml', 'pug', 'jade', 'slim', 'coffee', 'litcoffee', 'iced', 'dart', 'elm',
+        'fs', 'fsx', 'fsi', 'ml', 'mli', 'p', 'pas', 'pp', 'inc', 'pas', 'lpr',
+        'groovy', 'gvy', 'gy', 'gsh', 'gradle', 'jenkinsfile', 'sol', 'feature',
+        'robot', 'proto', 'thrift', 'graphql', 'gql', 'styl', 'mjml', 'vba', 'cls',
+        'frm', 'bas', 'applescript', 'scpt', 'ahk', 'au3', 'iss', 'nsi', 'nsh',
+        'wxs', 'wxi', 'rdoc', 'pod', '661', 'p6', 'pl6', 'pm6', 'raku', 'rakumod',
+        'tcl', 'tk', 'expect', 'st', 'stmb', 'oz', 'ice', 'v', 'vlang', 'cr', 're',
+        'res', 'resi', 'purs', 'dhall', 'lean', 'idr', 'lidr', 'agda', 'lagda',
+        'v', 'vdm', 'vdmpp', 'vdmsl', 'thy', 'pwn', 'p', 'inc', 'sma', 'amxx',
+        'gml', 'ls', 'mel', 'ma', 'cg', 'hlsl', 'glsl', 'frag', 'vert', 'geom',
+        'comp', 'tesc', 'tese', 'rchit', 'rmiss', 'rahit', 'rgen', 'rint', 'rcall',
+        'wgsl', 'wat', 'wast', 'spas', 'smali', 'cil', 'msil', 'll', 'bc',
+    )
     
+    # Convert to avoid errors - if needed.
     match mt:
         # Special.
-        case None | 'application/octet-stream': mt = ''  # Let the server guess.
+        case None | 'application/octet-stream':
+            text_ext = tuple('.' + ext for ext in text_ext)
+            if path.endswith(text_ext): mt = 'text/plain'
+            else: mt = ''  # Let the server guess.
         
         # Images.
         case 'image/jpg' | 'image/jfif' | 'image/pjpeg': mt = 'image/jpeg'
@@ -1792,7 +1850,7 @@ def guess_type(path: str):
         case 'application/epub+zip': mt = 'application/epub'
         case 'image/pdf': mt = 'application/pdf'
         case 'text/rtf': mt = 'application/rtf'
-        case c if c.startswith('text/'): mt = 'text/plain'  # Gemini likes code as text/plain.
+        case c if c.startswith('text/'): mt = 'text/plain'
         case c if any(name in c for name in text_names): mt = 'text/plain'
         
         # Audio.
@@ -1805,7 +1863,7 @@ def guess_type(path: str):
         case 'video/x-msvideo': mt = 'video/avi'
         case 'video/x-matroska': mt = 'video/mkv'
         
-        # Microsoft Office
+        # Microsoft Office.
         case 'application/msword': mt = 'application/msword'
         case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': mt = 'application/docx'
         case 'application/vnd.ms-excel': mt = 'application/xls'
@@ -1814,7 +1872,7 @@ def guess_type(path: str):
         case 'application/vnd.openxmlformats-officedocument.presentationml.presentation': mt = 'application/pptx'
         case 'application/vnd.oasis.opendocument.text': mt = 'application/odt'
         case 'application/vnd.oasis.opendocument.spreadsheet': mt = 'application/ods'
-        
+    
     return mt
 
 def update_placeholder(text=None, temp=False, restore=False):
@@ -1923,13 +1981,13 @@ def load_config_file():
                 config['repaired'] = True
             else:
                 box(content, title='JSON ERROR', border_color=RED, text_color=RED)
-                quit(1)
+                sys.exit(1)
             
     else:
         config = DEFAULT_CONFIG.copy()
 
     # Add missing options.
-    del content
+    if locals().get('content'): del content
     for key, value in DEFAULT_CONFIG.items():
         if key not in config:
             config[key] = value
@@ -1952,6 +2010,107 @@ def save_config_file():
         except:
             if ERROR_LOG_ON: log_caught_exception()
             pass
+
+def markdown_to_html(markdown_text: str, output_path: str):
+    """Converts Markdown text to a beautified HTML file."""
+    import markdown
+    from bs4 import BeautifulSoup
+    
+    # Configure markdown to produce more semantic HTML5
+    md = markdown.Markdown(extensions=['fenced_code', 'tables', 'nl2br', 'toc'])
+
+    # Convert markdown to HTML string
+    html_content = md.convert(markdown_text)
+
+    # Use BeautifulSoup to add structure and basic beautification
+    soup = BeautifulSoup(html_content, 'html.parser')
+
+    # Create a basic HTML document structure
+    full_html = BeautifulSoup('<!DOCTYPE html>\n<html><head><title>Markdown Conversion</title></head><body></body></html>', 'html.parser')
+    
+    # Add CSS for basic styling (optional, but adds beautification)
+    # You could link to an external CSS file or embed styles
+    style = """
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; margin: 20px; }
+        h1, h2, h3, h4, h5, h6 { margin-top: 1em; margin-bottom: 0.5em; }
+        p { margin-bottom: 1em; }
+        code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; }
+        pre { background-color: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        pre code { background-color: transparent; padding: 0; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        blockquote { border-left: 3px solid #ccc; padding-left: 1em; color: #666; margin-left: 0; }
+    </style>
+    """
+    full_html.head.append(BeautifulSoup(style, 'html.parser'))
+    
+    # Append the converted markdown content to the body
+    full_html.body.append(soup)
+
+    # Save the beautified HTML
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(str(full_html))
+
+def markdown_to_txt(markdown_text: str, output_path: str):
+    """Converts Markdown text to plain text, preserving paragraphs but removing markup."""
+    import markdown
+    import html2text
+    
+    # Convert Markdown to HTML.
+    md = markdown.Markdown(extensions=['fenced_code', 'tables', 'nl2br', 'toc'])
+    html_content = md.convert(markdown_text)
+    handler = html2text.HTML2Text()
+    
+    # General Cleanup.
+    handler.ignore_images = False       # Include image code like [alt text](image url).
+    handler.ignore_images_alt = False   # Include alt text if images are kept (though we ignore images entirely).
+    handler.ignore_emphasis = True      # Remove emphasis (like *italic* or **bold**).
+    handler.ignore_links = False        # Keep links, but maybe format them differently.
+    handler.ignore_mailto_links = False # Ignore mailto links specifically.
+    handler.ignore_tables = False       # Keep tables.
+    handler.ignore_case_folders = False # Adjusts heading formatting slightly.
+
+    # Layout & Formatting.
+    handler.body_width = 80             # Wrap text lines to 80 characters for readability.
+    handler.ul_item_mark = '-'          # Use hyphens for unordered lists.
+    handler.strong_mark = ''            # Ommit asterisks for bold.
+    handler.emphasis_mark = ''          # Ommit asterisks for italic.
+    handler.quote_mark = '>'            # Use '>' for blockquotes.
+    handler.escape_snob = False         # Don't insert escape characters in the plain text.
+    handler.pad_tables = True           # Add padding within table cells for better alignment.
+    handler.protect_links = False       # Don't wrap links in extra characters.
+    handler.skip_internal_links = False # Process internal links (like #section-ids).
+    handler.wrap_links = True           # Wrap long links if they exceed body_width.
+    handler.wrap_list_items = True      # Wrap list items if they exceed body_width.
+    handler.wrap_tables = False         # Never wrap table content.
+    handler.unicode_snob = True         # Use Unicode characters where appropriate (e.g., for bullets).
+    handler.google_doc = False          # Not using Google Docs specific formatting.
+    handler.google_list_indent = 2      # Indentation for lists if google_doc were True.
+    handler.mark_code = False           # Keep backticks `` for inline code.
+    handler.inline_links = True         # Render links inline where possible.
+    handler.hide_strikethrough = False  # Show strikethrough text (if Markdown extension supports it).
+    handler.images_as_html = False      # Don't render images as HTML tags.
+    handler.images_to_alt = True        # Render images as their alt text if ignore_images were False.
+    handler.images_with_size = False    # Don't include size info if images were rendered.
+    handler.default_image_alt = '[Image]' # Alt text for images if ignore_images were False.
+    handler.br_toggle = '\n'            # Use '\n' for line breaks (though usually handled by paragraphs).
+    handler.pre_indent = ''             # Don't indent code blocks.
+    handler.single_line_break = True    # Treat single newlines as breaks (useful for preformatted text).
+    handler.open_quote = '“'            # Use smart quotes.
+    handler.close_quote = '”'
+    handler.convert_charrefs = True     # Convert HTML character references (&amp; -> &).
+    
+    # Convert HTML to clean text.
+    plain_text = handler.handle(html_content)
+    separator = '─' * 80
+    plain_text = re.sub(r'^\s*([*\-_])(\s*\1){2,}\s*$', separator, plain_text, flags=re.MULTILINE)
+    plain_text = plain_text.replace(r'\-', '-').replace(r'\.', '.')
+
+    # Save
+    with open(output_path, 'w', encoding='utf-8') as f:
+        f.write(plain_text)
 
 if SAVED_INFO or IMPLICIT_INSTRUCTIONS_ON or FILE_COMPRESSION:
     def load_system_instructions():
@@ -2060,51 +2219,49 @@ if SUGGEST_FROM_WORDLIST_MODE in ['normal', 'fuzzy']:
         """
         global word_completer
         
+        words = []
+        file_missing = False
+        file_empty = False
+              
+        # Read the words from file.
         try:
-            # Add vars names in developper mode.
-            words = []
-            file_missing = False
-            file_empty = False
-            
-            if DEV_MODE:
-                words.extend([name for name in globals()])
-                
-            # Read the words from file.
-            try:
-                with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
-                    words.extend([line.strip() for line in f if line.strip()][4:])
-            except FileNotFoundError:
-                file_missing = True
-            
-            if not words:
-                file_empty = True
-            
-            # Load the word completer instance according to user settings.
-            if words:
-                # Sort & remove duplicates.
-                words = sorted(set(words), key=len)
-                if SUGGEST_FROM_WORDLIST_MODE == 'fuzzy':
-                    word_completer = LimitedWordCompleter(words)
-                else:
-                    # This regex defines what characters are part of a "word".
-                    # '\w' matches letters/numbers, and we add '-' for our commands & custom wordlist.
-                    # word_pattern = re.compile(r'[\w-]+')
-                    word_completer = LimitedWordCompleter(words, ignore_case=True)
-            
+            with open(WORDLIST_FILE, 'r', encoding='utf-8') as f:
+                words.extend([line.strip() for line in f if line.strip()][4:])
         except FileNotFoundError:
-            pass
+            file_missing = True
         
-        finally:
-            if file_missing or file_empty:
-                cprint()  # Because load_chat_history() doesn't add a line break after its separator.
-                clear_lines()
-                # if LOAD_CHAT_MODE == 'ask': cprint()    # Perfection.
-                cprint()
-                warning = f"{YLW}Suggestions from a wordlist is ON, but '{WORDLIST_FILE}' file is "
-                if path_exist(WORDLIST_FILE): warning += "empty!"
-                else: warning += "missing!"
-                cprint(warning + RS)
-                separator(end='')
+        if not words:
+            file_empty = True
+        
+        # Add keywords & vars names in developper mode.
+        if DEV_MODE:
+            from keyword import kwlist
+            words.extend(kwlist)
+            words.extend(globals())
+        
+        # Load the word completer instance according to user settings.
+        if words:
+            # Sort & remove duplicates.
+            words = sorted(set(words), key=len)
+            if SUGGEST_FROM_WORDLIST_MODE == 'fuzzy':
+                word_completer = LimitedWordCompleter(words)
+            else:
+                # This regex defines what characters are part of a "word".
+                # '\w' matches letters/numbers, and we add '-' for our commands & custom wordlist.
+                # word_pattern = re.compile(r'[\w-]+')
+                word_completer = LimitedWordCompleter(words, ignore_case=True)
+        
+        # Final check.
+        if file_missing or file_empty:
+            cprint()  # Because load_chat_history() doesn't add a line break after its separator.
+            clear_lines()
+            # if LOAD_CHAT_MODE == 'ask': cprint()    # Perfection.
+            cprint()
+            warning = f"{YLW}Suggestions from a wordlist is ON, but '{WORDLIST_FILE}' file is "
+            if path_exist(WORDLIST_FILE): warning += "empty!"
+            else: warning += "missing!"
+            cprint(warning + RS)
+            separator(end='')
 
 if RESPONSE_EFFECT:
     def get_styled_lines(markdown: Markdown) -> list[Text]:
@@ -2220,6 +2377,7 @@ if RESPONSE_EFFECT:
                     console.print(char_segment, end='')
                     wait()
                     
+                # if RESPONSE_EFFECT == 'char': sleep(0.025)  # Avoid instant speed for pure 'char' animation.
                 # After printing all characters in the line, print a newline.
                 console.print()
         
@@ -2326,7 +2484,7 @@ def help(mode: str):
        -And even more if you enable (VIM_EMACS_MODE) in settings.
     
     3) Special Commands (While in Prompt):
-       /clear to clear the screen.
+       /clear or /cls to clear the screen.
        /show to show last AI response.
        /copy to copy last AI response to clipboard.
        /copy-prompt to copy your last prompt.
@@ -2340,6 +2498,8 @@ def help(mode: str):
         (Can be used multi-times in a prompt, but may consume tokens)
        /save-last to save last AI response to a text file.
         (You will lose the formatting style and colors!)
+        You can also specify another format, such as HTML, MD or simplified
+        txt. E.g: 'save-last html', or 'save-last md', or 'save-last simple'.
        /restart for a quick session restart.
        /quit or /exit to leave.
        /discard to destroy everything done in current session and restart.
@@ -2358,6 +2518,9 @@ def help(mode: str):
     5) More Commands:
        /quick-chat to open a new console window with a different chat mode.
        /save-chat to save the whole chat to a readable text file.
+        (You will lose the formatting style and colors!)
+        You can also specify another format, such as HTML, MD or simplified
+        txt. E.g: 'save-chat html', or 'save-chat md', or 'save-chat simple'.
        /last-links or /last-urls to see the links of your last successfully
         uploaded files.
        /saved-links or /saved-urls to see ready-to-use links of your
@@ -2376,12 +2539,12 @@ def help(mode: str):
         will be sent as-is.
        /compress to compress your prompt text once; attached files won't be
         affected (useless if TEXT COMPRESSION setting is ON).
-       /no-compress to skip compression for ur prompt text once; attached files
-        won't be affected (useless if TEXT COMPRESSION setting is OFF).
+       /no-compress to skip compression for your prompt text once; attached
+        files won't be affected (useless if TEXT COMPRESSION setting is OFF).
        /editor or /gui to open our graphical text editor.
        /viewer, /preview or /markdown to open the quick markdown viewer and
         see the last AI response.
-       /external to call the external editor.
+       /external to call the external editor (Save the text & close to submit).
        /switch to temporarily switch your API key or the current Gemini model
         quickly in chat; useful if you exceeds your API limits.
        /pop-last to remove the last message pair from history; you can use
@@ -2408,6 +2571,7 @@ def help(mode: str):
        /secret to start solving our puzzle.
     
     6) More Shortcuts (System / Terminal Dependent):
+       -CTRL-UP/CTRL-DOWN to scroll up/down.
        -CTRL-L to clear screen.
        -CTRL-U to clear current line in prompt.
        -CTRL-R (Reverse Search) to search backward & find the most recent
@@ -2453,7 +2617,7 @@ def help(mode: str):
         (Hotkeys may vary)
     
     3) Special Commands (While in Prompt):
-       /clear to clear the screen.
+       /clear or /cls to clear the screen.
        /show to show last AI response.
        /copy to copy last AI response to clipboard.
        /copy-prompt to copy your last prompt.
@@ -2467,6 +2631,8 @@ def help(mode: str):
         (Can be used multi-times in a prompt, but may consume tokens)
        /save-last to save last AI response to a text file.
         (You will lose the formatting style and colors!)
+        You can also specify another format, such as HTML, MD or simplified
+        txt. E.g: 'save-last html', or 'save-last md', or 'save-last simple'.
        /restart for a quick session restart.
        /quit or /exit to leave.
        /discard to destroy everything done in current session and restart.
@@ -2499,7 +2665,7 @@ def help(mode: str):
     3) Commands:
        /show to show last AI response.
        /copy to copy last AI response to clipboard.
-       /quit or 'exit' to leave.
+       /quit or /exit to leave.
        /help for this guide menu.
        {GR}/help-2 for a longer version of this guide.{RS}
        {GR}/help-3 for the full guide (No yada yada).{RS}
@@ -2516,6 +2682,18 @@ def help(mode: str):
     
     - Avoid long text paste, it'll cause lag; use CTRL-P to paste it safely,
       or use CTRL-G or CTRL-X-CTRL-E to edit it.
+    
+    - Upload files by pressing F3, or - if your terminal supports it - type
+      '/file' then drag & drop your file in the terminal. Same applies for F4
+      and '/raw' command.
+    
+    - Before using /upload command with text-based files (e.g: SRT, RTF, CPP,
+      etc), change their extension to '.txt' to avoid server rejection (it's
+      very strict).
+    
+    - For old consoles (e.g: Windows CMD), some features must be OFF for
+      the program to function correctly (e.g: colors, ANSI codes,
+      console width < 80).
     
     - Set options in 'settings.py' to your preferences (Default isn't always
       the best).
@@ -2563,6 +2741,7 @@ def farewell(confirmed=False):
         
         while True:
             try:
+                flush_input()   # Avoid registering repetetive CTRL-C clicks.
                 confirm = input(text).lower().strip()
                 break
             except Interruption:
@@ -2607,10 +2786,10 @@ def farewell(confirmed=False):
     separator()
     sys_exit(0)
 
-def get_last_response(command: str):
+def get_last_response(command: str, extension=''):
     """
     Get the last response that the user has received from AI.
-    Either 'save', 'copy' or 'show' it, depending on the command.
+    Used with /save-last, /copy or /show commands.
     """
     last_response = None
     msg = 'Checked both active & history messages, but current conversation is empty!'
@@ -2639,14 +2818,25 @@ def get_last_response(command: str):
     
     elif command == 'save-last':
         # Save the last response & Show the file.
+        output = LAST_RESPONSE_FILE
         try:
-            with open(LAST_RESPONSE_FILE, "w", encoding='utf-8') as f:
-                f.write(last_response)
+            if not extension:    
+                with open(output, 'w', encoding='utf-8') as f:
+                    f.write(last_response)
+            elif extension == 'md':
+                output = output[:-3] + 'md'
+                with open(output, 'w', encoding='utf-8') as f:
+                    f.write(last_response)
+            elif extension == 'simple':
+                markdown_to_txt(last_response, output)
+            elif extension == 'html':
+                output = output[:-3] + 'html'
+                markdown_to_html(last_response, output)
             
-            path = os.path.abspath(LAST_RESPONSE_FILE)
+            path = os.path.abspath(output)
             msg = f"Last response successfully saved to:\n{path}"
             color = GR
-            open_path(LAST_RESPONSE_FILE)
+            open_path(output)
         
         except Exception as error:
             if ERROR_LOG_ON: log_caught_exception()
@@ -2734,7 +2924,7 @@ def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
             if remove_all: msg += f"\n{YLW}Remember! you've cleared the chat history."
             else: msg += f"\n{YLW}But know that you've removed all available chat messages."
         
-        # Just in case, ensure no message is kept in case of 'pop-all'.
+        # Just in case, ensure no message is kept in case of /pop-all command.
         if remove_all and (n_turns != history_len / 2):
             messages_to_remove.append(0)
             messages_to_remove_steps[-1] += 1
@@ -2749,7 +2939,7 @@ def store_last_turn_for_exclusion(n_turns=1, remove_all=False):
         
     box(msg, title='STATUS', border_color=color, text_color=color, secondary_color=color)
 
-def restore_removed_messages(command: str):
+def restore_removed_messages(command: str, hidden=False):
     """
     Restore either every deleted message pair. Or restore only the last
     popped/removed messages, so earlier removed ones will not be restored.
@@ -2782,12 +2972,14 @@ def restore_removed_messages(command: str):
     else:
         msg = "You didn't remove any message in current session."
         color = YLW
-        
-    box(msg, title='STATUS', border_color=color, text_color=color)
+    
+    if not hidden:
+        box(msg, title='STATUS', border_color=color, text_color=color)
 
-def save_chat_history_text():
+def save_chat_history_text(extension=''):
     """
     Save the chat history as a readable text file, without json formatting.
+    Can also save to an HTML/MD file.
     Used with /save-chat command.
     """
     history = chat.get_history()
@@ -2811,11 +3003,32 @@ def save_chat_history_text():
         try:
             delimiter = '\n' + '─' * 90 + '\n'
             chat_text = delimiter.join(chat_lines)
-            with open(CHAT_HISTORY_TEXT, 'w', encoding='utf-8') as f:
-                f.write(chat_text)
+            output = CHAT_HISTORY_TEXT
             
-            open_path(CHAT_HISTORY_TEXT)
-            msg = f"Chat successfully saved to '{CHAT_HISTORY_TEXT}'.\n"
+            if not extension:    
+                with open(output, 'w', encoding='utf-8') as f:
+                    f.write(chat_text)
+            elif extension == 'simple':
+                chat_text = chat_text.replace('>>> Gemini:', '\n┌─────────┐\n│ Gemini: │\n└─────────┘')
+                chat_text = chat_text.replace('>>> You:', '\n┌──────┐\n│ You: │\n└──────┘')
+                chat_text = chat_text.replace(delimiter, '')
+                markdown_to_txt(chat_text, output)
+            elif extension == 'md':
+                chat_text = chat_text.replace('>>> Gemini:', '### <u>Gemini:</u>')
+                chat_text = chat_text.replace('>>> You:', '### <u>You:</u>')
+                chat_text = chat_text.replace(delimiter, '\n\n')
+                output = output[:-3] + 'md'
+                with open(output, 'w', encoding='utf-8') as f:
+                    f.write(chat_text)
+            elif extension == 'html':
+                chat_text = chat_text.replace('>>> Gemini:', '<h4 style="margin:0; background-color:purple; color:white; border-radius:10px; padding:10px; display:inline-block;">Gemini</h4>')
+                chat_text = chat_text.replace('>>> You:', '<h4 style="margin:0; background-color:cyan; color:white; border-radius:10px; padding:10px; display:inline-block;">You</h4>')
+                chat_text = chat_text.replace(delimiter, '\n')
+                output = output[:-3] + 'html'
+                markdown_to_html(chat_text, output)
+            
+            open_path(output)
+            msg = f"Chat successfully saved to:\n{output}\n"
             msg += "Long lines were saved as-is to preserve formatting; you may need to use 'word-wrap' feature in your text viewer/editor." 
             color = GR
         
@@ -2847,6 +3060,8 @@ def del_all():
     ]
     
     to_remove_dirs = [FILE_GENERATION_DIR]
+    to_remove_files = [file for file in to_remove_files if path_exist(file)]
+    to_remove_dirs = [folder for folder in to_remove_dirs if path_exist(folder)]
     
     cprint(f'{YLW}WARNING! The program will exit & wipe the following:')
     for file in to_remove_files: cprint('- ' + file)
@@ -2887,6 +3102,7 @@ def del_all():
             if ERROR_LOG_ON: log_caught_exception()
             cprint(f"{RED}[✗] Directory '{folder}' couldn't be deleted!{RS}")
             
+    input('\nPress ENTER to exit...')
     discarding = True
     separator(color=YLW)
     raise SystemExit
@@ -2899,14 +3115,14 @@ def del_uploaded_files():
     try:
         # List files & Warn the user.
         separator()
-        cprint(f"{YLW}Warning! You are going to delete the following file(s) from Google server:\nand (Their saved links will no longer work)")
+        cprint(f"{YLW}Warning! You're about to delete the following file(s) from Google server.\n(Their saved links will no longer work)")
         with console.status(status=f'[bold {STATUS_CYN}]Retrieving info...[/bold {STATUS_CYN}]',
                             spinner=SPINNER):
             files = list(client.files.list())
         
         length = len(files)
         if length == 0:
-            cprint("\nWell, you don't have any files on Google server for now\n(Remember they only last for 48h).")
+            cprint("\nWell, you don't have any files on Google server for now.\n(Remember they only last for 48h)")
             separator()
             return
         
@@ -3043,10 +3259,63 @@ def quick_chat():
     
     # Use current python interpreter to execute another '.py' file.
     cprint(GR + 'Opening the new chat...' + RS)
-    file = os.path.join('Modes', file)
-    Popen([sys.executable, file], creationflags=CREATE_NEW_CONSOLE)
+    file = os.path.join(MODES_DIR, file)
+    launch_in_new_console([sys.executable, file])
     separator(color=GR)
 
+def launch_in_new_console(cmd_list: list):
+    """
+    Launch a command list in a new OS-specific terminal/console window.
+    Suppress all standard output, standard error, and tracebacks.
+    """
+    import subprocess
+    import shutil
+    import shlex
+    from contextlib import redirect_stdout, redirect_stderr
+
+    if not cmd_list:
+        return
+        
+    try:
+        # Forbid writing to output.
+        with open(os.devnull, 'w') as fnull:
+            with redirect_stdout(fnull), redirect_stderr(fnull):
+                if sys.platform == 'win32':
+                    # Windows: CREATE_NEW_CONSOLE flag natively opens a new cmd window.
+                    subprocess.Popen(
+                        cmd_list, 
+                        creationflags=subprocess.CREATE_NEW_CONSOLE,
+                    )
+                    
+                elif sys.platform == 'darwin':
+                    # macOS: Use AppleScript to open a new Terminal window and run the command
+                    cmd_str = shlex.join(cmd_list).replace('\\', '\\\\').replace('"', '\\"')
+                    osa_script = f'tell application "Terminal" to do script "{cmd_str}"'
+                    subprocess.Popen(['osascript', '-e', osa_script])
+                    
+                elif sys.platform.startswith('linux'):
+                    # Linux: Iterate through common terminal emulators and their execute flags.
+                    terminals = [
+                        ('x-terminal-emulator', ['-e']),
+                        ('gnome-terminal', ['--']),
+                        ('konsole', ['-e']),
+                        ('xfce4-terminal', ['-x']),
+                        ('mate-terminal', ['-x']),
+                        ('lxterminal', ['-e']),
+                        ('alacritty', ['-e']),
+                        ('kitty', ['--']),
+                        ('xterm', ['-e']),
+                    ]
+                    
+                    for term, flag in terminals:
+                        if shutil.which(term):
+                            subprocess.Popen([term] + flag + cmd_list)
+                            break
+                    
+    except Exception:
+        # Broad catch ensures no tracebacks or errors leak to the active console.
+        pass
+        
 def open_path(path_to_open, clear=0, restore_prompt='', set_placeholder=''):
     """
     - Open a file or a folder using the default OS application/file manager.
@@ -3058,7 +3327,7 @@ def open_path(path_to_open, clear=0, restore_prompt='', set_placeholder=''):
     
     # Check if the file/folder exists.
     if not path_exist(path_to_open):
-        msg = "Requested file/folder isn't present in the current working directory."
+        msg = f"Path: {path_to_open}\nError: Requested file/folder doesn't exist (yet)."
         box(msg, title='ERROR', border_color=RED, text_color=RED)
         return
 
@@ -3294,133 +3563,149 @@ def upload_to_google():
     url_list = ''
     uploaded_files = {}
     
-    if not errors_list:
-        MAX_RETRIES = 3
-        N_FILES = len(set(paths.values()))   # Don't count duplicate files.
-        n = 1
-        for idx, path in paths.items():
-            disconnected = 0
-            for attempt in range(MAX_RETRIES + 1):
-                try:
-                    # raise ServerError(code=403, response_json={'status': 'Failed', 'reason': 'Unknown', 'message': 'Test' * 25})
-                    # Turn uploading flag ON, and reset last used URLs.
-                    if not uploading:
-                        cprint()
-                        uploading = True
-                        last_urls.clear()
-                    
-                    # Check if it's already uploaded.
-                    if path in uploaded_files:
-                        # Use its URL directly instead of reuploading.
-                        message_to_send[idx] = uploaded_files[path]
+    try:
+        if not errors_list:
+            MAX_RETRIES = 3
+            N_FILES = len(set(paths.values()))   # Don't count duplicate files.
+            n = 1
+            for idx, path in paths.items():
+                disconnected = 0
+                for attempt in range(MAX_RETRIES + 1):
+                    try:
+                        # raise ServerError(code=403, response_json={'status': 'Failed', 'reason': 'Unknown', 'message': 'Test' * 25})
+                        # Turn uploading flag ON, and reset last used URLs.
+                        if not uploading:
+                            cprint()
+                            uploading = True
+                            last_urls.clear()
+                        
+                        # Check if it's already uploaded.
+                        if path in uploaded_files:
+                            # Use its URL directly instead of reuploading.
+                            message_to_send[idx] = uploaded_files[path]
+                            break
+                        
+                        # Send the file to Google servers in another thread to keep UI responsive.
+                        file_name = get_file_name(path)
+                        if disconnected: status = f"Lost connection, retrying for '{file_name}'..."
+                        else: status = f"Uploading file '{file_name}'..."
+                        indicator = f'[{n}/{N_FILES}] ' if N_FILES > 1 else ''
+                        status = f"[bold {STATUS_PURP}]{indicator}{status}[/bold {STATUS_PURP}]"
+                        
+                        uploader = FileUploader(client, path)
+                        active = uploader.is_alive
+                        uploader.start()
+
+                        with console.status(status=status, spinner=SPINNER):
+                            while active(): uploader.join(SLEEP_INTERVAL)
+                            
+                        if uploader.exception: raise uploader.exception
+                        uploaded_file = uploader.uploaded_file
+                              
+                        # Check if google returned a non-empty object.
+                        if not uploaded_file:
+                            msg = f"received Google File object for '{path}' contained nothing; wait for sometime if you uploaded too many times..."
+                            raise ServerError(code=403, response_json={'status': 'Failed', 'reason': 'Unknown', 'message': msg})
+                        
+                        # Store the uploaded file.
+                        uploaded_files[path] = uploaded_file
+                        message_to_send[idx] = uploaded_file
+                        url = uploaded_file.uri
+                        last_urls[path] = url
+                        n += 1
+                            
+                        # Save the given URL (to avoid re-uploading later).
+                        date = datetime.now().strftime('%A, %B %d, %Y %I:%M %p')
+                        m_type = uploaded_file.mime_type
+                        url_list += f'File: {path}\n'
+                        url_list += f'Type: {m_type}\n'
+                        url_list += f'Link: {url}\n'
+                        url_list += f'Upload Date: {date}\n\n'
                         break
                     
-                    # Send the file to Google servers in another thread to keep UI responsive.
-                    file_name = get_file_name(path)
-                    if disconnected: status = f"Lost connection, retrying for '{file_name}'..."
-                    else: status = f"Uploading file '{file_name}'..."
-                    indicator = f'[{n}/{N_FILES}] ' if N_FILES > 1 else ''
-                    status = f"[bold {STATUS_PURP}]{indicator}{status}[/bold {STATUS_PURP}]"
-                    
-                    uploader = FileUploader(client, path)
-                    active = uploader.is_alive
-                    uploader.start()
-
-                    with console.status(status=status, spinner=SPINNER):
-                        while active(): uploader.join(SLEEP_INTERVAL)
-                        
-                    if uploader.exception: raise uploader.exception
-                    uploaded_file = uploader.uploaded_file
-                          
-                    # Check if google returned a non-empty object.
-                    if not uploaded_file:
-                        msg = f"received Google File object for '{path}' contained nothing; wait for sometime if you uploaded too many times..."
-                        raise ServerError(code=403, response_json={'status': 'Failed', 'reason': 'Unknown', 'message': msg})
-                    
-                    # Store the uploaded file.
-                    uploaded_files[path] = uploaded_file
-                    message_to_send[idx] = uploaded_file
-                    url = uploaded_file.uri
-                    last_urls[path] = url
-                    n += 1
-                        
-                    # Save the given URL (to avoid re-uploading later).
-                    date = datetime.now().strftime('%A, %B %d, %Y %I:%M %p')
-                    m_type = uploaded_file.mime_type
-                    url_list += f'File: {path}\n'
-                    url_list += f'Type: {m_type}\n'
-                    url_list += f'Link: {url}\n'
-                    url_list += f'Upload Date: {date}\n\n'
-                    break
-                
-                except Interruption:
-                    # Our thread is a daemon, so it's already dead here.
-                    msg = f"Uploading stopped and the message is cancelled.\nURLs for successful files might still be saved in: '{SAVED_LINKS_FILE}'."
-                    clear_lines()
-                    box(msg, title='KEYBOARD INTERRUPTION', border_color=GR, text_color=GR, secondary_color=GR)
-                    uploading = False
-                    return
-                    
-                except NetworkExceptions:
-                    # Try three more times before stopping.
-                    if disconnected == 3:
-                        catch_network_error()
+                    except Interruption:
+                        # Our thread is a daemon, so it's already dead here.
+                        msg = f"Uploading stopped and the message is cancelled.\nURLs for successful files might still be saved in: '{SAVED_LINKS_FILE}'."
+                        clear_lines()
+                        box(msg, title='KEYBOARD INTERRUPTION', border_color=GR, text_color=GR, secondary_color=GR)
                         uploading = False
                         return
-                    else:
-                        disconnected += 1
-                        continue
-                    
-                except Exception as error:
-                    if ERROR_LOG_ON: log_caught_exception()
-                    try: error = error.message
-                    except: pass
-                    msg = f"[{file_name}]: {error}"
-                    errors_list.append(msg)
-                    break
-    
-    # Write URLs to a file. Also shrink the file if it's too long.
-    if url_list:
-        if not path_exist(SAVED_LINKS_FILE):
-            open(SAVED_LINKS_FILE, 'w').close()
-            
-        with open(SAVED_LINKS_FILE, 'r', encoding='utf-8') as f:
-            content = f.read()
+                        
+                    except NetworkExceptions:
+                        # Try three more times before stopping.
+                        if disconnected == 3:
+                            catch_network_error()
+                            uploading = False
+                            return
+                        else:
+                            disconnected += 1
+                            continue
+                        
+                    except Exception as error:
+                        if ERROR_LOG_ON: log_caught_exception()
+                        try: error = error.message
+                        except: pass
+                        msg = f"[{file_name}]: {error}"
+                        errors_list.append(msg)
+                        break
         
-        notes = "# This is a list of the files you uploaded to Gemini; used to avoid re-uploading.\n"
-        notes += "# Each file's link can be reused within 48h of its upload date.\n"
-        notes += "# The first ones here are the most recent.\n"
-        notes += "# [!] Only Gemini can access these links with their specific API key, not you!"
-        sep = '─' * 80
-        old_urls = content.lstrip(notes).strip()
-        new_urls = '\n\n' + url_list.strip() + '\n' + sep + '\n'
-        new_content = notes + new_urls + old_urls
-        
-        if new_content.count('\n') > 200:
-            lines = new_content.splitlines()[:200]
-            while lines[-1] != sep: lines.pop()
-            new_content = '\n'.join(lines[:-1])
-        
-        with open(SAVED_LINKS_FILE, 'w', encoding='utf-8') as f:
-            f.write(new_content)
-
-    # Tell the user how many files failed to upload (user message won't be sent).
-    if errors_list:
-        # Clarify the errors.
-        msg = '\n\n'.join(errors_list)
-        n = len(errors_list)
-        if len(paths) == 1: msg = f'{YLW}Upload failed:\n' + msg
-        elif n == len(paths): msg = f'{YLW}Upload failed for all files! Details:\n' + msg
-        else: msg = f'{YLW}Upload failed for some files! Details:\n' + msg
-        msg += f'\n\n{YLW}- Press (UP) to get your prompt back.'
-        msg += f'\n{YLW}- You can try /raw command instead of /file for failed files.'
-        
-        # Prepare a recovery prompt.
+        # Write URLs to a file. Also shrink the file if it's too long.
         if url_list:
+            if not path_exist(SAVED_LINKS_FILE):
+                open(SAVED_LINKS_FILE, 'w').close()
+                
+            with open(SAVED_LINKS_FILE, 'r', encoding='utf-8') as f:
+                content = f.read()
+            
+            notes = "# This is a list of the files you uploaded to Gemini; used to avoid re-uploading.\n"
+            notes += "# Each file's link can be reused within 48h of its upload date.\n"
+            notes += "# The first ones here are the most recent.\n"
+            notes += "# [!] Only Gemini can access these links with their specific API key, not you!"
+            sep = '─' * 80
+            old_urls = content.lstrip(notes).strip()
+            new_urls = '\n\n' + url_list.strip() + '\n' + sep + '\n'
+            new_content = notes + new_urls + old_urls
+            
+            if new_content.count('\n') > 200:
+                lines = new_content.splitlines()[:200]
+                while lines[-1] != sep: lines.pop()
+                new_content = '\n'.join(lines[:-1])
+            
+            with open(SAVED_LINKS_FILE, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+
+        # Tell the user how many files failed to upload (user message won't be sent).
+        if errors_list:
+            # Clarify the errors.
+            msg = '\n\n'.join(errors_list)
+            n = len(errors_list)
+            if len(paths) == 1: msg = f'{YLW}Upload failed:\n' + msg
+            elif n == len(paths): msg = f'{YLW}Upload failed for all files! Details:\n' + msg
+            else: msg = f'{YLW}Upload failed for some files! Details:\n' + msg
+            msg += f'\n\n{YLW}- Press (UP) to get your prompt back.'
+            msg += f'\n{YLW}- You can try /raw command instead of /file for failed files.'
+            
+            # Add the recovery suggestion.
+            if url_list:
+                msg += f"\n{GR}- Successful files are already in the cloud; type /recover.{RS}"
+                msg += f'\n{GR}- Or for manual edit, type /last-links & press ENTER.\n'
+            
+            # Display.
+            box(msg, title='UPLOAD ERROR', border_color=RED, text_color=RED, secondary_color=RED)
+            uploading = False
+            return
+             
+        # Instead of raw data, we now send the 'Google File' objects (Which represent the shared files URLs).
+        return True
+    
+    finally:
+        if url_list:
+            # Prepare a recovery prompt (no matter if an error occured or not).
             recovery_prompt = user_input
             # Sort paths by length (longest first) so 'final_report.pdf' 
             # isn't accidentally caught by 'report.pdf'
             sorted_paths = sorted(last_urls.keys(), key=len, reverse=True)
+            
             for path in sorted_paths:
                 url = last_urls[path]
                 
@@ -3437,18 +3722,6 @@ def upload_to_google():
                 file_name = get_file_name(path)
                 replacement = f'[{file_name}]: {url}'
                 recovery_prompt = re.sub(pattern, replacement, recovery_prompt)
-                
-                # Add the recovery suggestion.
-                msg += f"\n{GR}- Successful files are already in the cloud; type /recover.{RS}"
-                msg += f'\n{GR}- Or for manual edit, type /last-links & press ENTER.\n'
-        
-        # Display.
-        box(msg, title='UPLOAD ERROR', border_color=RED, text_color=RED, secondary_color=RED)
-        uploading = False
-        return
-    
-    # Instead of raw data, we now send the 'Google File' objects (Which represent the shared files URLs).
-    return True
 
 def upload_raw_file():
     """
@@ -3554,12 +3827,13 @@ def switch_chat_configuration():
     cprint(msg)
     
     try:
-        if GLOBAL_LOG_FILE: in_time_log('New API Key: ...')
+        if GLOBAL_LOG_ON: in_time_log('New API Key: ...')
         api_key = input(f"{GR}New API Key: {RS}").strip() or GEMINI_API_KEY
-        if GLOBAL_LOG_FILE: in_time_log('New Gemini Model: ...')
+        if GLOBAL_LOG_ON: in_time_log('New Gemini Model: ...')
         ai_model = input(f"{GR}New Gemini Model: {RS}").strip() or GEMINI_MODEL
     
     except Interruption:
+        flush_input()
         cprint(f"\n\n{YLW}{choice(CANCEL_MESSAGES)}")
         separator(color=GR)
         return
@@ -3637,6 +3911,13 @@ def quick_text_editor(default_text=''):
     from tkinter import (Tk, Frame, Button, Text, Label, Scrollbar, Toplevel, Listbox,
                          END, WORD, X, Y, LEFT, RIGHT, BOTH, FLAT)
     global config_options
+    
+    # Performance Constants (False = Faster).
+    TEXT_CHECK = True
+    TEXT_SUGGEST = bool(SUGGEST_FROM_WORDLIST_MODE)
+    if FASTER_GUI_EDITOR:
+        TEXT_CHECK = False    # False to disable placeholder & send button check.
+        TEXT_SUGGEST = False  # False to disable completion popup.
     
     # Buttons & Hotkeys Actions.
     def show_shortcuts():
@@ -3751,20 +4032,14 @@ def quick_text_editor(default_text=''):
         else:
             text_field.event_generate('<<Copy>>')
         return 'break'
-    
-    def check_text(event=None):
-        content = text_field.get('1.0', 'end-1c').strip()
-        if content:
-            send_btn.config(state='normal')
-        else:
-            send_btn.config(state='disabled')
-    
+
     def change_font(delta):
         nonlocal font_size
         if font_size + delta > 4:  # Don't go too small.
             font_size += delta
             text_field.config(font=('Segoe UI', font_size))
-            if SUGGEST_FROM_WORDLIST_MODE:
+            if TEXT_CHECK: placeholder_label.config(font=('Segoe UI', font_size))
+            if TEXT_SUGGEST:
                 sugg_list.config(font=('Segoe UI', font_size))
                 hint.config(font=('Segoe UI', font_size-2))
     
@@ -3786,6 +4061,7 @@ def quick_text_editor(default_text=''):
             root.config(bg='#0f172a')
             top_frame.config(bg='#001033')
             scrollbar.config(bg='#1e293b', troughcolor='#020617')
+            if TEXT_CHECK: placeholder_label.config(bg='#020617', fg='#64748b')
             text_field.config(
                 bg='#020617',
                 fg='#e5e7eb',
@@ -3822,7 +4098,7 @@ def quick_text_editor(default_text=''):
                 fg='#e5e7eb',
                 activebackground='#334155'
             )
-            if SUGGEST_FROM_WORDLIST_MODE:
+            if TEXT_SUGGEST:
                 popup.config(bg='#020617')
                 hint.config(bg='#020617', fg='#9ca3af')
                 sugg_list.config(
@@ -3835,6 +4111,7 @@ def quick_text_editor(default_text=''):
             root.config(bg='#f8fafc')
             top_frame.config(bg='#2d5ac4')
             scrollbar.config(bg='#e5e7eb', troughcolor='white')
+            if TEXT_CHECK: placeholder_label.config(bg='white', fg='#8C94A3')
             text_field.config(
                 bg='white',
                 fg='black',
@@ -3871,7 +4148,7 @@ def quick_text_editor(default_text=''):
                 fg='black',
                 activebackground='#d1d5db'
             )
-            if SUGGEST_FROM_WORDLIST_MODE:
+            if TEXT_SUGGEST:
                 popup.config(bg='white')
                 hint.config(bg='white', fg='#6b7280')
                 sugg_list.config(
@@ -3881,32 +4158,50 @@ def quick_text_editor(default_text=''):
                     selectforeground='black'
                 )
 
+    def start_maximized():
+        # Every OS has a specific way to maximize; even Linux/Mac don't use the same way.
+        try:
+            root.state('zoomed')  # For Windows/Mac.
+        except:
+            try: root.attributes('-zoomed', True)  # Linux.
+            except: pass
+
     def send_and_close(*args):
-        nonlocal user_text, geometry
+        nonlocal user_text
         # (-1c) = minus one char, because 'Tk Text' widget always adds a trailing newline.
         user_text = text_field.get('1.0', 'end-1c')
-        geometry = root.geometry()
-        root.destroy()
-        # We return 'break' so that Tk doesn't try to insert a new line upon pressing ENTER on a destroyed Text widget.
-        return 'break'
+        close()
 
     def cancel_and_close():
-        nonlocal user_text, geometry
+        nonlocal user_text
         text_empty = not text_field.get('1.0', END).strip()
         if text_empty: confirm = True
         else: confirm = askyesno('Confirm', 'Are you sure you want to cancel?', parent=root)
         if confirm:
             user_text = ''
-            geometry = root.geometry()
-            root.destroy()
-            return 'break'
+            close()
     
-    if SUGGEST_FROM_WORDLIST_MODE:
+    def close():
+        nonlocal geometry, maximized
+        # Hide the window first.
+        root.attributes('-alpha', 0.0)
+        # Save maximized state.
+        if root.state() == 'zoomed': maximized = True
+        else:
+            try: maximized = True if root.attributes('-zoomed') else False
+            except: maximized = False
+        # Save geometry for normal state.
+        root.state('normal')
+        geometry = root.geometry()
+        # We return 'break' so that Tk doesn't try to insert a new line upon pressing ENTER on a destroyed Text widget.
+        root.destroy()
+        return 'break'
+    
+    if TEXT_SUGGEST:
         def get_current_word():
             idx = text_field.index('insert')
             start = text_field.search(r'\m\w*$', idx, regexp=True, backwards=True)
-            if not start:
-                return '', idx
+            if not start: return ('', idx)
             return text_field.get(start, idx), start
 
         def show_suggestions(event=None):
@@ -3915,17 +4210,21 @@ def quick_text_editor(default_text=''):
             if len(event.keysym) > 1: return     # ignore Shift, Control, Alt, etc.
                 
             word, start = get_current_word()
-            if not word:
+            if not word or not word[-1].isalnum() or len(word) < 2:
                 hide_suggestions()
                 return
 
-            matches = [w for w in WORDS_LIST if w.startswith(word)]
+            matches = []
+            for w in WORDS_LIST:
+                if len(matches) == SUGGESTIONS_LIMIT: break
+                if w.startswith(word): matches.append(w)
+                    
             if not matches:
                 hide_suggestions()
                 return
 
             sugg_list.delete(0, END)
-            for w in matches[:8]:
+            for w in matches:
                 sugg_list.insert(END, w)
 
             bbox = text_field.bbox('insert')
@@ -3939,7 +4238,7 @@ def quick_text_editor(default_text=''):
 
         def hide_suggestions(event=None):
             popup.withdraw()
-            return 'break'
+            # return 'break'
 
         def apply_suggestion(event=None):
             if not sugg_list.curselection():
@@ -3952,10 +4251,25 @@ def quick_text_editor(default_text=''):
             hide_suggestions()
             return 'break'
     
+    if TEXT_CHECK:
+        def check_text(event=None):
+            content = text_field.get('1.0', 'end-1c')
+            is_empty = not content or content.isspace()
+            if is_empty:
+                send_btn.config(state='disabled')  # Disable SEND button.
+            else:
+                send_btn.config(state='normal')
+            if content:
+                placeholder_label.place_forget() 
+            else:
+                placeholder_label.place(x=1, y=0)
+    
     # Options.
     font_size = config_options['gui_font_size']
     dark_mode = config_options['gui_dark_mode']
     geometry  = config_options['gui_editor_geometry']
+    maximized = config_options['gui_editor_maximized']
+    placeholder = str(prompt_placeholder[0][1])
     user_text = None
     
     # Main Window.
@@ -3967,8 +4281,9 @@ def quick_text_editor(default_text=''):
     root.bind_all('<Control-t>', lambda e: toggle_theme())
     root.bind_all('<Control-plus>', lambda e: change_font(1))
     root.bind_all('<Control-minus>', lambda e: change_font(-1))
-    if SUPPRESS_ERRORS: root.report_callback_exception = lambda *_: None
     # root.bind('<Control-Return>', lambda event: send_and_close())     # This may be needed if we add another focus-able widget.
+    if SUPPRESS_ERRORS: root.report_callback_exception = lambda *_: None
+    if maximized: start_maximized()
     
     # Top Bar Buttons.
     top_frame = Frame(root, bg='#001033')
@@ -4006,7 +4321,6 @@ def quick_text_editor(default_text=''):
         font=('Segoe UI Semibold', 11),
         command=send_and_close,
         relief=FLAT,
-        state='disabled' if not default_text.strip() else 'normal',
     )  
     cancel_btn = Button(
         top_frame,
@@ -4037,15 +4351,24 @@ def quick_text_editor(default_text=''):
     )
     
     text_field.grid(row=0, column=0, sticky='nsew')
-    if default_text: text_field.insert('1.0', default_text) # (1.0) = line 1, character 0.
-    text_field.focus_set()                                  # Focused on launch.
-    
-    text_field.bind('<KeyRelease>', check_text)
+    text_field.focus_set()   # Focused on launch.
+    if default_text:
+        # (1.0) = line 1, character 0.
+        text_field.insert('1.0', default_text)
+        # Move the "insert" mark (the cursor) to the end
+        text_field.mark_set('insert', 'end-1c')
+        # Ensure the view scrolls to the cursor if text is long
+        text_field.see('insert')
+        
+
     text_field.bind('<Control-Return>', send_and_close)
     text_field.bind('<Control-BackSpace>', on_ctrl_backspace)
     text_field.bind('<Control-Delete>', on_ctrl_delete)
     text_field.bind('<Control-x>', on_ctrl_x)
     text_field.bind('<Control-c>', on_ctrl_c)
+    if TEXT_CHECK: 
+        text_field.bind('<KeyPress>', check_text)
+        text_field.bind('<KeyRelease>', check_text)
 
     # Scrollbar.
     scrollbar = Scrollbar(text_frame, command=text_field.yview)
@@ -4055,7 +4378,8 @@ def quick_text_editor(default_text=''):
     text_frame.grid_rowconfigure(0, weight=1)
     text_field.config(yscrollcommand=update_scrollbar)
 
-    if SUGGEST_FROM_WORDLIST_MODE:
+    if TEXT_SUGGEST:
+        # Word Completion Popup.
         WORDS_LIST = word_completer.words
         
         popup = Toplevel(root)
@@ -4082,29 +4406,54 @@ def quick_text_editor(default_text=''):
         sugg_list.pack()
         hint.pack(fill=X)
         text_field.bind('<KeyRelease>', show_suggestions, add='+')
+        text_field.bind('<BackSpace>', hide_suggestions, add='+')
+        text_field.bind('<Delete>', hide_suggestions, add='+')
+        text_field.bind('<Return>', hide_suggestions, add='+')
+        text_field.bind('<space>', hide_suggestions, add='+')
         text_field.bind('<Escape>', hide_suggestions)
         text_field.bind('<Down>', lambda e: sugg_list.focus_set())
         sugg_list.bind('<Return>', apply_suggestion)
         sugg_list.bind('<Escape>', hide_suggestions)
         sugg_list.bind('<Double-Button-1>', apply_suggestion)        
-                 
+    
+    if TEXT_CHECK:
+        # Placeholder.
+        placeholder_label = Label(
+            text_field,
+            text=placeholder,
+            font=('Segoe UI', font_size),
+            bg='#020617' if dark_mode else 'white', # Match text field bg
+            fg='#64748b',  # Slate/Gray color
+            cursor='xterm' # Keep the text cursor look
+        )
+        placeholder_label.config(
+            padx=0, 
+            pady=0, 
+            bd=0, 
+            highlightthickness=0
+        )
+        placeholder_label.place(x=1, y=0)  # (1x) for the cursor to appear.
+        placeholder_label.bind('<Button-1>', lambda e: text_field.focus_set())  # Allow clicking the placeholder to focus the text field.
+        
     # Block Execution (Python freezes while editing).
+    if TEXT_CHECK: check_text()
     apply_theme()
-    while True:
-        try:
-            root.mainloop()
-            flush_input()
-            return user_text
-        except Interruption:
-            # In case the user presses CTRL-C in the CLI.
-            pass
-        except Exception:
-            if ERROR_LOG_ON: log_caught_exception()
-            pass
-        finally:
-            config_options['gui_font_size'] = font_size
-            config_options['gui_dark_mode'] = dark_mode
-            config_options['gui_editor_geometry'] = geometry
+    try:
+        root.mainloop()
+        flush_input()
+        return user_text
+    except Interruption:
+        # In case the user presses CTRL-C in the CLI.
+        pass
+    except Exception:
+        if ERROR_LOG_ON: log_caught_exception()
+        pass
+    finally:
+        # This runs despite of the earlier 'return'.
+        config_options['gui_font_size'] = font_size
+        config_options['gui_dark_mode'] = dark_mode
+        config_options['gui_editor_geometry'] = geometry
+        config_options['gui_editor_maximized'] = maximized
 
 def quick_markdown_viewer(md_content=''):
     """
@@ -4135,7 +4484,7 @@ def quick_markdown_viewer(md_content=''):
         # Shortcuts text.
         shortcuts_text = (
             'Up/Down      →  Scroll up/down\n'
-            'Mouse LB/RB  →  Copy links\n'
+            'Mouse LB/RB  →  Copy text/links\n'
             'Ctrl-S       →  Save to file\n'
             'Ctrl-C       →  Copy selected text\n'
             'Ctrl-R       →  Toggle raw/preview mode\n'
@@ -4188,32 +4537,65 @@ def quick_markdown_viewer(md_content=''):
         win.geometry(f'+{x}+{y}')
 
     def save_to_file(event=None):
-        nonlocal is_status_busy
+        nonlocal is_status_busy, save_ext
+        filetypes=[
+            ('Markdown', '*.md'),
+            ('Plain Text', '*.txt'),
+            ('Simplified Plain Text', '*.simple'),
+            ('HTML Web Page', '*.html'), 
+            ('All files', '*.*')
+        ]
+        
+        # Find the index of the tuple that contains the last used extension and move it to top (so that Tkinter defaults to it).
+        idx = next(i for i, t in enumerate(filetypes) if t[1] == f'*{save_ext}')
+        filetypes.insert(0, filetypes.pop(idx))
+        
         # Prompt user to choose a file to save.
         file_path = asksaveasfilename(
-            defaultextension='.md',
-            filetypes=[('Markdown', '*.md'), ('Plain text', '*.txt'), ('All files', '*.*')],
+            initialfile="Response",
+            defaultextension='.txt',
+            filetypes=filetypes,
             title='Save As'
         )
+        
         if not file_path:
             return  # User cancelled.
-
+        save_ext = '.' + file_path.split('.')[-1]
+        
         # Get the content from the text area.
         is_status_busy = True
         content = raw_text_area.get('1.0', END)
+        saved = False
+        
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
+            # If a conversion is necessary, do it.
+            if file_path.endswith('.simple'):
+                file_path = file_path[:-7] + '.txt'
+                markdown_to_txt(content, file_path)
+                saved = True
+            elif file_path.endswith('.html'):
+                markdown_to_html(content, file_path)
+                saved = True
+            
+            # Save directly if no conversion happened.
+            if not saved:
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
             status_var.set(f'Saved to: {file_path}')
             def reset_status():
                 nonlocal is_status_busy
                 is_status_busy = False
                 status_var.set(status_bar_idle)
-            
             root.after(2000, reset_status)
+            
         except Exception as error:
             if ERROR_LOG_ON: log_caught_exception()
             status_var.set(f'Error saving file: {error}')
+            def reset_status():
+                nonlocal is_status_busy
+                is_status_busy = False
+                status_var.set(status_bar_idle)
+            root.after(10000, reset_status)
 
     def update_scrollbar(*args):
         size = raw_text_area.yview()
@@ -4226,30 +4608,49 @@ def quick_markdown_viewer(md_content=''):
     def copy_link(event, *_):
         nonlocal is_status_busy
         url = None
+        status_msg = ""
         
-        if isinstance(event, str):
-            # In case it was trigerred by (on_navigate_fail) method.
-            url = event
+        # Identify the button: 1 is Left Click, 3 is Right Click
+        # event.num might not exist if triggered by on_navigate_fail, so we check
+        btn = getattr(event, 'num', None)
+
+        # 1. Handle Selection (Right Click ONLY)
+        selected_text = ""
+        if btn == 3:
+            selected_text = html_view.html.selection_manager.get_selection()
+
+        if selected_text:
+            status_msg = '📋 Text copied!'
         else:
-            # Extract the URL.
+            # 2. Handle Links (Both buttons)
             element = html_view.get_currently_hovered_element()
             if element:
                 attrs = getattr(element, 'attributes', {})
                 url = attrs.get('href')
+                status_msg = f'🌎 Link copied: {url}'
             
-        if url:
-            # Copy it.
+        # 3. Clipboard Execution
+        if url or selected_text:
             is_status_busy = True
             root.clipboard_clear()
-            root.clipboard_append(url)
-            status_var.set(f'📋 Link copied: {url}')
+            root.clipboard_append(url or selected_text)
+            status_var.set(status_msg)
             def reset_status():
                 nonlocal is_status_busy
                 is_status_busy = False
                 status_var.set(status_bar_idle)
-            
             root.after(1500, reset_status)
             root.update()
+
+        # 4. Smart Break Logic
+        # If it's a right click, always break (stops default menu)
+        if btn == 3:
+            return "break"
+        
+        # If it's a left click, only break if we hit a link (stops navigation)
+        # This allows text selection to work on normal text
+        if btn == 1 and url:
+            return "break"
         
     def show_link(event):
         if is_status_busy: return
@@ -4266,10 +4667,18 @@ def quick_markdown_viewer(md_content=''):
         status_var.set(status_bar_idle)
         
     def get_html_content(text):
-        # Convert Markdown to HTML
-        # Using 'extra' extension for tables, code blocks, etc.
-        html = markdown(text, extensions=['extra', 'codehilite'])
+        # Clean code blocks:
+        lines = text.splitlines()
+        for i, line in enumerate(lines):
+            if line.lstrip().startswith('```'):
+                lines[i] = line.lstrip()
+        text = '\n'.join(lines)
         
+        # Convert Markdown to HTML.
+        # Using 'extra' extension for tables, code blocks, etc.
+        # And 'nl2br' to convert '\n' escape sequences to <br> tags.
+        html = markdown(text, extensions=['extra', 'codehilite', 'nl2br', 'toc', 'fenced_code'])
+
         # Inject basic CSS for theming.
         bg = '#020617' if dark_mode else '#ffffff'
         fg = '#e5e7eb' if dark_mode else '#000000'
@@ -4302,11 +4711,13 @@ def quick_markdown_viewer(md_content=''):
             html_view.load_html(get_html_content(raw_text_area.get('1.0', END)))
             raw_btn.config(text='✎ Edit Raw')
             status_var.set(status_bar_idle)
+            html_view.html.focus_set()
         else:
             html_view.pack_forget()
             raw_container.pack(fill=BOTH, expand=True)
             raw_btn.config(text='📜 See Preview')
             status_var.set(f'ⓘ You can edit/paste markdown code here and see the preview.')
+            raw_text_area.focus_set()
         showing_raw = not showing_raw
 
     def apply_theme():
@@ -4333,9 +4744,12 @@ def quick_markdown_viewer(md_content=''):
             fg='#94a3b8' if dark_mode else '#334155'
         )
         
-        # Refresh HTML view with new theme colors
         if not showing_raw:
+            # Regenerate the HTML page with the new theme & save cursor position.
+            pos = html_view.html.yview()[0]
             html_view.load_html(get_html_content(raw_text_area.get('1.0', END)))
+            # Return to where the user was & add (10ms) because the regenation isn't instant.
+            root.after(10, lambda: html_view.html.yview_moveto(pos))
 
     def toggle_theme():
         nonlocal dark_mode
@@ -4348,20 +4762,45 @@ def quick_markdown_viewer(md_content=''):
             font_size += delta
             raw_text_area.config(font=('Segoe UI', font_size))
             if not showing_raw:
-                html_view.load_html(get_html_content(raw_text_area.get('1.0', END))) 
-    
+                # Regenerate the HTML page with the new font size & save cursor position.
+                pos = html_view.html.yview()[0]
+                html_view.load_html(get_html_content(raw_text_area.get('1.0', END)))
+                # Return to where the user was & add (10ms) because the regenation isn't instant.
+                root.after(10, lambda: html_view.html.yview_moveto(pos))
+
+    def start_maximized():
+        # Every OS has a specific way to maximize; even Linux/Mac don't use the same way.
+        try:
+            root.state('zoomed')  # For Windows/Mac.
+        except:
+            try: root.attributes('-zoomed', True)  # Linux.
+            except: pass    
+
     def close():
-        nonlocal geometry
+        nonlocal geometry, maximized
+        # Hide the window first.
+        root.attributes('-alpha', 0.0)
+        # Save maximized state.
+        if root.state() == 'zoomed': maximized = True
+        else:
+            try: maximized = True if root.attributes('-zoomed') else False
+            except: maximized = False
+        # Save geometry for normal state.
+        root.state('normal')
         geometry = root.geometry()
+        # Exit.
         root.destroy()
         return 'break'
     
     # Options.
-    geometry  = config_options['gui_viewer_geometry']
-    dark_mode = config_options['gui_dark_mode']
     font_size = config_options['gui_font_size']
+    dark_mode = config_options['gui_dark_mode']
+    geometry  = config_options['gui_viewer_geometry']
+    maximized = config_options['gui_viewer_maximized']
+    save_ext  = config_options['gui_last_save_ext']
+    
     showing_raw = False
-    status_bar_idle = 'Idle...' 
+    status_bar_idle = '💤 Idle...' 
     is_status_busy = False
     
     # Main Window.
@@ -4376,6 +4815,7 @@ def quick_markdown_viewer(md_content=''):
     root.bind_all('<Control-minus>', lambda e: change_font(-1))
     root.bind_all('<Control-s>', save_to_file)
     if SUPPRESS_ERRORS: root.report_callback_exception = lambda *_: None
+    if maximized: start_maximized()
     
     # Top Bar Buttons.
     top_frame = Frame(root)      
@@ -4458,11 +4898,12 @@ def quick_markdown_viewer(md_content=''):
     # 1. HTML Rendered View.
     html_view = HtmlFrame(view_frame, messages_enabled = False)  # Disable debugging info.
     html_view.pack(fill=BOTH, expand=True)
+    html_view.html.focus_set()
     html_view.on_navigate_fail = copy_link
     html_view.bind('<Button-1>', copy_link)
     html_view.bind('<Button-3>', copy_link)
     html_view.bind('<Motion>', show_link)
-
+    
     # 2. Raw Text View (Hidden by default).
     raw_container = Frame(view_frame)
     raw_container.grid_rowconfigure(0, weight=1)
@@ -4483,26 +4924,26 @@ def quick_markdown_viewer(md_content=''):
     scrollbar.grid(row=0, column=1, sticky='ns')
     raw_text_area.grid(row=0, column=0, sticky='nsew')
     
-    # Block Execution (Python freezes while editing).
+    # Block Execution (Python freezes while in GUI).
     apply_theme()
-    while True:
-        try:
-            root.mainloop()
-            flush_input()
-            break
-        except Interruption:
-            # In case the user presses CTRL-C in the CLI.
-            pass
-        except Exception:
-            if ERROR_LOG_ON: log_caught_exception()
-        finally:
-            config_options['gui_dark_mode'] = dark_mode
-            config_options['gui_font_size'] = font_size
-            config_options['gui_viewer_geometry'] = geometry
+    try:
+        root.mainloop()
+        flush_input()
+    except Interruption:
+        # In case the user presses CTRL-C in the CLI.
+        pass
+    except Exception:
+        if ERROR_LOG_ON: log_caught_exception()
+    finally:
+        config_options['gui_dark_mode'] = dark_mode
+        config_options['gui_font_size'] = font_size
+        config_options['gui_viewer_geometry'] = geometry
+        config_options['gui_viewer_maximized'] = maximized
+        config_options['gui_last_save_ext'] = save_ext
 
 if SAVED_INFO:
     def manage_saved_info(user_input, command):
-        """Manage user saved info by either: 'forget' or 'remember'."""
+        """Manage user saved info, with /forget & /remember commands."""
         # Check if it's worth adding/removing.
         MIN_WORDS = 3
         MIN_CHARS = 10
@@ -4516,15 +4957,19 @@ if SAVED_INFO:
         
         # User wants to remember something.
         if command == 'remember':
-            try:
+            try:              
                 # A quick cleanup for the saved info file.
                 clean_file = False
+                already_saved = False
+                
                 if path_exist(SAVED_INFO_FILE) and os.path.getsize(SAVED_INFO_FILE) > 0:
-                    with open(SAVED_INFO_FILE, 'r+', encoding='utf-8') as f:
+                    with open(SAVED_INFO_FILE, 'r', encoding='utf-8') as f:
                         content = f.read()
-                        if not content.endswith('\n'):
-                            f.write('\n')
-                        
+                        # Check missing leading/trailing blank lines.
+                        if not content.startswith('\n') or not content.endswith('\n'):
+                            clean_file = True
+                            
+                        # Check extra leading/trailing blank lines.
                         else:
                             leading_new_lines = len(content) - len(ltrim(content))
                             trailing_new_lines = len(content) - len(content.rstrip('\n'))
@@ -4534,24 +4979,44 @@ if SAVED_INFO:
                 if clean_file:
                     with open(SAVED_INFO_FILE, 'w', encoding='utf-8') as f:
                         f.truncate(0)
-                        f.write('\n' + content.strip() + '\n')
-
-                # Save the info by wrapping it into short lines.
-                first_line_written = False
-                with open(SAVED_INFO_FILE, 'a', encoding='utf-8') as f:
-                    for line in user_input.splitlines():
+                        f.write(f'\n{content.strip()}\n')
+                
+                # Check if it's already saved.
+                if path_exist(SAVED_INFO_FILE) and os.path.getsize(SAVED_INFO_FILE) > 0:
+                    new_info = re.sub(r'[.,;،؛!?]', ' ', requested_info.lower())
+                    new_info = '- remember ' + re.sub(r'\s+', ' ', new_info).strip()
+                    saved_info = re.sub(r'[.,;،؛!?]', ' ', content.lower())
+                    saved_info = re.sub(r'\s+', ' ', saved_info).strip()
+                    if new_info in saved_info:
+                        msg = "Information already saved before!\n"
+                        msg += f"Type /saved-info & press ENTER to check."
+                        color = YLW
+                        already_saved = True
+                
+                if not already_saved:
+                    # Wrap the info into short lines.
+                    lines_to_save = []
+                    first_line = True
+                    for line in user_input.strip().splitlines():
                         wrapped_lines = textwrap.wrap(line, width=80)
-                        for line in wrapped_lines:
-                            if not first_line_written:
-                                f.write(f'\n- {line.lstrip("/")}\n')
-                                first_line_written = True
+                        for w_line in wrapped_lines:
+                            if first_line:
+                                # Add leading newline and bullet point for the very first line.
+                                lines_to_save.append(f"- {w_line.lstrip('/')}")
+                                first_line = False
                             else:
-                                f.write(f'  {line}\n')
-                    
-                msg = "Information saved!\n"
-                msg += "You can always ask Gemini to forget by starting your prompt with 'forget'. "
-                msg += f"Or type /saved-info to manually edit your info in '{SAVED_INFO_FILE}'."
-                color = GR
+                                # Indent subsequent lines for better readability.
+                                lines_to_save.append(f'  {w_line}')
+
+                    # Join lines & write to file.
+                    final_content = '\n' + '\n'.join(lines_to_save) + '\n'
+                    with open(SAVED_INFO_FILE, 'a', encoding='utf-8') as f:
+                        f.write(final_content)
+                        
+                    msg = "Information saved!\n"
+                    msg += "You can always ask Gemini to forget by starting your prompt with /forget. "
+                    msg += f"Or type /saved-info to manually edit your info in '{SAVED_INFO_FILE}'."
+                    color = GR
             
             except Exception as error:
                 if ERROR_LOG_ON: log_caught_exception()
@@ -4562,9 +5027,8 @@ if SAVED_INFO:
 
         # User wants to forget something.
         elif command == 'forget':
+            deleted = False     # If the info was deleted, this becomes True.
             try:
-                deleted = False     # If the info was deleted, this becomes True.
-                
                 # Get the saved info list.
                 if not path_exist(SAVED_INFO_FILE):
                     msg = f"There is no '{SAVED_INFO_FILE}' file!"
@@ -4601,6 +5065,7 @@ if SAVED_INFO:
                         try:
                             with open(SAVED_INFO_FILE, 'w', encoding='utf-8'): pass
                             cprint(GR + 'Saved info permanently deleted!' + RS)
+                            deleted = True
                         except Exception as error:
                             if ERROR_LOG_ON: log_caught_exception()
                             cprint(f"Couldn't edit '{SAVED_INFO_FILE}' file!\nError: {error}.")
@@ -4671,7 +5136,7 @@ if SAVED_INFO:
                     
                     try:
                         with open(SAVED_INFO_FILE, 'w', encoding='utf-8') as f:
-                            f.write('\n' + new_content)
+                            f.write('\n' + new_content + '\n')
                     except Exception as error:
                         if ERROR_LOG_ON: log_caught_exception()
                         msg = f"Couldn't edit '{SAVED_INFO_FILE}' file!\nError: {error}."
@@ -4684,12 +5149,13 @@ if SAVED_INFO:
                 # User said no/cancel.
                 else:
                     cprint(GR + choice(CANCEL_MESSAGES) + RS)
-
+                    
+                separator(color=YLW)
+                
             except Interruption:
                 cprint(f'\n{GR}{choice(CANCEL_MESSAGES)}{RS}')
             
             finally:
-                separator(color=YLW)
                 if deleted: return True
                 else: return False
 
@@ -4817,7 +5283,8 @@ if EXTERNAL_EDITOR:
         try:
             # raise Exception
             # This is a blocking call; we create a new console to avoid interference with CLI-based editors.
-            call([editor, file], creationflags=CREATE_NEW_CONSOLE)
+            if OPERATING_SYSTEM == 'nt': call([editor, file], creationflags=CREATE_NEW_CONSOLE)
+            else: call([editor, file])
         except:
             return False
 
@@ -4896,23 +5363,15 @@ def save_chat_history_json(up_separator=True, down_separator=True, hidden=False)
         if messages_to_remove:
             # Case 1: Messages were deleted.
             changed = bool(messages_to_remove)
-            serializable_history = None
         
         else:
             # Case 2: Messages were added.
-            serializable_history = serialize_history()
-            new_history_json_str = json.dumps(serializable_history)
-            try:
-                with open(CHAT_HISTORY_JSON, 'r', encoding='utf-8') as f:
-                    old_history_dicts = json.load(f)
-                
-                old_history_json_str = json.dumps(old_history_dicts)
-                changed = new_history_json_str != old_history_json_str
-            except:
-                changed = True
+            if chat.get_history(): last_in_current_history = chat.get_history()[-1]
+            else: last_in_current_history = None
+            # They can be both None (empty), or both identical Parts (messages), or just different.
+            changed = last_in_current_history != last_in_loaded_history
         
     except:
-        serializable_history = None
         changed = True
     
     # Perform the save.
@@ -4920,25 +5379,25 @@ def save_chat_history_json(up_separator=True, down_separator=True, hidden=False)
         if not hidden and up_separator: separator()
         if not hidden: cprint(GR + 'Saving chat history, one moment...' + RS)
         
-        # Serialize history if not already done.
-        if serializable_history == None:
-            try:
-                serializable_history = serialize_history()
-            except Exception as error:
-                if ERROR_LOG_ON: log_caught_exception()
-                if not hidden: cprint(f"{RED}Failed to save chat history: {error}!{RS}")
+        # Serialize history.
+        try:
+            serialized_history = serialize_history()
+        except Exception as error:
+            serialized_history = None
+            if ERROR_LOG_ON: log_caught_exception()
+            if not hidden: cprint(f"{RED}Failed to save chat history: {error}!{RS}")
         
         # Save chat, weither messages were added, removed or the entire chat was cleared.
-        if serializable_history or serializable_history == []:
+        if serialized_history or serialized_history == []:
             try:
-                # Write to a temporary file, to avoid data corruption upong pressing CTRL-C.
+                # Write to a temporary file, to avoid possible data corruption.
                 temp_file = CHAT_HISTORY_JSON + '.tmp'
                 with open(temp_file, 'w', encoding='utf-8') as f:
-                    json.dump(serializable_history, f, indent=2)
+                    json.dump(serialized_history, f, indent=2)
                 os.replace(temp_file, CHAT_HISTORY_JSON)
                 
                 if not hidden:
-                    if serializable_history: cprint(f"{GR}Chat history saved!{RS}")
+                    if serialized_history: cprint(f"{GR}Chat history saved!{RS}")
                     else: cprint(f"{GR}Chat history cleared & saved!{RS}")
                 chat_saved = True
             
@@ -4951,8 +5410,9 @@ def save_chat_history_json(up_separator=True, down_separator=True, hidden=False)
 
 def load_chat_history():
     """Load chat history, if it meets the conditions."""
-    global initial_history, confirm_separator
+    global initial_history, confirm_separator, last_in_loaded_history
     initial_history = []
+    last_in_loaded_history = None   # Used to compare current-history to saved-history before saving.
     
     # Check if the history file exist, and is not empty.
     file_exist = path_exist(CHAT_HISTORY_JSON)
@@ -4984,9 +5444,6 @@ def load_chat_history():
                 
             if load_history == 'y':
                 try:
-                    with open(CHAT_HISTORY_JSON, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                    
                     try:
                         saved_history_dicts = json.loads(content)
                     except json.JSONDecodeError as error:
@@ -4997,7 +5454,7 @@ def load_chat_history():
                             clear_lines()
                             separator()
                             box(content, title='JSON ERROR', border_color=RED, text_color=RED)
-                            quit(1)
+                            sys.exit(1)
                     
                     # Reconstruct Content & Part objects from the saved dictionaries.
                     del content
@@ -5009,15 +5466,14 @@ def load_chat_history():
                         except:
                             if ERROR_LOG_ON: log_caught_exception()
                             errors += 1
-                            # if errors:
-                                # cprint(f"{RED}({errors}) partial error(s) occurred during loading chat history.{RS}")
                             continue
                     
                     # Inform the user of the loading status.
                     loaded_messages = len(initial_history)
                     if loaded_messages:
                         n = len(initial_history)
-                        cprint(f"{CYN}Loaded ({n}) history steps / ({int(n / 2)}) messages pairs from '{CHAT_HISTORY_JSON}'.{RS}")
+                        cprint(f"{CYN}Loaded ({n}) history steps / ({int(n / 2)}) message pair(s) from '{CHAT_HISTORY_JSON}'.{RS}")
+                        last_in_loaded_history = initial_history[-1]   # Even if the message is big, this is just a reference to it.
                     elif not loaded_messages and not errors:
                         cprint(f"{YLW}File '{CHAT_HISTORY_JSON}' seems to be empty.{RS}")
                     elif not loaded_messages and errors:
@@ -5070,6 +5526,8 @@ def setup_chat():
         print('└' + '─' * (console_width - 2) + '┘')
     else:
         chat_saved = False
+        try: copy_file(PROMPT_HISTORY_FILE, PROMPT_HISTORY_FILE + '.bak')
+        except: pass
     
     error_occurred = None
     attempts = 0
@@ -5191,7 +5649,7 @@ def interpret_commands():
             elif command == 'help-3': help(mode='long')
             else: help(mode='cheat')
 
-        case 'clear':
+        case 'clear' | 'cls':
             system(CLEAR_COMMAND)
             # Change the prompt placeholder for a fresh start feeling.
             update_placeholder()
@@ -5208,23 +5666,34 @@ def interpret_commands():
         case 'recover':
             recover_prompt()
     
-        case c if c.startswith('remember ') and SAVED_INFO:
+        case c if cmd_finder('remember') and SAVED_INFO:
             manage_saved_info(user_input, 'remember')
+            message_to_send = message_to_send.removeprefix('/')
             return True
         
-        case c if c.startswith('forget ') and SAVED_INFO:
+        case c if cmd_finder('forget') and SAVED_INFO:
             deleted = manage_saved_info(user_input, 'forget')
-            # True for deletion, None for error, False for user cancellation (promot won't be sent if False).
-            if deleted in [True, None]: return True
+            # True for deletion, None for error, False for user cancellation (prompt won't be sent if False).
+            if deleted in [True, None]:
+                message_to_send = message_to_send.removeprefix('/')
+                return True
     
-        case 'save-last' | 'show' | 'copy':
-            get_last_response(command)
+        case c if c in ('save-last', 'show', 'copy') or cmd_finder('save-last'):
+            if cmd_finder('save-last'):
+                extension = command.split()[-1].strip()
+                get_last_response('save-last', extension)
+            else:
+                get_last_response(command)
         
         case 'copy-prompt':
             copy_last_prompt()
         
-        case 'save-chat':
-            save_chat_history_text()
+        case c if c == 'save-chat' or cmd_finder('save-chat'):
+            if cmd_finder('save-chat'):
+                extension = command.split()[-1].strip()
+                save_chat_history_text(extension)
+            else:
+                save_chat_history_text()
         
         case 'last-links' | 'last-urls':
             if last_urls:
@@ -5284,7 +5753,7 @@ def interpret_commands():
         
         case c if c.startswith('pop-last'):
             if command == 'pop-last': n_turns = 1
-            elif command.startswith('pop-last '):
+            elif cmd_finder('pop-last'):
                 try: n_turns = int(float(command[8:]))
                 except: return True
             else: return True
@@ -5359,6 +5828,7 @@ def interpret_commands():
         
         case 'discard' | 'kill':
             discarding = True
+            restore_removed_messages('restore-all', hidden=True)
             try: copy_file(PROMPT_HISTORY_FILE + '.bak', PROMPT_HISTORY_FILE)
             except: pass
             
@@ -5450,7 +5920,7 @@ def interpret_extra_commands(command: str):
     second_match = False
 
     match command:
-        # This is only for testing, don't use it otherwise.
+        # These are only for testing, don't use them otherwise.
         case _ if not DEV_MODE:
             # Gatekeeper/Switchgate if developper mode is OFF.
             second_match = True
@@ -5567,7 +6037,7 @@ def interpret_extra_commands(command: str):
             title = "Must... achieve... maximum... wind... through... mane!\nPress CTRL-C to take a break!\n"
             draw_ascii_animation('HORSE', title, BRW, 0.08, 2, separator, control_cursor, clear_lines)
 
-        case c if c == 'time-travel' or c.startswith('time-travel '):
+        case c if c == 'time-travel' or cmd_finder('time-travel'):
             from useless import time_travel
             time_travel(command, box)
 
@@ -5584,6 +6054,11 @@ def interpret_extra_commands(command: str):
             from useless import riddle
             show_soluion = True if command in ['r-answer', 'riddle-answer'] else False
             riddle(box, wrapper, open_path, show_soluion, user_input)
+        
+        case 'science' | 'physic' | 'physics' | 's-answer' | 'science-answer':
+            from useless import science_query
+            show_soluion = True if command in ['s-answer', 'science-answer'] else False
+            science_query(box, wrapper, open_path, show_soluion, user_input)
 
         case 'fact':
             from useless import FACTS
@@ -5618,6 +6093,18 @@ def interpret_extra_commands(command: str):
         case 'scan' | 'clean':
             from useless import fake_scan
             fake_scan(console.status, separator)
+        
+        case 'ransom' | 'ransomware':
+            from useless import fake_ransomware
+            fake_ransomware(console.status, separator)
+        
+        case 'fbi' | 'lock':
+            from useless import fbi_takeover
+            fbi_takeover(clear_lines)
+        
+        case 'break' | 'crack':
+            from useless import break_screen
+            break_screen(clear_lines)
 
         case 'overthink' | 'overthinking':
             from useless import overthink
@@ -5648,7 +6135,7 @@ def interpret_extra_commands(command: str):
             matrix(separator)
         
         case 'duck' | 'quack':
-            file = 'Data/Quack (' + str(randint(1, 3)) + ').mp3'
+            file = os.path.join(PROGRAM_DATA_DIR, f'Quack ({str(randint(1, 3))}).mp3')
             path = os.path.abspath(file)
             if OPERATING_SYSTEM == "nt": os.startfile(path)
             elif sys.platform == "darwin": os.system("afplay 'sound.wav' & || ffplay -nodisp -autoexit 'sound.wav' & || play 'sound.wav' &")
@@ -5676,7 +6163,7 @@ def interpret_extra_commands(command: str):
             msg = "Congratulations! You won the 'Chaos Game'!\nYou are back to normal mode now, or you know... normal life :1"
             box(msg, title='CHAOS', border_color=PURP, text_color=PURP, secondary_color=PURP)
         
-        case c if c.startswith(('false-echo', 'f-echo')):
+        case c if cmd_finder('f-echo') or cmd_finder('false-echo'):
             from useless import false_echo
             false_echo(user_input, box)
         
@@ -5707,7 +6194,7 @@ def get_user_input():
     last_prompt = user_input
     
     # Update the rprompt info.
-    # ALWAYS_GUI_MODE = False
+    # ALWAYS_GUI_EDITOR = False
     if INFORMATIVE_RPROMPT:
         # if ALWAYS_GUI_MODE:
         current_time = datetime.now().strftime('%I:%M %p')
@@ -5727,34 +6214,35 @@ def get_user_input():
         in_time_log(' You >  ' + str(prompt_placeholder[0][1]))
     
     # Use GUI if the user is in permanent GUI mode.
-    if ALWAYS_GUI_MODE:
+    if ALWAYS_GUI_EDITOR:
         with ProgressBar(bottom_toolbar=' Now using the quick editor... ', cancel_callback=lambda: None):
-            while True:
-                user_input = quick_text_editor()
-                if user_input.strip():
-                    # Save, show & submit .
-                    Keys.save_history(user_input)
-                    to_show = ltrim(user_input).rstrip() 
-                    if HIDE_LONG_INPUT:
-                        i = Keys.hide_threshold
-                        if len(to_show) > i: to_show = to_show[:i-6].rstrip() + ' [...]'
-                    margin = f'{GRY}{line_continuation}{RS}'
-                    width = glitching_text_width - len(line_continuation)
-                    cprint(f'{USER_BG}{BLK} You > {RS}', end=' ')
-                    lines = to_show.splitlines()
-                    cprint(lines.pop(0), wrap_width=width, wrap_joiner=f'\n{margin}')
-                    for line in lines: cprint(margin + line, wrap_width=width, wrap_joiner=f'\n{margin}')
-                    return user_input
+            user_input = quick_text_editor()
+            if user_input.strip():
+                # Save, show & submit .
+                Keys.save_history(user_input)
+                to_show = ltrim(user_input).rstrip() 
+                if HIDE_LONG_INPUT:
+                    i = Keys.hide_threshold
+                    if len(to_show) > i: to_show = to_show[:i-6].rstrip() + ' [...]'
                     
-                else:
-                    # The user cancelled, so continue with CLI input.
-                    if INFORMATIVE_RPROMPT: rprompt = None
-                    cprint()
-                    clear_lines()
-                    break
+                margin = f'{GRY}{line_continuation}{RS}'
+                width = glitching_text_width - len(line_continuation)
+                cprint(' ' * (terminal_size().columns - 1) + '\r', end='')  # To clear the progress bar if it stuck.
+                cprint(f'{USER_BG}{BLK} You > {RS}', end=' ')
+                lines = to_show.splitlines()
+                cprint(lines.pop(0), wrap_width=width, wrap_joiner=f'\n{margin}')
+                for line in lines: cprint(margin + line, wrap_width=width, wrap_joiner=f'\n{margin}')
+                if user_input.strip() in ('/editor', '/gui'): clear_lines()     # Already in GUI editor, so why call it again?
+                else: return user_input
+                
+            else:
+                # The user cancelled, so continue with CLI input.
+                if INFORMATIVE_RPROMPT: rprompt = None
+                cprint()
+                clear_lines()
 
     # Stream input via 'prompt_toolkit'.
-    if not ALWAYS_GUI_MODE: flush_input()  # Already flushed inside quick_text_editor().
+    if not ALWAYS_GUI_EDITOR: flush_input()  # Already flushed inside quick_text_editor().
     try:
         # Just a reference - Possible prompt() args:
         # ['message', 'history', 'editing_mode', 'refresh_interval', 'vi_mode', 'lexer', 'completer'
@@ -5902,10 +6390,12 @@ def get_response():
                 # Take the received response.
                 if sender.exception: raise sender.exception
                 response = sender.response
+                # response = None
                 # try: response.text[-1]    # Make sure the response has a string + not empty.
                 # except: response = f"{RED}I'm sorry, I encountered an issue while responding... Please try again.{RS}"
-                if not response or type(response) is type(None) or isinstance(response, type(None)):
-                    response = f"{RED}I'm sorry, I encountered an issue while responding... Please try again.{RS}"
+                if not response or type(response) is type(None) or isinstance(response, type(None)) or not hasattr(response, 'text'):
+                    response = f"{RED}I'm sorry, I encountered an issue while responding... Please try again. </br>\n"
+                    response += f"{YLW}Press (UP) to get your prompt back.{RS}"
                 
                 clear_lines()
                 break
@@ -5998,7 +6488,7 @@ def print_response(response, title='Gemini'):
         else: stdout_flush()
         
         # Show in GUI if requested.
-        if ALWAYS_GUI_MODE:
+        if ALWAYS_GUI_VIEWER:
             with ProgressBar(bottom_toolbar=' Now using the quick markdown viewer... ', cancel_callback=lambda: None):
                 quick_markdown_viewer(response)
     
@@ -6147,6 +6637,9 @@ def define_global_objects():
         'gui_dark_mode': True,
         'gui_editor_geometry': '640x420',
         'gui_viewer_geometry': '800x500',
+        'gui_editor_maximized': False,
+        'gui_viewer_maximized': False,
+        'gui_last_save_ext': '.md'
     }
     CLEAR_COMMAND = 'cls' if OPERATING_SYSTEM == 'nt' else 'clear'
     LTRIM_PATTERN = re.compile(r'^([ \t]*\n)+')     # Used inside ltrim() function.
@@ -6337,7 +6830,6 @@ def define_global_objects():
         force_terminal=True,
     )
     
-    # prompt_message = ' You > ' if ALWAYS_GUI_MODE else '\n You > '
     prompt_message = FormattedText([                # User prompt message.
         (f'bg:{PROMPT_CYN} fg: black', ' You > '),
         ('', ' '), # Unstyled part                                 
@@ -6380,7 +6872,8 @@ def define_global_objects():
     
     # from prompt_toolkit.shortcuts import ProgressBar
     # with ProgressBar(bottom_toolbar='Doing stuff...', cancel_callback=lambda: None): pass
-    # cancel_callback arg is used to avoid ctrl-c interruption    
+    # cancel_callback arg is used to avoid ctrl-c interruption  
+    
     # from prompt_toolkit.shortcuts import message_dialog
     # message_dialog(
         # title="Async Message",

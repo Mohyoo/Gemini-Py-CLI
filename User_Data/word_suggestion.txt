@@ -180,6 +180,7 @@ help-2
 help-3
 cheat
 clear
+cls
 copy
 show
 save-last

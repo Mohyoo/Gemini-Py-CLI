@@ -280,7 +280,7 @@ def main():
     except KeyboardInterrupt:
         print('\n' + sep())
         print('Quitting...')
-        quit()
+        sys.exit()
     
     except Exception as error:
         error_type = type(error).__name__

@@ -55,7 +55,7 @@ def main(welcome=welcome, get_response=get_response):
         
         except KeyboardInterrupt:
             print(f'\n{sep}\nQuitting...')
-            quit()
+            sys.exit()
         
         except Exception as error:
             error_type = type(error).__name__

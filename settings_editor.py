@@ -1,4 +1,5 @@
 import os
+import sys
 import io
 import ast
 import shutil
@@ -17,7 +18,7 @@ BACKUP_PATH = os.path.abspath(os.path.join(USER_DATA_DIR, BACKUP_FILE))
 
 if not os.path.exists(SETTINGS_FILE):
     print(f"\n[!] File '{SETTINGS_FILE}' not found!\n[!] Quitting...")
-    quit(1)
+    sys.exit(1)
 
 
 # ==========================================
@@ -233,9 +234,16 @@ GENERAL_SETTINGS = [
         'type': 'bool',
     },
     {
-        'key': 'ALWAYS_GUI_MODE',
-        'desc': 'If True, GUI editor & markdown viewer will both be called' + SPACE +
-                'automatically on each prompt/response.\n',
+        'key': 'ALWAYS_GUI_EDITOR',
+        'desc': 'If True, The quick GUI editor will always be called' + SPACE +
+                'automatically on each prompt.\n',
+        'default': 'False',
+        'type': 'bool',
+    },
+    {
+        'key': 'ALWAYS_GUI_VIEWER',
+        'desc': 'If True, The quick GUI viewer will always be called' + SPACE +
+                'automatically upon each AI response.\n',
         'default': 'False',
         'type': 'bool',
     },
@@ -301,6 +309,12 @@ ADVANDED_SETTINGS = [
         'type': 'select',
         'options': ['ar', 'bg', 'ca', 'cz', 'da', 'nl', 'en', 'fi', 'fr', 'de', 'hi', 'hu', 'id', 
                     'it', 'nb', 'pl', 'pt', 'ro', 'ru', 'sk', 'es', 'sv', 'tr', 'uk', 'vi']
+    },
+    {
+        'key': 'FASTER_GUI_EDITOR',
+        'desc': "If you feel the quick GUI editor is laggy, set this to True.",
+        'default': 'False',
+        'type': 'bool',
     },
     {
         'key': 'MAX_CONSOLE_WIDTH',
@@ -478,8 +492,9 @@ def clear():
     try: os.system('cls' if os.name == 'nt' else 'clear')
     except KeyboardInterrupt: pass
 
-def restore_default():
+def restore_default(external_invoke=False, external_lines=None):
     """Nuclear reset for user settings."""
+    if external_invoke: file_lines = external_lines  # In case the function was called from another module, we need to manually pass file_lines.
     new_lines = file_lines.copy()
     
     for key, value in DEFAULT_SETTINGS.items():
@@ -552,7 +567,7 @@ def read_file_lines():
     """Read the file and return a list of lines."""
     if not os.path.exists(SETTINGS_FILE):
         print(f"[!] File '{SETTINGS_FILE}' not found!\n[!] Quitting...")
-        quit(1)
+        sys.exit(1)
     with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
         return f.readlines()
 
@@ -755,7 +770,7 @@ def main():
             print(f"  {BACKUP_PATH}")
             print("  You only need to remove the '.bak' suffix from its name.\n")
             print("♦ Goodbye!")
-            exit()
+            sys.exit()
 
         # 4. Find the config for selected item.
         config = next(c for c in ALL_SETTINGS if c['key'] == selected_key)
