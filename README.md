@@ -46,6 +46,8 @@ Can be used for simple conversations (and for fun too :) <br>
 * Stubborn error handling, yet still not perfect.
 
 ## Quick Start
+> Windows users can download pre-built binaries [here](https://github.com/Mohyoo/Gemini-Py-CLI/releases/latest). After that, only the API Key (in 'First Launch' section) is needed.
+
 #### 1) Python Setup:
 1. Install [Python](https://www.python.org/downloads/) version suitable for your system.
 2. Install needed libraries, open terminal & type: `pip install httpx google-genai prompt_toolkit rich pyperclip questionary stop_words tksvg resvg_py markdown tkinterweb json_repair html2text beautifulsoup4` <br>
