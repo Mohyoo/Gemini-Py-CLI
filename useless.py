@@ -2211,6 +2211,12 @@ QUOTES = [
     "Be the reason someone smiles today...",
     "A friend in need is a friend indeed.",
     "People will always see what choices you've chosen, they will not see what choices you had.",
+    "The sun doesn't ask permission to rise.",
+    "Most things heal if you let them.",
+    "Kindness costs nothing, but it changes everything.",
+    "The world is louder than your worries, if you let it.",
+    "Courage is just fear that's decided to walk.",
+    "Some doors open only from the outside.",
     
     "If we're the only life in the universe, then every one of us is the only one of us "
     "there is. And that means we have to make room for the possibility that we're alone. "
