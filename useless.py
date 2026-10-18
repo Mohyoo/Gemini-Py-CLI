@@ -2217,6 +2217,12 @@ QUOTES = [
     "The world is louder than your worries, if you let it.",
     "Courage is just fear that's decided to walk.",
     "Some doors open only from the outside.",
+    "Quiet kindness leaves the loudest echo.",
+    "Even the moon borrows light. That doesn't make it less beautiful.",
+    "Some people carry storms so others can have sun.",
+    "Hope is a small animal. Feed it and it grows.",
+    "The river doesn't fight the rock. It just keeps going.",
+    "Some people are a door you didn't know you were looking for.",
     
     "If we're the only life in the universe, then every one of us is the only one of us "
     "there is. And that means we have to make room for the possibility that we're alone. "
