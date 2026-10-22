@@ -2223,6 +2223,7 @@ QUOTES = [
     "Hope is a small animal. Feed it and it grows.",
     "The river doesn't fight the rock. It just keeps going.",
     "Some people are a door you didn't know you were looking for.",
+    "Don't stop now. You didn't come this far to only come this far.",
     
     "If we're the only life in the universe, then every one of us is the only one of us "
     "there is. And that means we have to make room for the possibility that we're alone. "
